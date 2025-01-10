@@ -148,23 +148,39 @@ struct MovimientoEntradaFormView: View {
     // Campos USD (obligatorios)
     @State private var cantidadCrypto: Decimal = 0
     @State private var precioUSD: Decimal = 0
-    
+    @State private var valorTotalUSD: Decimal = 0
+
     // Campos FIAT Alterno (opcionales)
     @State private var usaFiatAlterno = false
     @State private var selectedFiatAlterno: FIAT?
-    @State private var precioFiatAlterno: Decimal = 0
-    
+    @State private var valorTotalFiatAlterno: Decimal = 0
+
     // Valores calculados
-    var valorTotalUSD: Decimal {
-        cantidadCrypto * precioUSD
+    private var precioFiatAlterno: Decimal {
+        guard cantidadCrypto > 0 else { return 0 }
+        return valorTotalFiatAlterno / cantidadCrypto
+    }
+
+    private func calcularPrecioUSD() {
+        if usaFiatAlterno, let fiat = selectedFiatAlterno {
+            valorTotalUSD = valorTotalFiatAlterno * (1 / fiat.precioUSD)
+            if cantidadCrypto > 0 {
+                precioUSD = valorTotalUSD / cantidadCrypto
+            }
+        }
+    }
+
+    private func onCantidadCryptoChange() {
+        if usaFiatAlterno {
+            if cantidadCrypto > 0 {
+                calcularPrecioUSD()
+            }
+        } else {
+            valorTotalUSD = cantidadCrypto * precioUSD
+        }
     }
     
-    var valorTotalFiatAlterno: Decimal {
-        if let fiat = selectedFiatAlterno {
-            return cantidadCrypto * precioFiatAlterno
-        }
-        return 0
-    }
+  
     
     var formIsValid: Bool {
         selectedCrypto != nil &&
@@ -227,6 +243,9 @@ struct MovimientoEntradaFormView: View {
                         TextField("", value: $cantidadCrypto, format: .number)
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: .infinity)
+                            .onChange(of: cantidadCrypto) { oldValue, newValue in
+                                onCantidadCryptoChange()
+                            }
                     }
                     .frame(maxWidth: .infinity)
                     
@@ -236,17 +255,19 @@ struct MovimientoEntradaFormView: View {
                         TextField("", value: $precioUSD, format: .currency(code: "USD"))
                             .textFieldStyle(.roundedBorder)
                             .frame(maxWidth: .infinity)
+                            .disabled(usaFiatAlterno)
+                            .onChange(of: precioUSD) { oldValue, newValue in
+                                if !usaFiatAlterno {
+                                    valorTotalUSD = cantidadCrypto * newValue
+                                }
+                            }
                     }
                     .frame(maxWidth: .infinity)
                     
-                    if valorTotalUSD > 0 {
-                        HStack {
-                            Text("Total USD:")
-                            Spacer()
-                            Text(valorTotalUSD.formatted(.currency(code: "USD")))
-                                .foregroundStyle(.blue)
-                        }
-                    }
+                    Text("Total USD: \(valorTotalUSD.formatted(.currency(code: "USD")))")
+                        .font(.headline)
+                        .foregroundStyle(.blue)
+                        .frame(maxWidth: .infinity, alignment: .trailing)
                 }
                 
                 // FIAT Alterno
@@ -254,6 +275,18 @@ struct MovimientoEntradaFormView: View {
                     Toggle("FIAT Invertido en Crypto", isOn: $usaFiatAlterno)
                         .font(.headline)
                         .frame(maxWidth: .infinity)
+                        .onChange(of: usaFiatAlterno) { oldValue, newValue in
+                            if newValue {
+                                // Al activar FIAT, recalcular valorTotalFiatAlterno desde USD
+                                if let fiat = selectedFiatAlterno {
+                                    valorTotalFiatAlterno = valorTotalUSD * fiat.precioUSD
+                                }
+                            } else {
+                                // Al desactivar FIAT, mantener los valores USD
+                                selectedFiatAlterno = nil
+                                valorTotalFiatAlterno = 0
+                            }
+                        }
                     
                     if usaFiatAlterno {
                         Picker("FIAT Alterno", selection: $selectedFiatAlterno) {
@@ -271,21 +304,22 @@ struct MovimientoEntradaFormView: View {
                                 .foregroundStyle(.secondary)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                             
-                            TextField("Precio en \(fiat.simbolo)", value: $precioFiatAlterno, format: .currency(code: fiat.simbolo))
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: .infinity)
-                                .onChange(of: precioFiatAlterno) { oldValue, newValue in
-                                    precioUSD = newValue / fiat.precioUSD
-                                }
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text("Total en \(fiat.simbolo) *")
+                                    .font(.subheadline)
+                                TextField("", value: $valorTotalFiatAlterno, format: .currency(code: fiat.simbolo))
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: .infinity)
+                                    .onChange(of: valorTotalFiatAlterno) { oldValue, newValue in
+                                        calcularPrecioUSD()
+                                    }
+                            }
+                            .frame(maxWidth: .infinity)
                             
-                            if valorTotalFiatAlterno > 0 {
-                                HStack {
-                                    Text("Total \(fiat.simbolo):")
-                                    Spacer()
-                                    Text(valorTotalFiatAlterno.formatted(.currency(code: fiat.simbolo)))
-                                        .foregroundStyle(.green)
-                                }
-                                .frame(maxWidth: .infinity)
+                            if valorTotalFiatAlterno > 0 && cantidadCrypto > 0 {
+                                Text("Precio por crypto: \(precioFiatAlterno.formatted(.currency(code: fiat.simbolo)))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
                             }
                         }
                     }
@@ -346,9 +380,10 @@ struct MovimientoEntradaFormView: View {
         fecha = movimiento.fecha
         cantidadCrypto = movimiento.cantidadCrypto
         precioUSD = movimiento.precioUSD
+        valorTotalUSD = movimiento.valorTotalUSD
         usaFiatAlterno = movimiento.usaFiatAlterno
         selectedFiatAlterno = movimiento.fiatAlterno
-        precioFiatAlterno = movimiento.precioFiatAlterno ?? 0
+        valorTotalFiatAlterno = movimiento.valorTotalFiatAlterno ?? 0
     }
     
     private func save() {
