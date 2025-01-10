@@ -26,6 +26,44 @@ enum MovimientoSalidaFormMode: Hashable {
         }
     }
 }
+// En MovimientoSalidaFormView, agregar:
+private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
+    guard let cartera = cartera, let crypto = crypto else { return 0 }
+    
+    // Calcular ingresos totales
+    let ingresos = cartera.movimientosIngreso
+        .filter { $0.crypto?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+    
+    // Calcular egresos totales
+    let egresos = cartera.movimientosEgreso
+        .filter { $0.crypto?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+    
+    // Calcular transferencias entrantes
+    let transferenciasEntrada = cartera.movimientosEntrada
+        .filter { $0.crypto?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+    
+    // Calcular transferencias salientes
+    let transferenciasSalida = cartera.movimientosSalida
+        .filter { $0.crypto?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+    
+    // Calcular swaps entrantes
+    let swapsEntrada = cartera.swaps
+        .filter { $0.cryptoDestino?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
+    
+    // Calcular swaps salientes
+    let swapsSalida = cartera.swaps
+        .filter { $0.cryptoOrigen?.id == crypto.id }
+        .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
+    
+    // Calcular balance total
+    return ingresos + transferenciasEntrada + swapsEntrada -
+           (egresos + transferenciasSalida + swapsSalida)
+}
 
 struct MovimientosSalidaView: View {
     @Environment(\.modelContext) private var modelContext
@@ -76,6 +114,8 @@ struct MovimientosSalidaView: View {
         }
     }
     
+   
+
     private func deleteMovimientos(at offsets: IndexSet) {
         for index in offsets {
             modelContext.delete(movimientos[index])
@@ -181,11 +221,15 @@ struct MovimientoSalidaFormView: View {
     }
     
     var formIsValid: Bool {
-        selectedCrypto != nil &&
-        selectedCartera != nil &&
-        cantidadCrypto > 0 &&
-        precioUSD > 0 &&
-        (!usaFiatAlterno || (selectedFiatAlterno != nil && valorTotalFiatAlterno > 0))
+        guard let cartera = selectedCartera,
+              let crypto = selectedCrypto else { return false }
+        
+        let disponible = getCryptoDisponible(cartera: cartera, crypto: crypto)
+        
+        return cantidadCrypto > 0 &&
+               cantidadCrypto <= disponible &&
+               precioUSD > 0 &&
+               (!usaFiatAlterno || (selectedFiatAlterno != nil && valorTotalFiatAlterno > 0))
     }
     
     var body: some View {
@@ -235,15 +279,43 @@ struct MovimientoSalidaFormView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .font(.headline)
                     
+                    // En el body del formulario, donde está el campo de cantidad:
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Cryptos Vendidos *")
                             .font(.subheadline)
-                        TextField("", value: $cantidadCrypto, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .frame(maxWidth: .infinity)
-                            .onChange(of: cantidadCrypto) { oldValue, newValue in
-                                onCantidadCryptoChange()
+                        
+                        if let cartera = selectedCartera, let crypto = selectedCrypto {
+                            let disponible = getCryptoDisponible(cartera: cartera, crypto: crypto)
+                            Text("Disponible en cartera: \(disponible.formatted()) \(crypto.simbolo)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            
+                            HStack {
+                                TextField("", value: $cantidadCrypto, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(maxWidth: .infinity)
+                                    .onChange(of: cantidadCrypto) { oldValue, newValue in
+                                        // Validar que no exceda el disponible
+                                        if newValue > disponible {
+                                            cantidadCrypto = disponible
+                                        }
+                                        onCantidadCryptoChange()
+                                    }
+                                
+                                Button("MAX") {
+                                    cantidadCrypto = disponible
+                                    onCantidadCryptoChange()
+                                }
+                                .buttonStyle(.borderless)
+                                .foregroundColor(.blue)
                             }
+                            
+                            if cantidadCrypto > disponible {
+                                Text("No hay suficientes \(crypto.simbolo) en la cartera")
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                        }
                     }
                     .frame(maxWidth: .infinity)
                     
