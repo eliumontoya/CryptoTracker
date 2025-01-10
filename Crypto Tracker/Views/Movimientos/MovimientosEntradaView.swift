@@ -64,12 +64,14 @@ struct MovimientosEntradaView: View {
             NavigationStack {
                 MovimientoEntradaFormView(mode: .add)
             }
+            .frame(minWidth: 500, minHeight: 700)
         }
         .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
             if let movimiento = selectedMovimiento {
                 NavigationStack {
                     MovimientoEntradaFormView(mode: .edit(movimiento))
                 }
+                .frame(minWidth: 500, minHeight: 700)
             }
         }
     }
@@ -173,108 +175,135 @@ struct MovimientoEntradaFormView: View {
     }
     
     var body: some View {
-        VStack(spacing: 16) {
-            // Campos principales
-            Group {
-                Text("Crypto *")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.headline)
-                Picker("Seleccionar Crypto", selection: $selectedCrypto) {
-                    Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
-                    ForEach(cryptos) { crypto in
-                        Text(crypto.nombre).tag(Optional(crypto))
-                    }
+        ScrollView {
+            VStack(spacing: 20) {
+                // Fecha como primer campo
+                Group {
+                    Text("Fecha *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    DatePicker("", selection: $fecha, displayedComponents: [.date, .hourAndMinute])
+                        .frame(maxWidth: .infinity)
                 }
-            }
-            
-            Group {
-                Text("Cartera *")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.headline)
-                Picker("Seleccionar Cartera", selection: $selectedCartera) {
-                    Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
-                    ForEach(carteras) { cartera in
-                        Text(cartera.nombre).tag(Optional(cartera))
-                    }
-                }
-            }
-            
-            Group {
-                Text("Fecha *")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.headline)
-                DatePicker("", selection: $fecha, displayedComponents: [.date, .hourAndMinute])
-            }
-            
-            // Campos USD
-            Group {
-                Text("Datos en USD *")
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .font(.headline)
                 
-                TextField("Cantidad de Crypto", value: $cantidadCrypto, format: .number)
-                    .textFieldStyle(.roundedBorder)
-                
-                TextField("Precio USD", value: $precioUSD, format: .currency(code: "USD"))
-                    .textFieldStyle(.roundedBorder)
-                
-                if valorTotalUSD > 0 {
-                    HStack {
-                        Text("Total USD:")
-                        Spacer()
-                        Text(valorTotalUSD.formatted(.currency(code: "USD")))
-                            .foregroundStyle(.blue)
-                    }
-                }
-            }
-            
-            // FIAT Alterno
-            Group {
-                Toggle("Usar FIAT Alterno", isOn: $usaFiatAlterno)
-                    .font(.headline)
-                
-                if usaFiatAlterno {
-                    Picker("FIAT Alterno", selection: $selectedFiatAlterno) {
-                        Text("Seleccionar FIAT").tag(Optional<FIAT>.none)
-                        ForEach(fiats.filter { $0.simbolo != "USD" }) { fiat in
-                            Text(fiat.nombre).tag(Optional(fiat))
+                // Campos principales
+                Group {
+                    Text("Crypto *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    Picker("Seleccionar Crypto", selection: $selectedCrypto) {
+                        Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
+                        ForEach(cryptos) { crypto in
+                            Text(crypto.nombre).tag(Optional(crypto))
                         }
                     }
+                    .frame(maxWidth: .infinity)
+                    .pickerStyle(.menu)
+                }
+                
+                Group {
+                    Text("Cartera *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    Picker("Seleccionar Cartera", selection: $selectedCartera) {
+                        Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
+                        ForEach(carteras) { cartera in
+                            Text(cartera.nombre).tag(Optional(cartera))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .pickerStyle(.menu)
+                }
+                
+                // Campos USD
+                Group {
+                    Text("Datos en USD *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
                     
-                    if let fiat = selectedFiatAlterno {
-                        Text("Tasa de cambio: 1 USD = \(fiat.precioUSD.formatted()) \(fiat.simbolo)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                        
-                        TextField("Precio en \(fiat.simbolo)", value: $precioFiatAlterno, format: .currency(code: fiat.simbolo))
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Cryptos Adquiridos *")
+                            .font(.subheadline)
+                        TextField("", value: $cantidadCrypto, format: .number)
                             .textFieldStyle(.roundedBorder)
-                            .onChange(of: precioFiatAlterno) { oldValue, newValue in
-                                // Actualizar precio USD basado en tasa de cambio
-                                precioUSD = newValue / fiat.precioUSD
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Precio Crypto al Adquirirlo *")
+                            .font(.subheadline)
+                        TextField("", value: $precioUSD, format: .currency(code: "USD"))
+                            .textFieldStyle(.roundedBorder)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .frame(maxWidth: .infinity)
+                    
+                    if valorTotalUSD > 0 {
+                        HStack {
+                            Text("Total USD:")
+                            Spacer()
+                            Text(valorTotalUSD.formatted(.currency(code: "USD")))
+                                .foregroundStyle(.blue)
+                        }
+                    }
+                }
+                
+                // FIAT Alterno
+                Group {
+                    Toggle("FIAT Invertido en Crypto", isOn: $usaFiatAlterno)
+                        .font(.headline)
+                        .frame(maxWidth: .infinity)
+                    
+                    if usaFiatAlterno {
+                        Picker("FIAT Alterno", selection: $selectedFiatAlterno) {
+                            Text("Seleccionar FIAT").tag(Optional<FIAT>.none)
+                            ForEach(fiats.filter { $0.simbolo != "USD" }) { fiat in
+                                Text(fiat.nombre).tag(Optional(fiat))
                             }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .pickerStyle(.menu)
                         
-                        if valorTotalFiatAlterno > 0 {
-                            HStack {
-                                Text("Total \(fiat.simbolo):")
-                                Spacer()
-                                Text(valorTotalFiatAlterno.formatted(.currency(code: fiat.simbolo)))
-                                    .foregroundStyle(.green)
+                        if let fiat = selectedFiatAlterno {
+                            Text("Tasa de cambio: 1 USD = \(fiat.precioUSD.formatted()) \(fiat.simbolo)")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            TextField("Precio en \(fiat.simbolo)", value: $precioFiatAlterno, format: .currency(code: fiat.simbolo))
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: precioFiatAlterno) { oldValue, newValue in
+                                    precioUSD = newValue / fiat.precioUSD
+                                }
+                            
+                            if valorTotalFiatAlterno > 0 {
+                                HStack {
+                                    Text("Total \(fiat.simbolo):")
+                                    Spacer()
+                                    Text(valorTotalFiatAlterno.formatted(.currency(code: fiat.simbolo)))
+                                        .foregroundStyle(.green)
+                                }
+                                .frame(maxWidth: .infinity)
                             }
                         }
                     }
                 }
+                
+                Spacer(minLength: 20)
+                
+                // Nota sobre campos obligatorios
+                Text("* Campos obligatorios")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            
-            Spacer()
-            
-            // Nota sobre campos obligatorios
-            Text("* Campos obligatorios")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
-        .padding()
-        .frame(minWidth: 300, minHeight: 400)
+        .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
+               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
         .navigationTitle(mode == .add ? "Nuevo Movimiento" : "Editar Movimiento")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -323,42 +352,42 @@ struct MovimientoEntradaFormView: View {
     }
     
     private func save() {
-        guard let crypto = selectedCrypto,
-              let cartera = selectedCartera else { return }
-        
-        switch mode {
-        case .add:
-            let movimiento = MovimientoIngreso(
-                fecha: fecha,
-                cantidadCrypto: cantidadCrypto,
-                precioUSD: precioUSD,
-                usaFiatAlterno: usaFiatAlterno,
-                precioFiatAlterno: usaFiatAlterno ? precioFiatAlterno : nil,
-                valorTotalFiatAlterno: usaFiatAlterno ? valorTotalFiatAlterno : nil,
-                cartera: cartera,
-                crypto: crypto,
-                fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
-            )
-            modelContext.insert(movimiento)
+            guard let crypto = selectedCrypto,
+                  let cartera = selectedCartera else { return }
             
-        case .edit(let movimiento):
-            movimiento.fecha = fecha
-            movimiento.cantidadCrypto = cantidadCrypto
-            movimiento.precioUSD = precioUSD
-            movimiento.valorTotalUSD = valorTotalUSD
-            movimiento.usaFiatAlterno = usaFiatAlterno
-            movimiento.precioFiatAlterno = usaFiatAlterno ? precioFiatAlterno : nil
-            movimiento.valorTotalFiatAlterno = usaFiatAlterno ? valorTotalFiatAlterno : nil
-            movimiento.cartera = cartera
-            movimiento.crypto = crypto
-            movimiento.fiatAlterno = usaFiatAlterno ? selectedFiatAlterno : nil
+            switch mode {
+            case .add:
+                let movimiento = MovimientoIngreso(
+                    fecha: fecha,
+                    cantidadCrypto: cantidadCrypto,
+                    precioUSD: precioUSD,
+                    usaFiatAlterno: usaFiatAlterno,
+                    precioFiatAlterno: usaFiatAlterno ? precioFiatAlterno : nil,
+                    valorTotalFiatAlterno: usaFiatAlterno ? valorTotalFiatAlterno : nil,
+                    cartera: cartera,
+                    crypto: crypto,
+                    fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
+                )
+                modelContext.insert(movimiento)
+                
+            case .edit(let movimiento):
+                movimiento.fecha = fecha
+                movimiento.cantidadCrypto = cantidadCrypto
+                movimiento.precioUSD = precioUSD
+                movimiento.valorTotalUSD = valorTotalUSD
+                movimiento.usaFiatAlterno = usaFiatAlterno
+                movimiento.precioFiatAlterno = usaFiatAlterno ? precioFiatAlterno : nil
+                movimiento.valorTotalFiatAlterno = usaFiatAlterno ? valorTotalFiatAlterno : nil
+                movimiento.cartera = cartera
+                movimiento.crypto = crypto
+                movimiento.fiatAlterno = usaFiatAlterno ? selectedFiatAlterno : nil
+            }
+            
+            dismiss()
         }
-        
-        dismiss()
     }
-}
 
-#Preview {
-    MovimientosEntradaView()
-        .withPreviewContainer()
-}
+    #Preview {
+        MovimientosEntradaView()
+            .withPreviewContainer()
+    }

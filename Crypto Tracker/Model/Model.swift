@@ -180,10 +180,18 @@ class MovimientoIngreso {
 class MovimientoEgreso {
     @Attribute(.unique) var id: UUID
     var fecha: Date
+    
+    // Campos principales en USD
     var cantidadCrypto: Decimal
     var precioUSD: Decimal
     var valorTotalUSD: Decimal
     
+    // FIAT Alterno
+    var usaFiatAlterno: Bool
+    var precioFiatAlterno: Decimal?
+    var valorTotalFiatAlterno: Decimal?
+    
+    // Relaciones
     @Relationship var cartera: Cartera?
     @Relationship var crypto: Crypto?
     @Relationship var fiatAlterno: FIAT?
@@ -191,6 +199,9 @@ class MovimientoEgreso {
     init(fecha: Date,
          cantidadCrypto: Decimal,
          precioUSD: Decimal,
+         usaFiatAlterno: Bool = false,
+         precioFiatAlterno: Decimal? = nil,
+         valorTotalFiatAlterno: Decimal? = nil,
          cartera: Cartera,
          crypto: Crypto,
          fiatAlterno: FIAT? = nil) {
@@ -199,6 +210,9 @@ class MovimientoEgreso {
         self.cantidadCrypto = cantidadCrypto
         self.precioUSD = precioUSD
         self.valorTotalUSD = cantidadCrypto * precioUSD
+        self.usaFiatAlterno = usaFiatAlterno
+        self.precioFiatAlterno = precioFiatAlterno
+        self.valorTotalFiatAlterno = valorTotalFiatAlterno
         self.cartera = cartera
         self.crypto = crypto
         self.fiatAlterno = fiatAlterno
