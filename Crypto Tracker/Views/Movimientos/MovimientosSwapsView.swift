@@ -169,16 +169,23 @@ struct MovimientoSwapFormView: View {
     var valorTotalDestino: Decimal {
         cantidadDestino * precioUSDDestino
     }
+    private var cryptoDisponible: Decimal {
+
+        guard let cryptoOrigen = selectedCryptoOrigen  else { return 0 }
+
+        
+        if case .edit(let movimiento) = mode {
+            return selectedCartera?.getCryptoDisponible(crypto: cryptoOrigen, movimientoActual: movimiento.cantidadOrigen) ?? 0
+        } else {
+            return selectedCartera?.getCryptoDisponible(crypto: cryptoOrigen) ?? 0
+        }
+    }
     
     var formIsValid: Bool {
-        guard let cartera = selectedCartera,
-              let cryptoOrigen = selectedCryptoOrigen else { return false }
-        
-        let disponible = cartera.getCryptoDisponible(crypto: cryptoOrigen)
 
         return selectedCryptoDestino != nil &&
                cantidadOrigen > 0 &&
-               cantidadOrigen <= disponible &&
+               cantidadOrigen <= cryptoDisponible &&
                cantidadDestino > 0 &&
                precioUSDOrigen > 0 &&
                precioUSDDestino > 0 &&
@@ -228,8 +235,7 @@ struct MovimientoSwapFormView: View {
                     
                     // Mostrar disponible y validación
                     if let crypto = selectedCryptoOrigen {
-                        let disponible = selectedCartera?.getCryptoDisponible(crypto: crypto) ?? 0
-                        Text("Disponible: \(disponible.formatted()) \(crypto.simbolo)")
+                        Text("Disponible: \(cryptoDisponible.formatted()) \(crypto.simbolo)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                         
@@ -241,13 +247,13 @@ struct MovimientoSwapFormView: View {
                                     .textFieldStyle(.roundedBorder)
                                     .frame(maxWidth: .infinity)
                                     .onChange(of: cantidadOrigen) { oldValue, newValue in
-                                        if newValue > disponible {
-                                            cantidadOrigen = disponible
+                                        if newValue > cryptoDisponible {
+                                            cantidadOrigen = cryptoDisponible
                                         }
                                     }
                                 
                                 Button("MAX") {
-                                    cantidadOrigen = disponible
+                                    cantidadOrigen = cryptoDisponible
                                 }
                                 .buttonStyle(.borderless)
                                 .foregroundColor(.blue)

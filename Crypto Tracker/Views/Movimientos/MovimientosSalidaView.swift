@@ -183,6 +183,18 @@ struct MovimientoSalidaFormView: View {
         }
     }
     
+   
+    
+    private var cryptoDisponible: Decimal {
+        guard let cartera = selectedCartera, let crypto = selectedCrypto else { return 0 }
+        
+        if case .edit(let movimiento) = mode {
+            return cartera.getCryptoDisponible(crypto: crypto, movimientoActual: movimiento.cantidadCrypto)
+        } else {
+            return cartera.getCryptoDisponible(crypto: crypto)
+        }
+    }
+    
     var formIsValid: Bool {
         guard let cartera = selectedCartera,
               let crypto = selectedCrypto else { return false }
@@ -190,12 +202,12 @@ struct MovimientoSalidaFormView: View {
         let disponible = cartera.getCryptoDisponible(crypto: crypto)
         
         return cantidadCrypto > 0 &&
-               cantidadCrypto <= disponible &&
+               cantidadCrypto <= cryptoDisponible &&
                precioUSD > 0 &&
                (!usaFiatAlterno || (selectedFiatAlterno != nil && valorTotalFiatAlterno > 0))
     }
-    
     var body: some View {
+
         ScrollView {
             VStack(spacing: 20) {
                 // Fecha como primer campo
@@ -248,8 +260,10 @@ struct MovimientoSalidaFormView: View {
                             .font(.subheadline)
                         
                         if let cartera = selectedCartera, let crypto = selectedCrypto {
-                            let disponible = cartera.getCryptoDisponible(crypto: crypto)
-                            Text("Disponible en cartera: \(disponible.formatted()) \(crypto.simbolo)")
+                           
+                                 
+                            //let disponible = cartera.getCryptoDisponible(crypto: crypto)
+                            Text("Disponible en cartera: \(cryptoDisponible.formatted()) \(crypto.simbolo)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                             
@@ -259,21 +273,21 @@ struct MovimientoSalidaFormView: View {
                                     .frame(maxWidth: .infinity)
                                     .onChange(of: cantidadCrypto) { oldValue, newValue in
                                         // Validar que no exceda el disponible
-                                        if newValue > disponible {
-                                            cantidadCrypto = disponible
+                                        if newValue > cryptoDisponible {
+                                            cantidadCrypto = cryptoDisponible
                                         }
                                         onCantidadCryptoChange()
                                     }
                                 
                                 Button("MAX") {
-                                    cantidadCrypto = disponible
+                                    cantidadCrypto = cryptoDisponible
                                     onCantidadCryptoChange()
                                 }
                                 .buttonStyle(.borderless)
                                 .foregroundColor(.blue)
                             }
                             
-                            if cantidadCrypto > disponible {
+                            if cantidadCrypto > cryptoDisponible {
                                 Text("No hay suficientes \(crypto.simbolo) en la cartera")
                                     .font(.caption)
                                     .foregroundColor(.red)
