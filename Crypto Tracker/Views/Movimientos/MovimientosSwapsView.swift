@@ -52,7 +52,21 @@ struct MovimientosSwapsView: View {
                 }
                 .onDelete(perform: deleteMovimientos)
             }
-            // ... resto del código ...
+            .navigationTitle("Movimientos de Swaps")
+            .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button(action: { showingAddSheet = true }) {
+                        Label("Nuevo Movimiento", systemImage: "plus")
+                    }
+                    .disabled(cryptos.isEmpty || carteras.isEmpty)
+                }
+            }
+            .sheet(isPresented: $showingAddSheet) {
+                NavigationStack {
+                    MovimientoSwapFormView(mode: .add)
+                }
+                .frame(minWidth: 500, minHeight: 700)
+            }
             .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
                 if let movimiento = selectedMovimiento {
                     NavigationStack {
