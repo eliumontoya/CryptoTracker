@@ -146,7 +146,12 @@ struct MovimientoEntreCarterasFormView: View {
     
     private var cryptoDisponible: Decimal {
         guard let cartera = selectedCarteraOrigen, let crypto = selectedCrypto else { return 0 }
-        return cartera.getCryptoDisponible(crypto: crypto)
+        
+        if case .edit(let movimiento) = mode {
+            return cartera.getCryptoDisponible(crypto: crypto, movimientoActual: movimiento.cantidadCryptoSalida)
+        } else {
+            return cartera.getCryptoDisponible(crypto: crypto)
+        }
     }
     
     private var comision: Decimal {
@@ -296,6 +301,7 @@ struct MovimientoEntreCarterasFormView: View {
         }
         .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        .navigationTitle(mode == .add ? "Nuevo Movimiento" : "Editar Movimiento")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
@@ -341,7 +347,8 @@ struct MovimientoEntreCarterasFormView: View {
         guard let crypto = selectedCrypto,
               let carteraOrigen = selectedCarteraOrigen,
               let carteraDestino = selectedCarteraDestino else { return }
-        
+        switch mode {
+        case .add:
         let movimiento = MovimientoEntreCarteras(
             fecha: fecha,
             cantidadCryptoSalida: cantidadCryptoSalida,
@@ -352,6 +359,15 @@ struct MovimientoEntreCarterasFormView: View {
         )
         
         modelContext.insert(movimiento)
+            
+        case .edit(let movimiento):
+            movimiento.fecha = fecha
+            movimiento.cantidadCryptoSalida = cantidadCryptoSalida
+            movimiento.cantidadCryptoEntrada = cantidadCryptoEntrada
+            movimiento.carteraOrigen = carteraOrigen
+            movimiento.carteraDestino = carteraDestino
+            movimiento.crypto = crypto
+        }
         dismiss()
     }
 }

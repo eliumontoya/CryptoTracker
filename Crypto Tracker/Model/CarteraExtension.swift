@@ -1,8 +1,7 @@
 import Foundation
 import SwiftData
-
 extension Cartera {
-    func getCryptoDisponible(crypto: Crypto) -> Decimal {
+    func getCryptoDisponible(crypto: Crypto, movimientoActual: Decimal = 0) -> Decimal {
         let ingresos = movimientosIngreso
             .filter { $0.crypto?.id == crypto.id }
             .reduce(into: Decimal(0)) { $0 += $1.cantidadCrypto }
@@ -27,7 +26,7 @@ extension Cartera {
             .filter { $0.cryptoOrigen?.id == crypto.id }
             .reduce(into: Decimal(0)) { $0 += $1.cantidadOrigen }
         
-        return ingresos + transferenciasEntrada + swapsEntrada -
+        return ingresos + transferenciasEntrada + swapsEntrada + movimientoActual -
                (egresos + transferenciasSalida + swapsSalida)
     }
 }
