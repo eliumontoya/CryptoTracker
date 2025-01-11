@@ -30,37 +30,41 @@ enum MovimientoSalidaFormMode: Hashable {
 private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
     guard let cartera = cartera, let crypto = crypto else { return 0 }
     
-    // Calcular ingresos totales
     let ingresos = cartera.movimientosIngreso
         .filter { $0.crypto?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadCrypto
+        }
     
-    // Calcular egresos totales
     let egresos = cartera.movimientosEgreso
         .filter { $0.crypto?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadCrypto
+        }
     
-    // Calcular transferencias entrantes
     let transferenciasEntrada = cartera.movimientosEntrada
         .filter { $0.crypto?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
-    
-    // Calcular transferencias salientes
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadCryptoEntrada
+        }
+
     let transferenciasSalida = cartera.movimientosSalida
         .filter { $0.crypto?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
-    
-    // Calcular swaps entrantes
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadCryptoSalida
+        }
     let swapsEntrada = cartera.swaps
         .filter { $0.cryptoDestino?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadDestino
+        }
     
-    // Calcular swaps salientes
     let swapsSalida = cartera.swaps
         .filter { $0.cryptoOrigen?.id == crypto.id }
-        .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
+        .reduce(into: Decimal(0)) { partialResult, movimiento in
+            partialResult += movimiento.cantidadOrigen
+        }
     
-    // Calcular balance total
     return ingresos + transferenciasEntrada + swapsEntrada -
            (egresos + transferenciasSalida + swapsSalida)
 }

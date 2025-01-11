@@ -224,20 +224,25 @@ class MovimientoEgreso {
 class MovimientoEntreCarteras {
     @Attribute(.unique) var id: UUID
     var fecha: Date
-    var cantidadCrypto: Decimal
+    var cantidadCryptoSalida: Decimal // Renombrado para claridad
+    var cantidadCryptoEntrada: Decimal // Nuevo campo
+    var cantidadCryptoComision: Decimal // Nuevo campo
     
     @Relationship var carteraOrigen: Cartera?
     @Relationship var carteraDestino: Cartera?
     @Relationship var crypto: Crypto?
     
     init(fecha: Date,
-         cantidadCrypto: Decimal,
+         cantidadCryptoSalida: Decimal,
+         cantidadCryptoEntrada: Decimal,
          carteraOrigen: Cartera,
          carteraDestino: Cartera,
          crypto: Crypto) {
         self.id = UUID()
         self.fecha = fecha
-        self.cantidadCrypto = cantidadCrypto
+        self.cantidadCryptoSalida = cantidadCryptoSalida
+        self.cantidadCryptoEntrada = cantidadCryptoEntrada
+        self.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
         self.carteraOrigen = carteraOrigen
         self.carteraDestino = carteraDestino
         self.crypto = crypto

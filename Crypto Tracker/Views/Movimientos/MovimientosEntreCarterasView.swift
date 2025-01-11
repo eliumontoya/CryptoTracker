@@ -1,6 +1,30 @@
 import SwiftUI
 import SwiftData
-
+enum MovimientoEntreCarterasFormMode: Hashable {
+    case add
+    case edit(MovimientoEntreCarteras)
+    
+    func hash(into hasher: inout Hasher) {
+        switch self {
+        case .add:
+            hasher.combine(0)
+        case .edit(let movimiento):
+            hasher.combine(1)
+            hasher.combine(movimiento.id)
+        }
+    }
+    
+    static func == (lhs: MovimientoEntreCarterasFormMode, rhs: MovimientoEntreCarterasFormMode) -> Bool {
+        switch (lhs, rhs) {
+        case (.add, .add):
+            return true
+        case (.edit(let m1), .edit(let m2)):
+            return m1.id == m2.id
+        default:
+            return false
+        }
+    }
+}
 struct MovimientosEntreCarterasView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoEntreCarteras.fecha, order: .reverse) private var movimientos: [MovimientoEntreCarteras]
@@ -8,6 +32,7 @@ struct MovimientosEntreCarterasView: View {
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     
     @State private var showingAddSheet = false
+    @State private var showingEditSheet = false
     @State private var selectedMovimiento: MovimientoEntreCarteras?
     @State private var showingDeleteAlert = false
     
@@ -19,6 +44,7 @@ struct MovimientosEntreCarterasView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             selectedMovimiento = movimiento
+                            showingEditSheet = true
                         }
                 }
                 .onDelete(perform: deleteMovimientos)
@@ -34,7 +60,14 @@ struct MovimientosEntreCarterasView: View {
             }
             .sheet(isPresented: $showingAddSheet) {
                 NavigationStack {
-                    MovimientoEntreCarterasFormView()
+                    MovimientoEntreCarterasFormView(mode: .add)
+                }
+            }
+            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
+                if let movimiento = selectedMovimiento {
+                    NavigationStack {
+                        MovimientoEntreCarterasFormView(mode: .edit(movimiento))
+                    }
                 }
             }
         }
@@ -56,20 +89,39 @@ struct MovimientoEntreCarterasRowView: View {
                 Text(movimiento.fecha.formatted(date: .abbreviated, time: .shortened))
                     .font(.subheadline)
                 Spacer()
-                Text(movimiento.crypto.simbolo)
-                    .font(.headline)
+                if let crypto = movimiento.crypto {
+                    Text(crypto.simbolo)
+                        .font(.headline)
+                }
             }
             
             HStack {
-                Text("Cantidad: \(movimiento.cantidadCrypto.formatted()) \(movimiento.crypto.simbolo)")
-                    .font(.subheadline)
+                if let crypto = movimiento.crypto {
+                    Text("Cantidad Salida: \(movimiento.cantidadCryptoSalida.formatted()) \(crypto.simbolo)")
+                    Text("Cantidad Entrada: \(movimiento.cantidadCryptoEntrada.formatted()) \(crypto.simbolo)")
+                }
             }
+            .font(.subheadline)
             
             HStack {
                 Image(systemName: "arrow.right")
                     .foregroundStyle(.blue)
-                Text("\(movimiento.carteraOrigen.nombre) → \(movimiento.carteraDestino.nombre)")
-                    .font(.caption)
+                if let carteraOrigen = movimiento.carteraOrigen,
+                   let carteraDestino = movimiento.carteraDestino {
+                    Text("\(carteraOrigen.nombre) → \(carteraDestino.nombre)")
+                        .font(.caption)
+                }
+            }
+            
+            // Mostrar comisión si existe
+            if let crypto = movimiento.crypto,
+               movimiento.cantidadCryptoComision > 0 {
+                HStack {
+                    Text("Comisión:")
+                    Text("\(movimiento.cantidadCryptoComision.formatted()) \(crypto.simbolo)")
+                        .foregroundStyle(.red)
+                }
+                .font(.caption)
             }
         }
         .padding(.vertical, 4)
@@ -80,69 +132,216 @@ struct MovimientoEntreCarterasFormView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
+    let mode: MovimientoEntreCarterasFormMode
+    
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     
+    @State private var fecha = Date()
     @State private var selectedCrypto: Crypto?
     @State private var selectedCarteraOrigen: Cartera?
     @State private var selectedCarteraDestino: Cartera?
-    @State private var fecha = Date()
-    @State private var cantidadCrypto: Decimal = 0
+    @State private var cantidadCryptoSalida: Decimal = 0
+    @State private var cantidadCryptoEntrada: Decimal = 0
     
-    var formIsValid: Bool {
-        selectedCrypto != nil &&
-        selectedCarteraOrigen != nil &&
-        selectedCarteraDestino != nil &&
-        selectedCarteraOrigen != selectedCarteraDestino &&
-        cantidadCrypto > 0
+    private var cryptoDisponible: Decimal {
+        getCryptoDisponible(cartera: selectedCarteraOrigen, crypto: selectedCrypto)
+    }
+    
+    private var comision: Decimal {
+        cantidadCryptoSalida - cantidadCryptoEntrada
+    }
+    private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
+        guard let cartera = cartera, let crypto = crypto else { return 0 }
+        
+        let ingresos = cartera.movimientosIngreso
+            .filter { $0.crypto?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadCrypto
+            }
+        
+        let egresos = cartera.movimientosEgreso
+            .filter { $0.crypto?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadCrypto
+            }
+        
+        let transferenciasEntrada = cartera.movimientosEntrada
+            .filter { $0.crypto?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadCryptoEntrada
+            }
+
+        let transferenciasSalida = cartera.movimientosSalida
+            .filter { $0.crypto?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadCryptoSalida
+            }
+        let swapsEntrada = cartera.swaps
+            .filter { $0.cryptoDestino?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadDestino
+            }
+        
+        let swapsSalida = cartera.swaps
+            .filter { $0.cryptoOrigen?.id == crypto.id }
+            .reduce(into: Decimal(0)) { partialResult, movimiento in
+                partialResult += movimiento.cantidadOrigen
+            }
+        
+        return ingresos + transferenciasEntrada + swapsEntrada -
+               (egresos + transferenciasSalida + swapsSalida)
     }
     
     var body: some View {
-        VStack(spacing: 16) {
-            Picker("Crypto", selection: $selectedCrypto) {
-                Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
-                ForEach(cryptos) { crypto in
-                    Text(crypto.nombre).tag(Optional(crypto))
+        ScrollView {
+            VStack(spacing: 20) {
+                // Fecha como primer campo
+                Group {
+                    Text("Fecha *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    DatePicker("", selection: $fecha, displayedComponents: [.date, .hourAndMinute])
+                        .frame(maxWidth: .infinity)
                 }
-            }
-            
-            Picker("Cartera Origen", selection: $selectedCarteraOrigen) {
-                Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
-                ForEach(carteras) { cartera in
-                    Text(cartera.nombre).tag(Optional(cartera))
+                
+                // Crypto
+                Group {
+                    Text("Crypto *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    Picker("Seleccionar Crypto", selection: $selectedCrypto) {
+                        Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
+                        ForEach(cryptos) { crypto in
+                            Text(crypto.nombre).tag(Optional(crypto))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .pickerStyle(.menu)
                 }
-            }
-            
-            Picker("Cartera Destino", selection: $selectedCarteraDestino) {
-                Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
-                ForEach(carteras) { cartera in
-                    Text(cartera.nombre).tag(Optional(cartera))
+                
+                // Cartera Origen
+                Group {
+                    Text("Cartera Origen *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    Picker("Seleccionar Cartera Origen", selection: $selectedCarteraOrigen) {
+                        Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
+                        ForEach(carteras) { cartera in
+                            Text(cartera.nombre).tag(Optional(cartera))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .pickerStyle(.menu)
                 }
-            }
-            
-            DatePicker("Fecha", selection: $fecha, displayedComponents: [.date, .hourAndMinute])
-            
-            TextField("Cantidad de Crypto", value: $cantidadCrypto, format: .number)
-                .textFieldStyle(.roundedBorder)
-            
-            if selectedCarteraOrigen == selectedCarteraDestino &&
-               selectedCarteraOrigen != nil {
-                Text("Las carteras de origen y destino deben ser diferentes")
-                    .foregroundStyle(.red)
+                
+                // Cantidad Crypto Salida
+                Group {
+                    Text("Cantidad Crypto Salida *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    
+                    if let crypto = selectedCrypto {
+                        Text("Disponible: \(cryptoDisponible.formatted()) \(crypto.simbolo)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        
+                        HStack {
+                            TextField("", value: $cantidadCryptoSalida, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: cantidadCryptoSalida) { oldValue, newValue in
+                                    if newValue > cryptoDisponible {
+                                        cantidadCryptoSalida = cryptoDisponible
+                                    }
+                                    // Ajustar entrada si es necesario
+                                    if cantidadCryptoEntrada > cantidadCryptoSalida {
+                                        cantidadCryptoEntrada = cantidadCryptoSalida
+                                    }
+                                }
+                            
+                            Button("MAX") {
+                                cantidadCryptoSalida = cryptoDisponible
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(.blue)
+                        }
+                    }
+                }
+                
+                // Cartera Destino
+                Group {
+                    Text("Cartera Destino *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    Picker("Seleccionar Cartera Destino", selection: $selectedCarteraDestino) {
+                        Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
+                        ForEach(carteras.filter { $0.id != selectedCarteraOrigen?.id }) { cartera in
+                            Text(cartera.nombre).tag(Optional(cartera))
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .pickerStyle(.menu)
+                }
+                
+                // Cantidad Crypto Entrada
+                Group {
+                    Text("Cantidad Crypto Entrada *")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.headline)
+                    
+                    if let crypto = selectedCrypto {
+                        HStack {
+                            TextField("", value: $cantidadCryptoEntrada, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(maxWidth: .infinity)
+                                .onChange(of: cantidadCryptoEntrada) { oldValue, newValue in
+                                    if newValue > cantidadCryptoSalida {
+                                        cantidadCryptoEntrada = cantidadCryptoSalida
+                                    }
+                                }
+                            
+                            Button("MAX") {
+                                cantidadCryptoEntrada = cantidadCryptoSalida
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundColor(.blue)
+                        }
+                        
+                        // Mostrar comisión
+                        if cantidadCryptoSalida > 0 && cantidadCryptoEntrada > 0 {
+                            HStack {
+                                Text("Comisión:")
+                                Spacer()
+                                Text("\(comision.formatted()) \(crypto.simbolo)")
+                                    .foregroundStyle(comision > 0 ? .red : .green)
+                            }
+                            .font(.caption)
+                            .padding(.top, 4)
+                        }
+                    }
+                }
+                
+                Spacer()
+                
+                // Nota sobre campos obligatorios
+                Text("* Campos obligatorios")
                     .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            
-            Spacer()
+            .padding(.horizontal, 24)
+            .padding(.vertical, 16)
         }
-        .padding()
-        .frame(minWidth: 300, minHeight: 400)
-        .navigationTitle("Nueva Transferencia")
+        .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
+               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
                     dismiss()
                 }
             }
+            
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
                     save()
@@ -150,17 +349,42 @@ struct MovimientoEntreCarterasFormView: View {
                 .disabled(!formIsValid)
             }
         }
+        .onAppear {
+            if case .edit(let movimiento) = mode {
+                loadMovimiento(movimiento)
+            }
+        }
+    }
+    
+    private var formIsValid: Bool {
+        selectedCrypto != nil &&
+        selectedCarteraOrigen != nil &&
+        selectedCarteraDestino != nil &&
+        selectedCarteraOrigen?.id != selectedCarteraDestino?.id &&
+        cantidadCryptoSalida > 0 &&
+        cantidadCryptoEntrada > 0 &&
+        cantidadCryptoEntrada <= cantidadCryptoSalida &&
+        cantidadCryptoSalida <= cryptoDisponible
+    }
+    
+    private func loadMovimiento(_ movimiento: MovimientoEntreCarteras) {
+        selectedCrypto = movimiento.crypto
+        selectedCarteraOrigen = movimiento.carteraOrigen
+        selectedCarteraDestino = movimiento.carteraDestino
+        fecha = movimiento.fecha
+        cantidadCryptoSalida = movimiento.cantidadCryptoSalida
+        cantidadCryptoEntrada = movimiento.cantidadCryptoEntrada
     }
     
     private func save() {
         guard let crypto = selectedCrypto,
               let carteraOrigen = selectedCarteraOrigen,
-              let carteraDestino = selectedCarteraDestino,
-              carteraOrigen != carteraDestino else { return }
+              let carteraDestino = selectedCarteraDestino else { return }
         
         let movimiento = MovimientoEntreCarteras(
             fecha: fecha,
-            cantidadCrypto: cantidadCrypto,
+            cantidadCryptoSalida: cantidadCryptoSalida,
+            cantidadCryptoEntrada: cantidadCryptoEntrada,
             carteraOrigen: carteraOrigen,
             carteraDestino: carteraDestino,
             crypto: crypto

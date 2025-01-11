@@ -77,11 +77,11 @@ struct PortfolioDetalleView: View {
                 // Transferencias entre carteras
                 let transferenciasEntrada = cartera.movimientosEntrada
                     .filter { $0.crypto?.id == crypto.id }
-                    .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+                    .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
                 
                 let transferenciasSalida = cartera.movimientosSalida
                     .filter { $0.crypto?.id == crypto.id }
-                    .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+                    .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoSalida }
                 
                 // Swaps
                 let swapsEntrada = cartera.swaps
