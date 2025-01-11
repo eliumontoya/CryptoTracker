@@ -27,49 +27,6 @@ enum MovimientoSwapFormMode: Hashable {
     }
 }
 
-private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
-    guard let cartera = cartera, let crypto = crypto else { return 0 }
-    
-    let ingresos = cartera.movimientosIngreso
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCrypto
-        }
-    
-    let egresos = cartera.movimientosEgreso
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCrypto
-        }
-    
-    let transferenciasEntrada = cartera.movimientosEntrada
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCryptoEntrada
-        }
-    
-    let transferenciasSalida = cartera.movimientosSalida
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCryptoSalida
-        }
-    
-    let swapsEntrada = cartera.swaps
-        .filter { $0.cryptoDestino?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadDestino
-        }
-    
-    let swapsSalida = cartera.swaps
-        .filter { $0.cryptoOrigen?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadOrigen
-        }
-    
-    return ingresos + transferenciasEntrada + swapsEntrada -
-           (egresos + transferenciasSalida + swapsSalida)
-}
-
 
 struct MovimientosSwapsView: View {
     @Environment(\.modelContext) private var modelContext
@@ -203,8 +160,8 @@ struct MovimientoSwapFormView: View {
         guard let cartera = selectedCartera,
               let cryptoOrigen = selectedCryptoOrigen else { return false }
         
-        let disponible = getCryptoDisponible(cartera: cartera, crypto: cryptoOrigen)
-        
+        let disponible = cartera.getCryptoDisponible(crypto: cryptoOrigen)
+
         return selectedCryptoDestino != nil &&
                cantidadOrigen > 0 &&
                cantidadOrigen <= disponible &&
@@ -257,7 +214,7 @@ struct MovimientoSwapFormView: View {
                     
                     // Mostrar disponible y validación
                     if let crypto = selectedCryptoOrigen {
-                        let disponible = getCryptoDisponible(cartera: selectedCartera, crypto: crypto)
+                        let disponible = selectedCartera?.getCryptoDisponible(crypto: crypto) ?? 0
                         Text("Disponible: \(disponible.formatted()) \(crypto.simbolo)")
                             .font(.caption)
                             .foregroundColor(.secondary)

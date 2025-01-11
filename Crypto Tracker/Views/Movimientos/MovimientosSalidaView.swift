@@ -26,48 +26,7 @@ enum MovimientoSalidaFormMode: Hashable {
         }
     }
 }
-// En MovimientoSalidaFormView, agregar:
-private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
-    guard let cartera = cartera, let crypto = crypto else { return 0 }
-    
-    let ingresos = cartera.movimientosIngreso
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCrypto
-        }
-    
-    let egresos = cartera.movimientosEgreso
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCrypto
-        }
-    
-    let transferenciasEntrada = cartera.movimientosEntrada
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCryptoEntrada
-        }
 
-    let transferenciasSalida = cartera.movimientosSalida
-        .filter { $0.crypto?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadCryptoSalida
-        }
-    let swapsEntrada = cartera.swaps
-        .filter { $0.cryptoDestino?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadDestino
-        }
-    
-    let swapsSalida = cartera.swaps
-        .filter { $0.cryptoOrigen?.id == crypto.id }
-        .reduce(into: Decimal(0)) { partialResult, movimiento in
-            partialResult += movimiento.cantidadOrigen
-        }
-    
-    return ingresos + transferenciasEntrada + swapsEntrada -
-           (egresos + transferenciasSalida + swapsSalida)
-}
 
 struct MovimientosSalidaView: View {
     @Environment(\.modelContext) private var modelContext
@@ -228,7 +187,7 @@ struct MovimientoSalidaFormView: View {
         guard let cartera = selectedCartera,
               let crypto = selectedCrypto else { return false }
         
-        let disponible = getCryptoDisponible(cartera: cartera, crypto: crypto)
+        let disponible = cartera.getCryptoDisponible(crypto: crypto)
         
         return cantidadCrypto > 0 &&
                cantidadCrypto <= disponible &&
@@ -289,7 +248,7 @@ struct MovimientoSalidaFormView: View {
                             .font(.subheadline)
                         
                         if let cartera = selectedCartera, let crypto = selectedCrypto {
-                            let disponible = getCryptoDisponible(cartera: cartera, crypto: crypto)
+                            let disponible = cartera.getCryptoDisponible(crypto: crypto)
                             Text("Disponible en cartera: \(disponible.formatted()) \(crypto.simbolo)")
                                 .font(.caption)
                                 .foregroundColor(.secondary)

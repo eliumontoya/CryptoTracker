@@ -145,53 +145,14 @@ struct MovimientoEntreCarterasFormView: View {
     @State private var cantidadCryptoEntrada: Decimal = 0
     
     private var cryptoDisponible: Decimal {
-        getCryptoDisponible(cartera: selectedCarteraOrigen, crypto: selectedCrypto)
+        guard let cartera = selectedCarteraOrigen, let crypto = selectedCrypto else { return 0 }
+        return cartera.getCryptoDisponible(crypto: crypto)
     }
     
     private var comision: Decimal {
         cantidadCryptoSalida - cantidadCryptoEntrada
     }
-    private func getCryptoDisponible(cartera: Cartera?, crypto: Crypto?) -> Decimal {
-        guard let cartera = cartera, let crypto = crypto else { return 0 }
-        
-        let ingresos = cartera.movimientosIngreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadCrypto
-            }
-        
-        let egresos = cartera.movimientosEgreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadCrypto
-            }
-        
-        let transferenciasEntrada = cartera.movimientosEntrada
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadCryptoEntrada
-            }
-
-        let transferenciasSalida = cartera.movimientosSalida
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadCryptoSalida
-            }
-        let swapsEntrada = cartera.swaps
-            .filter { $0.cryptoDestino?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadDestino
-            }
-        
-        let swapsSalida = cartera.swaps
-            .filter { $0.cryptoOrigen?.id == crypto.id }
-            .reduce(into: Decimal(0)) { partialResult, movimiento in
-                partialResult += movimiento.cantidadOrigen
-            }
-        
-        return ingresos + transferenciasEntrada + swapsEntrada -
-               (egresos + transferenciasSalida + swapsSalida)
-    }
+    
     
     var body: some View {
         ScrollView {
