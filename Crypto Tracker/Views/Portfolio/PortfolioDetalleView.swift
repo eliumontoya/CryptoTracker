@@ -1,35 +1,48 @@
 import SwiftUI
 import SwiftData
 
-struct CryptoCarteraSummary: Identifiable {
+// Estructura para mantener toda la información de una crypto en una cartera
+struct CryptoDetail: Identifiable {
     var id: UUID { crypto.id }
     let crypto: Crypto
-    var cantidadTotal: Decimal
-    var valorTotalUSD: Decimal
-    var inversionTotalUSD: Decimal
+    var totalCryptoIngresado: Decimal    // Total de crypto ingresado (entradas + swaps destino)
+    var totalCryptoVendido: Decimal      // Total de crypto vendido (salidas + swaps origen)
+    var totalCryptoTransferido: Decimal  // Total de crypto transferido a otras carteras
+    var balanceActual: Decimal
+    var totalInvertidoUSD: Decimal       // Total USD invertido en entradas
+    var valorUSD: Decimal
+    var totalInvertidoFIAT: Decimal
+    var valorActualFIAT: Decimal
+    var ganancia: Decimal
     
-    var rentabilidad: Decimal {
-        guard inversionTotalUSD > 0 else { return 0 }
-        return ((valorTotalUSD - inversionTotalUSD) / inversionTotalUSD) * 100
+    // Calcular el porcentaje de ganancia/pérdida
+    var porcentajeGanancia: Decimal {
+        guard totalInvertidoFIAT != 0 else { return 0 }
+        return ((valorActualFIAT - totalInvertidoFIAT) / totalInvertidoFIAT) * 100
     }
 }
 
-struct CarteraSummary: Identifiable {
+// Estructura para mantener toda la información de una cartera
+struct CarteraDetail: Identifiable {
     var id: UUID { cartera.id }
     let cartera: Cartera
-    var cryptoSummaries: [CryptoCarteraSummary]
+    var cryptoDetails: [CryptoDetail]
     
-    var valorTotalUSD: Decimal {
-        cryptoSummaries.reduce(0) { $0 + $1.valorTotalUSD }
+    // Totales de la cartera
+    var totalValorUSD: Decimal {
+        cryptoDetails.reduce(0) { $0 + $1.valorUSD }
     }
     
-    var inversionTotalUSD: Decimal {
-        cryptoSummaries.reduce(0) { $0 + $1.inversionTotalUSD }
+    var totalInvertidoFIAT: Decimal {
+        cryptoDetails.reduce(0) { $0 + $1.totalInvertidoFIAT }
     }
     
-    var rentabilidadTotal: Decimal {
-        guard inversionTotalUSD > 0 else { return 0 }
-        return ((valorTotalUSD - inversionTotalUSD) / inversionTotalUSD) * 100
+    var totalValorFIAT: Decimal {
+        cryptoDetails.reduce(0) { $0 + $1.valorActualFIAT }
+    }
+    
+    var gananciaTotal: Decimal {
+        cryptoDetails.reduce(0) { $0 + $1.ganancia }
     }
 }
 
@@ -37,145 +50,232 @@ struct PortfolioDetalleView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
+    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
     
-    @State private var carterasSummary: [CarteraSummary] = []
+    @State private var carterasDetail: [CarteraDetail] = []
+    
+    // Calcular cuántos renglones necesitamos (2 carteras por renglón)
+    private var numeroRenglones: Int {
+        (carterasDetail.count + 1) / 2
+    }
     
     var body: some View {
-        List {
-            ForEach(carterasSummary) { carteraSummary in
-                Section {
-                    CarteraHeaderView(summary: carteraSummary)
-                    ForEach(carteraSummary.cryptoSummaries) { cryptoSummary in
-                        CryptoSummaryRowView(summary: cryptoSummary)
+        ScrollView {
+            VStack(spacing: 20) {
+                ForEach(0..<numeroRenglones, id: \.self) { renglon in
+                    HStack(alignment: .top, spacing: 20) {
+                        // Primera columna del renglón
+                        if renglon * 2 < carterasDetail.count {
+                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2])
+                                .frame(maxWidth: .infinity)
+                        }
+                        
+                        // Segunda columna del renglón
+                        if (renglon * 2 + 1) < carterasDetail.count {
+                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2 + 1])
+                                .frame(maxWidth: .infinity)
+                        }
                     }
                 }
             }
+            .padding()
         }
         .navigationTitle("Desglose por Carteras")
         .onAppear {
-            calcularResumen()
+            calcularDetalles()
         }
     }
     
-    private func calcularResumen() {
-        carterasSummary = carteras.map { cartera in
-            let cryptoSummaries = cryptos.compactMap { crypto -> CryptoCarteraSummary? in
-                // Movimientos de entrada
-                let ingresos = cartera.movimientosIngreso
+    private func calcularDetalles() {
+        carterasDetail = carteras.map { cartera in
+            let cryptoDetails = cryptos.compactMap { crypto -> CryptoDetail? in
+                // Calcular totales por crypto
+                let ingresosPorEntradas = cartera.movimientosIngreso
                     .filter { $0.crypto?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
                 
-                let inversionUSD = cartera.movimientosIngreso
-                    .filter { $0.crypto?.id == crypto.id }
-                    .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
+                let ingresosPorSwaps = cartera.swaps
+                    .filter { $0.cryptoDestino?.id == crypto.id }
+                    .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
+                    
+                let totalCryptoIngresado = ingresosPorEntradas + ingresosPorSwaps
                 
-                // Movimientos de salida
-                let egresos = cartera.movimientosEgreso
+                let egresosPorVentas = cartera.movimientosEgreso
                     .filter { $0.crypto?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
+                    
+                let egresosPorSwaps = cartera.swaps
+                    .filter { $0.cryptoOrigen?.id == crypto.id }
+                    .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
+                    
+                let totalCryptoVendido = egresosPorVentas + egresosPorSwaps
                 
-                // Transferencias entre carteras
+                // Transferencias entre carteras (entradas y salidas)
                 let transferenciasEntrada = cartera.movimientosEntrada
                     .filter { $0.crypto?.id == crypto.id }
-                    .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
+                    .reduce(Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
                 
                 let transferenciasSalida = cartera.movimientosSalida
                     .filter { $0.crypto?.id == crypto.id }
-                    .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoSalida }
-                
-                // Swaps
-                let swapsEntrada = cartera.swaps
-                    .filter { $0.cryptoDestino?.id == crypto.id }
-                    .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
-                
-                let swapsSalida = cartera.swaps
-                    .filter { $0.cryptoOrigen?.id == crypto.id }
-                    .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
+                    .reduce(Decimal(0)) { $0 + $1.cantidadCryptoSalida }
+                    
+                // Balance neto de transferencias (positivo = más entradas, negativo = más salidas)
+                let balanceTransferencias = transferenciasEntrada - transferenciasSalida
                 
                 // Calcular balance total
-                let cantidadTotal = ingresos + transferenciasEntrada + swapsEntrada -
-                                  (egresos + transferenciasSalida + swapsSalida)
+                let balanceActual = totalCryptoIngresado + transferenciasEntrada -
+                                  (totalCryptoVendido + transferenciasSalida)
                 
-                // Si no hay movimientos o el balance es 0, no incluir este crypto
-                guard cantidadTotal != 0 else { return nil }
+                // Calcular total USD invertido en entradas
+                let totalInvertidoUSD = cartera.movimientosIngreso
+                    .filter { $0.crypto?.id == crypto.id }
+                    .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
+
+                // Si no hay movimientos, no incluir esta crypto
+                guard balanceActual != 0 else { return nil }
                 
-                let valorTotalUSD = cantidadTotal * crypto.precio
+                // Calcular valor actual en USD
+                let valorUSD = balanceActual * crypto.precio
                 
-                return CryptoCarteraSummary(
+                // Calcular inversión total en FIAT
+                let totalInvertidoFIAT = cartera.movimientosIngreso
+                    .filter { $0.crypto?.id == crypto.id }
+                    .reduce(Decimal(0)) { total, movimiento in
+                        if movimiento.usaFiatAlterno,
+                           let valorFiat = movimiento.valorTotalFiatAlterno {
+                            return total + valorFiat
+                        } else {
+                            return total + movimiento.valorTotalUSD
+                        }
+                    }
+                
+                // Calcular valor actual en FIAT (usando el primer FIAT disponible)
+                let fiat = fiats.first
+                let valorActualFIAT = valorUSD * (fiat?.precioUSD ?? 1)
+                
+                return CryptoDetail(
                     crypto: crypto,
-                    cantidadTotal: cantidadTotal,
-                    valorTotalUSD: valorTotalUSD,
-                    inversionTotalUSD: inversionUSD
+                    totalCryptoIngresado: totalCryptoIngresado,
+                    totalCryptoVendido: totalCryptoVendido,
+                    totalCryptoTransferido: balanceTransferencias,
+                    balanceActual: balanceActual,
+                    totalInvertidoUSD: totalInvertidoUSD,
+                    valorUSD: valorUSD,
+                    totalInvertidoFIAT: totalInvertidoFIAT,
+                    valorActualFIAT: valorActualFIAT,
+                    ganancia: valorActualFIAT - totalInvertidoFIAT
                 )
             }
             
-            return CarteraSummary(
+            return CarteraDetail(
                 cartera: cartera,
-                cryptoSummaries: cryptoSummaries
+                cryptoDetails: cryptoDetails
             )
         }
         // Filtrar carteras sin cryptos
-        carterasSummary = carterasSummary.filter { !$0.cryptoSummaries.isEmpty }
+        carterasDetail = carterasDetail.filter { !$0.cryptoDetails.isEmpty }
     }
 }
 
-struct CarteraHeaderView: View {
-    let summary: CarteraSummary
+struct CarteraDetailView: View {
+    let carteraDetail: CarteraDetail
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack {
-                Text(summary.cartera.nombre)
-                    .font(.headline)
-                Spacer()
-                Text(summary.valorTotalUSD.formatted(.currency(code: "USD")))
-                    .font(.subheadline)
-                    .foregroundStyle(.blue)
-            }
+        VStack(alignment: .leading, spacing: 12) {
+            // Encabezado de la cartera
+            Text(carteraDetail.cartera.nombre)
+                .font(.title2)
+                .bold()
             
+            // Totales de la cartera
             HStack {
-                Text("Inversión: \(summary.inversionTotalUSD.formatted(.currency(code: "USD")))")
-                Spacer()
-                Text("Rentabilidad: \(summary.rentabilidadTotal.formatted(.number.precision(.fractionLength(2))))%")
-                    .foregroundStyle(summary.rentabilidadTotal >= 0 ? .green : .red)
-            }
-            .font(.caption)
-        }
-        .padding(.vertical, 4)
-    }
-}
-
-struct CryptoSummaryRowView: View {
-    let summary: CryptoCarteraSummary
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text(summary.crypto.simbolo)
-                    .font(.headline)
-                Spacer()
-                Text("Balance: \(summary.cantidadTotal.formatted()) \(summary.crypto.simbolo)")
-                    .font(.subheadline)
-            }
-            
-            HStack {
-                Text("Inversión: \(summary.inversionTotalUSD.formatted(.currency(code: "USD")))")
-                Spacer()
-                Text("Valor: \(summary.valorTotalUSD.formatted(.currency(code: "USD")))")
-                    .foregroundStyle(summary.valorTotalUSD >= summary.inversionTotalUSD ? .green : .red)
-            }
-            .font(.caption)
-            
-            if summary.inversionTotalUSD > 0 {
-                HStack {
-                    Spacer()
-                    Text("Rentabilidad: \(summary.rentabilidad.formatted(.number.precision(.fractionLength(2))))%")
+                VStack(alignment: .leading) {
+                    Text("Valor Total USD:")
                         .font(.caption)
-                        .foregroundStyle(summary.rentabilidad >= 0 ? .green : .red)
+                    Text(carteraDetail.totalValorUSD.formatted(.currency(code: "USD")))
+                        .bold()
+                }
+                Spacer()
+                VStack(alignment: .trailing) {
+                    Text("Ganancia Total:")
+                        .font(.caption)
+                    Text(carteraDetail.gananciaTotal.formatted(.currency(code: "USD")))
+                        .foregroundColor(carteraDetail.gananciaTotal >= 0 ? .green : .red)
+                        .bold()
                 }
             }
+            .padding(.bottom, 8)
+            
+            // Tabla de cryptos
+            ScrollView(.horizontal) {
+                VStack(alignment: .leading, spacing: 0) {
+                    // Encabezados de la tabla
+                    HStack(spacing: 0) {
+                        Text("Crypto")
+                            .frame(width: 80, alignment: .leading)
+                        Text("Ingresado")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("Vendido")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("Transfer.")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("Balance")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("USD Inv.")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("Valor USD")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("Ganancia")
+                            .frame(width: 100, alignment: .trailing)
+                        Text("%")
+                            .frame(width: 80, alignment: .trailing)
+                    }
+                    .font(.caption)
+                    .bold()
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color.gray.opacity(0.2))
+                    
+                    // Filas de datos
+                    ForEach(carteraDetail.cryptoDetails) { detail in
+                        HStack(spacing: 0) {
+                            Text(detail.crypto.simbolo)
+                                .frame(width: 80, alignment: .leading)
+                            Text(detail.totalCryptoIngresado.formatted())
+                                .frame(width: 100, alignment: .trailing)
+                            Text(detail.totalCryptoVendido.formatted())
+                                .frame(width: 100, alignment: .trailing)
+                            Text(detail.totalCryptoTransferido.formatted())
+                                .frame(width: 100, alignment: .trailing)
+                                .foregroundColor(detail.totalCryptoTransferido >= 0 ? .green : .red)
+                            Text(detail.balanceActual.formatted())
+                                .frame(width: 100, alignment: .trailing)
+                            Text(detail.totalInvertidoUSD.formatted(.currency(code: "USD")))
+                                .frame(width: 100, alignment: .trailing)
+                            Text(detail.valorUSD.formatted(.currency(code: "USD")))
+                                .frame(width: 100, alignment: .trailing)
+                            Text(detail.ganancia.formatted(.currency(code: "USD")))
+                                .frame(width: 100, alignment: .trailing)
+                                .foregroundColor(detail.ganancia >= 0 ? .green : .red)
+                            Text(detail.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
+                                .frame(width: 80, alignment: .trailing)
+                                .foregroundColor(detail.porcentajeGanancia >= 0 ? .green : .red)
+                        }
+                        .font(.callout)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                    }
+                }
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.gray.opacity(0.2), lineWidth: 1)
+            )
         }
-        .padding(.vertical, 4)
+        .padding()
+        .background(Color.white)
+        .cornerRadius(12)
+        .shadow(radius: 2)
     }
 }
 
