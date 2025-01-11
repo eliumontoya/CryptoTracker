@@ -3,6 +3,7 @@ import SwiftData
 
 enum MainMenuOption {
     case home
+    case portfolioCryptos
     case portfolioDetalle
     case administracion
     case movimientos
@@ -37,6 +38,14 @@ struct ContentView: View {
                     selection: $selectedMainMenu
                 ) {
                     Label("Portafolio", systemImage: "chart.pie.fill")
+                }
+                
+                NavigationLink(
+                    destination: PortfolioCryptosView(),
+                    tag: MainMenuOption.portfolioCryptos,
+                    selection: $selectedMainMenu
+                ) {
+                    Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
                 }
                 
                 NavigationLink(
