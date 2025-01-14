@@ -37,13 +37,17 @@ struct CarteraHeaderView: View {
 struct CarteraDetailView: View {
     let carteraDetail: CarteraDetail
     @State private var selectedCryptoDetail: (Crypto, Cartera)?
+    @State private var showingCarteraMovimientos = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Encabezado de la cartera
-            Text(carteraDetail.cartera.nombre)
-                .font(.title2)
-                .bold()
+            // Encabezado de la cartera (ahora clickeable)
+            Button(action: { showingCarteraMovimientos = true }) {
+                Text(carteraDetail.cartera.nombre)
+                    .font(.title2)
+                    .bold()
+                    .foregroundStyle(.primary)
+            }
             
             // Totales de la cartera
             HStack {
@@ -150,6 +154,9 @@ struct CarteraDetailView: View {
             }
         )) { pair in
             CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
+        }
+        .sheet(isPresented: $showingCarteraMovimientos) {
+            CarteraMovimientosView(cartera: carteraDetail.cartera)
         }
     }
 }
