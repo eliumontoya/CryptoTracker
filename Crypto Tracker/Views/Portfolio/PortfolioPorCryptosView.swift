@@ -8,6 +8,8 @@ struct PortfolioCryptosView: View {
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     
     @State private var cryptoSummaries: [CryptoPortfolioSummary] = []
+    @State private var selectedCrypto: Crypto?
+    @State private var showingCryptoDetail = false
     
     var body: some View {
         ScrollView {
@@ -21,6 +23,11 @@ struct PortfolioCryptosView: View {
                         // Filas de datos
                         ForEach(cryptoSummaries) { summary in
                             CryptoPortfolioRow(summary: summary)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    selectedCrypto = summary.crypto
+                                    showingCryptoDetail = true
+                                }
                         }
                         
                         // Totales
@@ -40,6 +47,11 @@ struct PortfolioCryptosView: View {
         .navigationTitle("Portafolio por Cryptos")
         .onAppear {
             actualizarPortfolio()
+        }
+        .sheet(isPresented: $showingCryptoDetail) {
+            if let crypto = selectedCrypto {
+                CryptoDetailView(crypto: crypto)
+            }
         }
     }
     
