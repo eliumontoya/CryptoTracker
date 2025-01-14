@@ -208,7 +208,7 @@ struct MovimientoEntradaFormView: View {
         }
         .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
-        .navigationTitle(mode == .add ? "Nuevo Movimiento" : "Editar Movimiento")
+        .navigationTitle(mode == .add ? "Nueva Entrada" : "Editar Entrada")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
