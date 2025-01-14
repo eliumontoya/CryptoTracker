@@ -29,6 +29,8 @@ struct CarteraHeaderView: View {
 
 struct CarteraDetailView: View {
     let carteraDetail: CarteraDetail
+    @State private var selectedCrypto: Crypto?
+    @State private var showingCryptoDetail = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -88,29 +90,35 @@ struct CarteraDetailView: View {
                     
                     // Filas de datos
                     ForEach(carteraDetail.cryptoDetails) { detail in
-                        HStack(spacing: 0) {
-                            Text(detail.crypto.simbolo)
-                                .frame(width: 80, alignment: .leading)
-                            Text(detail.totalCryptoIngresado.formatted())
-                                .frame(width: 100, alignment: .trailing)
-                            Text(detail.totalCryptoVendido.formatted())
-                                .frame(width: 100, alignment: .trailing)
-                            Text(detail.totalCryptoTransferido.formatted())
-                                .frame(width: 100, alignment: .trailing)
-                                .foregroundColor(detail.totalCryptoTransferido >= 0 ? .green : .red)
-                            Text(detail.balanceActual.formatted())
-                                .frame(width: 100, alignment: .trailing)
-                            Text(detail.totalInvertidoUSD.formatted(.currency(code: "USD")))
-                                .frame(width: 100, alignment: .trailing)
-                            Text(detail.valorUSD.formatted(.currency(code: "USD")))
-                                .frame(width: 100, alignment: .trailing)
-                            Text(detail.ganancia.formatted(.currency(code: "USD")))
-                                .frame(width: 100, alignment: .trailing)
-                                .foregroundColor(detail.ganancia >= 0 ? .green : .red)
-                            Text(detail.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
-                                .frame(width: 80, alignment: .trailing)
-                                .foregroundColor(detail.porcentajeGanancia >= 0 ? .green : .red)
+                        Button(action: {
+                            selectedCrypto = detail.crypto
+                            showingCryptoDetail = true
+                        }) {
+                            HStack(spacing: 0) {
+                                Text(detail.crypto.simbolo)
+                                    .frame(width: 80, alignment: .leading)
+                                Text(detail.totalCryptoIngresado.formatted())
+                                    .frame(width: 100, alignment: .trailing)
+                                Text(detail.totalCryptoVendido.formatted())
+                                    .frame(width: 100, alignment: .trailing)
+                                Text(detail.totalCryptoTransferido.formatted())
+                                    .frame(width: 100, alignment: .trailing)
+                                    .foregroundColor(detail.totalCryptoTransferido >= 0 ? .green : .red)
+                                Text(detail.balanceActual.formatted())
+                                    .frame(width: 100, alignment: .trailing)
+                                Text(detail.totalInvertidoUSD.formatted(.currency(code: "USD")))
+                                    .frame(width: 100, alignment: .trailing)
+                                Text(detail.valorUSD.formatted(.currency(code: "USD")))
+                                    .frame(width: 100, alignment: .trailing)
+                                Text(detail.ganancia.formatted(.currency(code: "USD")))
+                                    .frame(width: 100, alignment: .trailing)
+                                    .foregroundColor(detail.ganancia >= 0 ? .green : .red)
+                                Text(detail.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
+                                    .frame(width: 80, alignment: .trailing)
+                                    .foregroundColor(detail.porcentajeGanancia >= 0 ? .green : .red)
+                            }
                         }
+                        .buttonStyle(.plain)
                         .font(.callout)
                         .padding(.horizontal, 8)
                         .padding(.vertical, 4)
@@ -126,5 +134,10 @@ struct CarteraDetailView: View {
         .background(Color.white)
         .cornerRadius(12)
         .shadow(radius: 2)
+        .sheet(isPresented: $showingCryptoDetail) {
+            if let crypto = selectedCrypto {
+                CarteraCryptoDetailView(crypto: crypto, cartera: carteraDetail.cartera)
+            }
+        }
     }
 }
