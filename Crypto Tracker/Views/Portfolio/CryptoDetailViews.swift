@@ -20,6 +20,7 @@ struct CryptoDetailView: View {
                     }
                 }
                 Spacer()
+                
                 Text("\(crypto.nombre) (\(crypto.simbolo))")
                     .font(.title2)
                     .bold()
@@ -31,7 +32,7 @@ struct CryptoDetailView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     ForEach(movimientos) { movimiento in
-                        MovimientoDetalleRowView(movimiento: movimiento)
+                        MovimientoCryptoDetalleRowView(movimiento: movimiento)
                     }
                 }
                 .padding(.horizontal)
@@ -156,7 +157,7 @@ struct MovimientoDetalle: Identifiable {
 }
 
 // MARK: - Vista de Fila de Movimiento
-struct MovimientoDetalleRowView: View {
+struct MovimientoCryptoDetalleRowView: View {
     let movimiento: MovimientoDetalle
     
     private var iconoMovimiento: String {

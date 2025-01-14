@@ -14,6 +14,7 @@ struct PortfolioCryptosView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                
                 // Tabla de cryptos
                 ScrollView(.horizontal) {
                     VStack(alignment: .leading, spacing: 0) {
@@ -25,7 +26,10 @@ struct PortfolioCryptosView: View {
                             CryptoPortfolioRow(summary: summary)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
+                                    print("El botón fue presionado")
                                     selectedCrypto = summary.crypto
+                                    print(summary.crypto.nombre)
+
                                     showingCryptoDetail = true
                                 }
                         }

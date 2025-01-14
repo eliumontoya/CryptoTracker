@@ -7,15 +7,15 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "420D288A-4D80-4C69-881E-3AF1A0D8B5AF"
+            uuid = "7F6D5D83-3E4A-4708-960D-DDA28BF52DD8"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "Crypto Tracker/Views/Movimientos/MovimientosSalidaView.swift"
+            filePath = "Crypto Tracker/Views/Portfolio/CryptoDetailViews.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "324"
-            endingLineNumber = "324"
+            startingLineNumber = "23"
+            endingLineNumber = "23"
             landmarkName = "body"
             landmarkType = "24">
          </BreakpointContent>
