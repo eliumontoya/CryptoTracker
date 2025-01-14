@@ -9,6 +9,12 @@ enum EditMovementMode: Equatable {
     case swap(MovimientoSwap)
 }
 
+// Tipo auxiliar para hacer el MovimientoDetalle identificable para el sheet
+struct IdentifiableMovimientoDetalle: Identifiable {
+    let id = UUID()
+    let movimientoDetalle: MovimientoDetalle
+}
+
 // MARK: - Vista de Edición General
 struct EditMovimientoView: View {
     @Environment(\.dismiss) private var dismiss
@@ -36,7 +42,6 @@ struct EditMovimientoView: View {
 // MARK: - Vista para buscar el movimiento correcto
 struct MovimientoSearchView: View {
     let movimientoDetalle: MovimientoDetalle
-    @Binding var showSheet: Bool
     
     @Query private var movimientosIngreso: [MovimientoIngreso]
     @Query private var movimientosEgreso: [MovimientoEgreso]
@@ -76,7 +81,7 @@ struct MovimientoSearchView: View {
 
 struct MovimientoDetalleRowView: View {
     let movimiento: MovimientoDetalle
-    @State private var showingEditSheet = false
+    @State private var selectedMovimiento: IdentifiableMovimientoDetalle?
     
     private var iconoMovimiento: String {
         switch movimiento.tipo {
@@ -178,13 +183,10 @@ struct MovimientoDetalleRowView: View {
         )
         .contentShape(Rectangle())
         .onTapGesture {
-            showingEditSheet = true
+            selectedMovimiento = IdentifiableMovimientoDetalle(movimientoDetalle: movimiento)
         }
-        .sheet(isPresented: $showingEditSheet) {
-            MovimientoSearchView(
-                movimientoDetalle: movimiento,
-                showSheet: $showingEditSheet
-            )
+        .sheet(item: $selectedMovimiento) { identifiableMovimiento in
+            MovimientoSearchView(movimientoDetalle: identifiableMovimiento.movimientoDetalle)
         }
     }
 }

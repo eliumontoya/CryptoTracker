@@ -61,20 +61,16 @@ struct MovimientosSalidaView: View {
                 .disabled(cryptos.isEmpty || carteras.isEmpty)
             }
         }
-        .sheet(isPresented: $showingAddSheet) {
-            NavigationStack {
-                MovimientoSalidaFormView(mode: .add)
-            }
-            .frame(minWidth: 500, minHeight: 700)
-        }
-        .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
-            if let movimiento = selectedMovimiento {
-                NavigationStack {
-                    MovimientoSalidaFormView(mode: .edit(movimiento))
+ 
+        
+        .sheet(item: $selectedMovimiento) { movimiento in
+                    NavigationStack {
+                        MovimientoSalidaFormView(
+                            mode: movimiento.id == nil ? .add : .edit(movimiento)
+                        )
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
                 }
-                .frame(minWidth: 500, minHeight: 700)
-            }
-        }
     }
     
    

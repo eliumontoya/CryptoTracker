@@ -60,20 +60,16 @@ struct MovimientosEntradaView: View {
                 .disabled(cryptos.isEmpty || carteras.isEmpty)
             }
         }
-        .sheet(isPresented: $showingAddSheet) {
-            NavigationStack {
-                MovimientoEntradaFormView(mode: .add)
-            }
-            .frame(minWidth: 500, minHeight: 700)
-        }
-        .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
-            if let movimiento = selectedMovimiento {
-                NavigationStack {
-                    MovimientoEntradaFormView(mode: .edit(movimiento))
+ 
+
+        .sheet(item: $selectedMovimiento) { movimiento in
+                    NavigationStack {
+                        MovimientoEntradaFormView(
+                            mode: movimiento.id == nil ? .add : .edit(movimiento)
+                        )
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
                 }
-                .frame(minWidth: 500, minHeight: 700)
-            }
-        }
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

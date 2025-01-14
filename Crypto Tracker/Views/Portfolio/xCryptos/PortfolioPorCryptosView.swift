@@ -9,7 +9,6 @@ struct PortfolioCryptosView: View {
     
     @State private var cryptoSummaries: [CryptoPortfolioSummary] = []
     @State private var selectedCrypto: Crypto?
-    @State private var showingCryptoDetail = false
     
     var body: some View {
         ScrollView {
@@ -26,11 +25,7 @@ struct PortfolioCryptosView: View {
                             CryptoPortfolioRow(summary: summary)
                                 .contentShape(Rectangle())
                                 .onTapGesture {
-                                    print("El botón fue presionado")
                                     selectedCrypto = summary.crypto
-                                    print(summary.crypto.nombre)
-
-                                    showingCryptoDetail = true
                                 }
                         }
                         
@@ -52,11 +47,9 @@ struct PortfolioCryptosView: View {
         .onAppear {
             actualizarPortfolio()
         }
-        .sheet(isPresented: $showingCryptoDetail) {
-            if let crypto = selectedCrypto {
-                CryptoDetailView(crypto: crypto)
-            }
-        }
+        .sheet(item: $selectedCrypto) { crypto in
+                    CryptoDetailView(crypto: crypto)
+                }
     }
     
     private func actualizarPortfolio() {

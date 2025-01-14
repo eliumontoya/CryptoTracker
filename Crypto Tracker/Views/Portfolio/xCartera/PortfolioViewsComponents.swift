@@ -1,5 +1,12 @@
 import SwiftUI
 
+// MARK: - Tipo auxiliar para sheet
+struct IdentifiableCryptoCarteraPair: Identifiable {
+    let id = UUID()
+    let crypto: Crypto
+    let cartera: Cartera
+}
+
 // MARK: - Vistas Auxiliares de Portfolio
 struct CarteraHeaderView: View {
     let summary: CarteraDetail
@@ -29,8 +36,7 @@ struct CarteraHeaderView: View {
 
 struct CarteraDetailView: View {
     let carteraDetail: CarteraDetail
-    @State private var selectedCrypto: Crypto?
-    @State private var showingCryptoDetail = false
+    @State private var selectedCryptoDetail: (Crypto, Cartera)?
     
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -91,8 +97,7 @@ struct CarteraDetailView: View {
                     // Filas de datos
                     ForEach(carteraDetail.cryptoDetails) { detail in
                         Button(action: {
-                            selectedCrypto = detail.crypto
-                            showingCryptoDetail = true
+                            selectedCryptoDetail = (detail.crypto, carteraDetail.cartera)
                         }) {
                             HStack(spacing: 0) {
                                 Text(detail.crypto.simbolo)
@@ -134,10 +139,17 @@ struct CarteraDetailView: View {
         .background(Color.white)
         .cornerRadius(12)
         .shadow(radius: 2)
-        .sheet(isPresented: $showingCryptoDetail) {
-            if let crypto = selectedCrypto {
-                CarteraCryptoDetailView(crypto: crypto, cartera: carteraDetail.cartera)
+        .sheet(item: Binding(
+            get: {
+                selectedCryptoDetail.map { crypto, cartera in
+                    IdentifiableCryptoCarteraPair(crypto: crypto, cartera: cartera)
+                }
+            },
+            set: { pair in
+                selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
             }
+        )) { pair in
+            CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
         }
     }
 }

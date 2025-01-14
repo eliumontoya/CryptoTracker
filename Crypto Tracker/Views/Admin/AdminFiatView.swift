@@ -31,18 +31,11 @@ struct AdminFiatView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                NavigationStack {
-                    FiatFormView(mode: .add)
-                }
-            }
-            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedFiat = nil }) {
-                if let fiat = selectedFiat {
-                    NavigationStack {
-                        FiatFormView(mode: .edit(fiat))
-                    }
-                }
-            }
+            .sheet(item: $selectedFiat) { fiat in
+                            NavigationStack {
+                                FiatFormView(mode: fiat.id == nil ? .add : .edit(fiat))
+                            }
+                        }
             .alert("¿Eliminar FIAT?", isPresented: $showingDeleteAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {

@@ -61,20 +61,17 @@ struct MovimientosSwapsView: View {
                     .disabled(cryptos.isEmpty || carteras.isEmpty)
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                NavigationStack {
-                    MovimientoSwapFormView(mode: .add)
-                }
-                .frame(minWidth: 500, minHeight: 700)
-            }
-            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
-                if let movimiento = selectedMovimiento {
-                    NavigationStack {
-                        MovimientoSwapFormView(mode: .edit(movimiento))
+       
+         
+            .sheet(item: $selectedMovimiento) { movimiento in
+                        NavigationStack {
+                            MovimientoSwapFormView(
+                                mode: movimiento.id == nil ? .add : .edit(movimiento)
+                            )
+                        }
+                        .frame(minWidth: 500, minHeight: 700)
                     }
-                    .frame(minWidth: 500, minHeight: 700)
-                }
-            }
+            
         }
     }
     private func deleteMovimientos(at offsets: IndexSet) {

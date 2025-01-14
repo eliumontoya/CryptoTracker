@@ -58,18 +58,17 @@ struct MovimientosEntreCarterasView: View {
                     .disabled(cryptos.isEmpty || carteras.count < 2)
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                NavigationStack {
-                    MovimientoEntreCarterasFormView(mode: .add)
-                }
-            }
-            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedMovimiento = nil }) {
-                if let movimiento = selectedMovimiento {
-                    NavigationStack {
-                        MovimientoEntreCarterasFormView(mode: .edit(movimiento))
+ 
+          
+            .sheet(item: $selectedMovimiento) { movimiento in
+                        NavigationStack {
+                            MovimientoEntreCarterasFormView(
+                                mode: movimiento.id == nil ? .add : .edit(movimiento)
+                            )
+                        }
+                        .frame(minWidth: 500, minHeight: 700)
                     }
-                }
-            }
+            
         }
     }
     

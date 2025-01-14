@@ -31,18 +31,11 @@ struct AdminCarterasView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                NavigationStack {
-                    CarteraFormView(mode: .add)
-                }
-            }
-            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedCartera = nil }) {
-                if let cartera = selectedCartera {
-                    NavigationStack {
-                        CarteraFormView(mode: .edit(cartera))
-                    }
-                }
-            }
+            .sheet(item: $selectedCartera) { cartera in
+                            NavigationStack {
+                                CarteraFormView(mode: cartera.id == nil ? .add : .edit(cartera))
+                            }
+                        }
             .alert("¿Eliminar cartera?", isPresented: $showingDeleteAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {

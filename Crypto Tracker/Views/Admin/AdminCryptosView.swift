@@ -31,18 +31,13 @@ struct AdminCryptosView: View {
                     }
                 }
             }
-            .sheet(isPresented: $showingAddSheet) {
-                NavigationStack {
-                    CryptoFormView(mode: .add)
-                }
-            }
-            .sheet(isPresented: $showingEditSheet, onDismiss: { selectedCrypto = nil }) {
-                if let crypto = selectedCrypto {
-                    NavigationStack {
-                        CryptoFormView(mode: .edit(crypto))
-                    }
-                }
-            }
+            .sheet(item: $selectedCrypto) { crypto in
+                            NavigationStack {
+                                CryptoFormView(mode: crypto.id == nil ? .add : .edit(crypto))
+                            }
+                        }
+            
+            
         }
     }
     
