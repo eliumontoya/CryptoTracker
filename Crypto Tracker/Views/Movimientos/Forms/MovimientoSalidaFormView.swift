@@ -3,14 +3,13 @@ import SwiftData
 
 struct MovimientoSalidaFormView: View {
     
-    static var preselectedCartera: Cartera?
+    let preselectedCartera: Cartera? // Nueva propiedad
 
-    init(mode: MovimientoSalidaFormMode) {
-        self.mode = mode
-        _selectedCartera = State(initialValue: Self.preselectedCartera)
-        Self.preselectedCartera = nil
-    }
-    
+    init(mode: MovimientoSalidaFormMode, preselectedCartera: Cartera? = nil) {
+            self.mode = mode
+            self.preselectedCartera = preselectedCartera
+            _selectedCartera = State(initialValue: preselectedCartera)
+        }
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss

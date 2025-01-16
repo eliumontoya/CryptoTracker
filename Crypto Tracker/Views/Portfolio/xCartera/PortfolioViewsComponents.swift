@@ -206,38 +206,42 @@ struct CarteraDetailView: View {
                 }
                 .sheet(isPresented: $showingEntradaForm) {
                     NavigationStack {
-                        MovimientoEntradaFormView(mode: .add)
-                            .onAppear {
-                                // Preseleccionar la cartera actual
-                                MovimientoEntradaFormView.preselectedCartera = carteraDetail.cartera
-                            }
+                        MovimientoEntradaFormView(
+                                    mode: .add,
+                                    preselectedCartera: carteraDetail.cartera
+                                )
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingSalidaForm) {
                     NavigationStack {
-                        MovimientoSalidaFormView(mode: .add)
-                            .onAppear {
-                                MovimientoSalidaFormView.preselectedCartera = carteraDetail.cartera
-                            }
+                        MovimientoSalidaFormView(
+                                    mode: .add,
+                                    preselectedCartera: carteraDetail.cartera
+                                )
+                        
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingEntreCarterasForm) {
                     NavigationStack {
-                        MovimientoEntreCarterasFormView(mode: .add)
-                            .onAppear {
-                                MovimientoEntreCarterasFormView.preselectedCarteraOrigen = carteraDetail.cartera
-                            }
+                        
+                        MovimientoEntreCarterasFormView(
+                                     mode: .add,
+                                     preselectedCartera: carteraDetail.cartera
+                                 )
+                        
+                         
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingSwapForm) {
                     NavigationStack {
-                        MovimientoSwapFormView(mode: .add)
-                            .onAppear {
-                                MovimientoSwapFormView.preselectedCartera = carteraDetail.cartera
-                            }
+                       
+                        MovimientoSwapFormView(
+                                    mode: .add,
+                                    preselectedCartera: carteraDetail.cartera
+                                )
                     }
                     .frame(minWidth: 500, minHeight: 700)
                     }

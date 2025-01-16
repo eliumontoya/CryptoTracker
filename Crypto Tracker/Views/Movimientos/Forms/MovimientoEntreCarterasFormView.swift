@@ -3,14 +3,14 @@ import SwiftData
 
 struct MovimientoEntreCarterasFormView: View {
     
-    static var preselectedCarteraOrigen: Cartera?
+   
+    let preselectedCartera: Cartera? // Nueva propiedad
 
-    init(mode: MovimientoEntreCarterasFormMode) {
-        self.mode = mode
-        _selectedCarteraOrigen = State(initialValue: Self.preselectedCarteraOrigen)
-        Self.preselectedCarteraOrigen = nil
-    }
-    
+    init(mode: MovimientoEntreCarterasFormMode, preselectedCartera: Cartera? = nil) {
+            self.mode = mode
+            self.preselectedCartera = preselectedCartera
+        _selectedCarteraOrigen = State(initialValue: preselectedCartera)
+        }
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
