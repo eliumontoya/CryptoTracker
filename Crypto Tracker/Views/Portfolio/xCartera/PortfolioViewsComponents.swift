@@ -206,6 +206,9 @@ struct CarteraDetailView: View {
                 }
                 .sheet(isPresented: $showingCarteraMovimientos) {
                     CarteraMovimientosView(cartera: carteraDetail.cartera)
+                        .onDisappear {
+                            onUpdateData()  // Llamar a la actualización cuando se cierra el formulario
+                        }
                 }
                 .sheet(isPresented: $showingEntradaForm) {
                     NavigationStack {

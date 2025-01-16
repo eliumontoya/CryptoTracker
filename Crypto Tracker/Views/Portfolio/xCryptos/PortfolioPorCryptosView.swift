@@ -84,6 +84,9 @@ struct PortfolioCryptosView: View {
         }
         .sheet(item: $selectedCrypto) { crypto in
                     CryptoDetailView(crypto: crypto)
+                .onDisappear {
+                                actualizarPortfolio()
+                            }
                 }
         // Sheets para los formularios de movimientos
                 .sheet(isPresented: $showingEntradaForm) {

@@ -45,6 +45,9 @@ struct CarteraMovimientosView: View {
         .sheet(item: $selectedMovimiento) { movimiento in
             MovimientoSearchView(
                 movimientoDetalle: movimiento            )
+            .onDisappear {
+                                cargarMovimientos()  // Recargar cuando se cierra el formulario de edición
+                            }
         }
     }
     
