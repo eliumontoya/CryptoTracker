@@ -21,13 +21,15 @@ struct PortfolioDetalleView: View {
                     HStack(alignment: .top, spacing: 20) {
                         // Primera columna del renglón
                         if renglon * 2 < carterasDetail.count {
-                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2])
+                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2],
+                                              onUpdateData: { actualizarPortfolio() })
                                 .frame(maxWidth: .infinity)
                         }
                         
                         // Segunda columna del renglón
                         if (renglon * 2 + 1) < carterasDetail.count {
-                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2 + 1])
+                            CarteraDetailView(carteraDetail: carterasDetail[renglon * 2 + 1],
+                                              onUpdateData: { actualizarPortfolio() })
                                 .frame(maxWidth: .infinity)
                         }
                     }

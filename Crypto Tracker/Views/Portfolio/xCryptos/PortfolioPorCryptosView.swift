@@ -89,24 +89,37 @@ struct PortfolioCryptosView: View {
                 .sheet(isPresented: $showingEntradaForm) {
                     NavigationStack {
                         MovimientoEntradaFormView(mode: .add)
+                            .onDisappear {
+                                actualizarPortfolio()
+                            }
+                        
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingSalidaForm) {
                     NavigationStack {
                         MovimientoSalidaFormView(mode: .add)
+                            .onDisappear {
+                                actualizarPortfolio()
+                            }
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingEntreCarterasForm) {
                     NavigationStack {
                         MovimientoEntreCarterasFormView(mode: .add)
+                            .onDisappear {
+                                actualizarPortfolio()
+                            }
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
                 .sheet(isPresented: $showingSwapForm) {
                     NavigationStack {
                         MovimientoSwapFormView(mode: .add)
+                            .onDisappear {
+                                actualizarPortfolio()
+                            }
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }

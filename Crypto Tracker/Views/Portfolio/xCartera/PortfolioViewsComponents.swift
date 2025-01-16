@@ -39,6 +39,9 @@ struct CarteraHeaderView: View {
 
 struct CarteraDetailView: View {
     let carteraDetail: CarteraDetail
+    let onUpdateData: () -> Void  //Propiedad para actualizar los datos en la vista
+
+    
     @State private var selectedCryptoDetail: (Crypto, Cartera)?
     @State private var showingCarteraMovimientos = false
     @State private var showingMovimientosMenu = false  // Para el menú de movimientos
@@ -212,6 +215,9 @@ struct CarteraDetailView: View {
                                 )
                     }
                     .frame(minWidth: 500, minHeight: 700)
+                    .onDisappear {
+                        onUpdateData()  // Llamar a la actualización cuando se cierra el formulario
+                    }
                 }
                 .sheet(isPresented: $showingSalidaForm) {
                     NavigationStack {
@@ -222,6 +228,9 @@ struct CarteraDetailView: View {
                         
                     }
                     .frame(minWidth: 500, minHeight: 700)
+                    .onDisappear {
+                        onUpdateData()  // Llamar a la actualización cuando se cierra el formulario
+                    }
                 }
                 .sheet(isPresented: $showingEntreCarterasForm) {
                     NavigationStack {
@@ -234,6 +243,9 @@ struct CarteraDetailView: View {
                          
                     }
                     .frame(minWidth: 500, minHeight: 700)
+                    .onDisappear {
+                        onUpdateData()  // Llamar a la actualización cuando se cierra el formulario
+                    }
                 }
                 .sheet(isPresented: $showingSwapForm) {
                     NavigationStack {
@@ -244,6 +256,9 @@ struct CarteraDetailView: View {
                                 )
                     }
                     .frame(minWidth: 500, minHeight: 700)
+                    .onDisappear {
+                        onUpdateData()  // Llamar a la actualización cuando se cierra el formulario
+                    }
                     }
                 
     }
