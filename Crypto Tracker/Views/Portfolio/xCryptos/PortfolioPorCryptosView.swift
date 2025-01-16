@@ -10,9 +10,44 @@ struct PortfolioCryptosView: View {
     @State private var cryptoSummaries: [CryptoPortfolioSummary] = []
     @State private var selectedCrypto: Crypto?
     
+    //estados para los formularios de movimientos
+       @State private var showingEntradaForm = false
+       @State private var showingSalidaForm = false
+       @State private var showingEntreCarterasForm = false
+       @State private var showingSwapForm = false
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                
+                // Header con el título y el botón
+                               HStack {
+                                   Text("Portafolio por Cryptos")
+                                       .font(.title)
+                                       .frame(maxWidth: .infinity, alignment: .leading)
+                                   
+                                   Menu {
+                                       Button(action: { showingEntradaForm = true }) {
+                                           Label("Nueva Entrada", systemImage: "arrow.down.circle")
+                                       }
+                                       
+                                       Button(action: { showingSalidaForm = true }) {
+                                           Label("Nueva Salida", systemImage: "arrow.up.circle")
+                                       }
+                                       
+                                       Button(action: { showingEntreCarterasForm = true }) {
+                                           Label("Nueva Transferencia", systemImage: "arrow.left.arrow.right")
+                                       }
+                                       
+                                       Button(action: { showingSwapForm = true }) {
+                                           Label("Nuevo Swap", systemImage: "arrow.triangle.2.circlepath")
+                                       }
+                                   } label: {
+                                       Label("Agregar Movimiento", systemImage: "plus.circle")
+                                           .font(.title2)
+                                           .foregroundColor(.blue)
+                                   }
+                               }
                 
                 // Tabla de cryptos
                 ScrollView(.horizontal) {
@@ -49,6 +84,31 @@ struct PortfolioCryptosView: View {
         }
         .sheet(item: $selectedCrypto) { crypto in
                     CryptoDetailView(crypto: crypto)
+                }
+        // Sheets para los formularios de movimientos
+                .sheet(isPresented: $showingEntradaForm) {
+                    NavigationStack {
+                        MovimientoEntradaFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingSalidaForm) {
+                    NavigationStack {
+                        MovimientoSalidaFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingEntreCarterasForm) {
+                    NavigationStack {
+                        MovimientoEntreCarterasFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingSwapForm) {
+                    NavigationStack {
+                        MovimientoSwapFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
                 }
     }
     
