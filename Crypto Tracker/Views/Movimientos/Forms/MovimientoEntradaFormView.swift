@@ -2,6 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct MovimientoEntradaFormView: View {
+    static var preselectedCartera: Cartera?
+
+    init(mode: MovimientoEntradaFormMode) {
+        self.mode = mode
+        _selectedCartera = State(initialValue: Self.preselectedCartera)
+        Self.preselectedCartera = nil
+    }
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     

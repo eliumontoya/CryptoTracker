@@ -68,6 +68,12 @@ struct MovimientosEntreCarterasView: View {
                         }
                         .frame(minWidth: 500, minHeight: 700)
                     }
+            .sheet(isPresented: $showingAddSheet) {
+                        NavigationStack {
+                            MovimientoEntreCarterasFormView(mode: .add)
+                        }
+                        .frame(minWidth: 500, minHeight: 700)
+                    }
             
         }
     }

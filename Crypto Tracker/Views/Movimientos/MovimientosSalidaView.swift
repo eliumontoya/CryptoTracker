@@ -71,6 +71,12 @@ struct MovimientosSalidaView: View {
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
+        .sheet(isPresented: $showingAddSheet) {
+                    NavigationStack {
+                        MovimientoSalidaFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
     }
     
    

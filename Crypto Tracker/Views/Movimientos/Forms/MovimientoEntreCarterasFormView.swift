@@ -2,6 +2,16 @@ import SwiftUI
 import SwiftData
 
 struct MovimientoEntreCarterasFormView: View {
+    
+    static var preselectedCarteraOrigen: Cartera?
+
+    init(mode: MovimientoEntreCarterasFormMode) {
+        self.mode = mode
+        _selectedCarteraOrigen = State(initialValue: Self.preselectedCarteraOrigen)
+        Self.preselectedCarteraOrigen = nil
+    }
+    
+    
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
@@ -174,7 +184,7 @@ struct MovimientoEntreCarterasFormView: View {
         }
         .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
-        .navigationTitle(mode == .add ? "Nuevo Movimiento" : "Editar Movimiento")
+        .navigationTitle(mode == .add ? "Nueva Transferencia" : "Editar Transferencia")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {

@@ -70,6 +70,12 @@ struct MovimientosEntradaView: View {
                     }
                     .frame(minWidth: 500, minHeight: 700)
                 }
+        .sheet(isPresented: $showingAddSheet) {
+                    NavigationStack {
+                        MovimientoEntradaFormView(mode: .add)
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

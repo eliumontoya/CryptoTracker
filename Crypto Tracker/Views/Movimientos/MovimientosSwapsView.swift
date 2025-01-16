@@ -71,6 +71,12 @@ struct MovimientosSwapsView: View {
                         }
                         .frame(minWidth: 500, minHeight: 700)
                     }
+            .sheet(isPresented: $showingAddSheet) {
+                        NavigationStack {
+                            MovimientoSwapFormView(mode: .add)
+                        }
+                        .frame(minWidth: 500, minHeight: 700)
+                    }
             
         }
     }

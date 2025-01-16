@@ -7,6 +7,9 @@ struct IdentifiableCryptoCarteraPair: Identifiable {
     let cartera: Cartera
 }
 
+
+
+
 // MARK: - Vistas Auxiliares de Portfolio
 struct CarteraHeaderView: View {
     let summary: CarteraDetail
@@ -38,9 +41,17 @@ struct CarteraDetailView: View {
     let carteraDetail: CarteraDetail
     @State private var selectedCryptoDetail: (Crypto, Cartera)?
     @State private var showingCarteraMovimientos = false
-    
+    @State private var showingMovimientosMenu = false  // Para el menú de movimientos
+    @State private var selectedMovimientoForm: MovimientoFormType?
+
+        // Estados para los diferentes tipos de formularios
+        @State private var showingEntradaForm = false
+        @State private var showingSalidaForm = false
+        @State private var showingEntreCarterasForm = false
+        @State private var showingSwapForm = false
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
+            /*
             // Encabezado de la cartera (ahora clickeable)
             Button(action: { showingCarteraMovimientos = true }) {
                 Text(carteraDetail.cartera.nombre)
@@ -48,6 +59,41 @@ struct CarteraDetailView: View {
                     .bold()
                     .foregroundStyle(.primary)
             }
+            */
+            // Header con nombre de cartera y menú de nuevo movimiento
+                        HStack {
+                            Button(action: { showingCarteraMovimientos = true }) {
+                                Text(carteraDetail.cartera.nombre)
+                                    .font(.title2)
+                                    .bold()
+                                    .foregroundStyle(.primary)
+                            }
+                            
+                            Spacer()
+                            
+                            Menu {
+                                Button(action: { showingEntradaForm = true }) {
+                                    Label("Nueva Entrada", systemImage: "arrow.down.circle")
+                                }
+                                
+                                Button(action: { showingSalidaForm = true }) {
+                                    Label("Nueva Salida", systemImage: "arrow.up.circle")
+                                }
+                                
+                                Button(action: { showingEntreCarterasForm = true }) {
+                                    Label("Nueva Transferencia", systemImage: "arrow.left.arrow.right")
+                                }
+                                
+                                Button(action: { showingSwapForm = true }) {
+                                    Label("Nuevo Swap", systemImage: "arrow.triangle.2.circlepath")
+                                }
+                            } label: {
+                                Image(systemName: "plus.circle")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                            }
+                        }
+            
             
             // Totales de la cartera
             HStack {
@@ -144,19 +190,57 @@ struct CarteraDetailView: View {
         .cornerRadius(12)
         .shadow(radius: 2)
         .sheet(item: Binding(
-            get: {
-                selectedCryptoDetail.map { crypto, cartera in
-                    IdentifiableCryptoCarteraPair(crypto: crypto, cartera: cartera)
+                    get: {
+                        selectedCryptoDetail.map { crypto, cartera in
+                            IdentifiableCryptoCarteraPair(crypto: crypto, cartera: cartera)
+                        }
+                    },
+                    set: { pair in
+                        selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
+                    }
+                )) { pair in
+                    CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
                 }
-            },
-            set: { pair in
-                selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
-            }
-        )) { pair in
-            CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
-        }
-        .sheet(isPresented: $showingCarteraMovimientos) {
-            CarteraMovimientosView(cartera: carteraDetail.cartera)
-        }
+                .sheet(isPresented: $showingCarteraMovimientos) {
+                    CarteraMovimientosView(cartera: carteraDetail.cartera)
+                }
+                .sheet(isPresented: $showingEntradaForm) {
+                    NavigationStack {
+                        MovimientoEntradaFormView(mode: .add)
+                            .onAppear {
+                                // Preseleccionar la cartera actual
+                                MovimientoEntradaFormView.preselectedCartera = carteraDetail.cartera
+                            }
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingSalidaForm) {
+                    NavigationStack {
+                        MovimientoSalidaFormView(mode: .add)
+                            .onAppear {
+                                MovimientoSalidaFormView.preselectedCartera = carteraDetail.cartera
+                            }
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingEntreCarterasForm) {
+                    NavigationStack {
+                        MovimientoEntreCarterasFormView(mode: .add)
+                            .onAppear {
+                                MovimientoEntreCarterasFormView.preselectedCarteraOrigen = carteraDetail.cartera
+                            }
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                }
+                .sheet(isPresented: $showingSwapForm) {
+                    NavigationStack {
+                        MovimientoSwapFormView(mode: .add)
+                            .onAppear {
+                                MovimientoSwapFormView.preselectedCartera = carteraDetail.cartera
+                            }
+                    }
+                    .frame(minWidth: 500, minHeight: 700)
+                    }
+                
     }
 }
