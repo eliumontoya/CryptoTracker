@@ -8,6 +8,7 @@ struct CryptoTrackerApp: App {
     init() {
         do {
             // Definimos el esquema con versión
+           
             let schema = Schema([
                 FIAT.self,
                 Crypto.self,
@@ -16,7 +17,8 @@ struct CryptoTrackerApp: App {
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
                 MovimientoSwap.self,
-                PrecioHistorico.self
+                PrecioHistorico.self,
+                CryptoSyncConfig.self
             ], version: .init(2, 0, 0))
             
             // Configuración del modelo

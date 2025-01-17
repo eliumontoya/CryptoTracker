@@ -13,6 +13,8 @@ enum AdminMenuOption {
     case cryptos
     case carteras
     case fiat
+    case sync
+
 }
 
 enum MovimientosMenuOption {
@@ -81,6 +83,13 @@ struct ContentView: View {
                             selection: $selectedAdminMenu
                         ) {
                             Label("FIAT", systemImage: "dollarsign.circle")
+                        }
+                        NavigationLink(
+                            destination: CryptoSyncView(),
+                            tag: .sync,
+                            selection: $selectedAdminMenu
+                        ) {
+                            Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
                         }
                     },
                     label: {
