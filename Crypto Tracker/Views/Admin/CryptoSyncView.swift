@@ -53,6 +53,9 @@ struct PriceResponse: Codable {
 
 // MARK: - Sync Manual de Precios View
 struct CryptoSyncView: View {
+    // Debug Mode
+    static let isDebugMode = false  // Cambiar a false para modo producción
+    
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     @Query(sort: \CryptoSyncConfig.syncUrl) private var syncConfigs: [CryptoSyncConfig]
@@ -144,96 +147,139 @@ struct CryptoSyncView: View {
                 guard let crypto = config.crypto else { continue }
                 
                 do {
-                    // Configurar la sesión con configuraciones específicas para Sandbox
-                    let configuration = URLSessionConfiguration.default
-                    configuration.timeoutIntervalForRequest = 30
-                    configuration.timeoutIntervalForResource = 30
-                    configuration.waitsForConnectivity = true
-                    configuration.allowsCellularAccess = true
-                    configuration.allowsConstrainedNetworkAccess = true
-                    configuration.allowsExpensiveNetworkAccess = true
-                    
-                    // Configurar explícitamente el DNS
-                    configuration.urlCache = nil
-                    configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-                    
-                    let urlSession = URLSession(configuration: configuration)
-                    
-                    // Crear la solicitud con configuraciones específicas
-                    guard let url = URL(string: config.syncUrl) else {
-                        throw URLError(.badURL)
-                    }
-                    
-                    var request = URLRequest(url: url)
-                    request.timeoutInterval = 30
-                    request.networkServiceType = .default
-                    request.allowsCellularAccess = true
-                    request.allowsConstrainedNetworkAccess = true
-                    request.allowsExpensiveNetworkAccess = true
-                    
-                    // Agregar entrada al log indicando inicio de solicitud
-                    await MainActor.run {
-                        logEntries.insert(
-                            SyncLogEntry(
-                                timestamp: Date(),
-                                cryptoSymbol: crypto.simbolo,
-                                message: "Iniciando solicitud a: \(url.absoluteString)",
-                                isError: false
-                            ),
-                            at: 0
-                        )
-                    }
-                    
-                    let (data, urlResponse) = try await urlSession.data(for: request)
-                    
-                    guard let httpResponse = urlResponse as? HTTPURLResponse else {
-                        throw URLError(.badServerResponse)
-                    }
-                    
-                    // Verificar el código de respuesta HTTP
-                    guard (200...299).contains(httpResponse.statusCode) else {
-                        throw NSError(
-                            domain: "HTTPError",
-                            code: httpResponse.statusCode,
-                            userInfo: [NSLocalizedDescriptionKey: "Error HTTP: \(httpResponse.statusCode)"]
-                        )
-                    }
-                    
-                    // Agregar entrada al log con la respuesta recibida
-                    await MainActor.run {
-                        logEntries.insert(
-                            SyncLogEntry(
-                                timestamp: Date(),
-                                cryptoSymbol: crypto.simbolo,
-                                message: "Respuesta recibida (HTTP \(httpResponse.statusCode))",
-                                isError: false
-                            ),
-                            at: 0
-                        )
-                    }
-                    
-                    // Intentar decodificar la respuesta
-                    let priceResponse = try JSONDecoder().decode(PriceResponse.self, from: data)
-                    
-                    // Usar el precio encontrado
-                    await MainActor.run {
-                        crypto.precio = Decimal(priceResponse.price)
-                        crypto.ultimaActualizacion = Date()
+                    if Self.isDebugMode {
+                        // Modo Debug - Simulación de sincronización
+                        await MainActor.run {
+                            logEntries.insert(
+                                SyncLogEntry(
+                                    timestamp: Date(),
+                                    cryptoSymbol: crypto.simbolo,
+                                    message: "[DEBUG] Simulando sincronización con URL: \(config.syncUrl)",
+                                    isError: false
+                                ),
+                                at: 0
+                            )
+                            
+                            // Simular un precio nuevo (precio actual + 10%)
+                            let precioSimulado = crypto.precio * Decimal(1.1)
+                            
+                            logEntries.insert(
+                                SyncLogEntry(
+                                    timestamp: Date(),
+                                    cryptoSymbol: crypto.simbolo,
+                                    message: "[DEBUG] Precio simulado: $\(precioSimulado) (actual: $\(crypto.precio))",
+                                    isError: false
+                                ),
+                                at: 0
+                            )
+                        }
                         
-                        logEntries.insert(
-                            SyncLogEntry(
-                                timestamp: Date(),
-                                cryptoSymbol: crypto.simbolo,
-                                message: "Precio actualizado: $\(priceResponse.price)",
-                                isError: false
-                            ),
-                            at: 0
-                        )
+                        // Simular delay de red
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                        
+                    } else {
+                        // Configurar la sesión con configuraciones específicas para Sandbox
+                        let configuration = URLSessionConfiguration.default
+                        configuration.timeoutIntervalForRequest = 30
+                        configuration.timeoutIntervalForResource = 30
+                        configuration.waitsForConnectivity = true
+                        configuration.allowsCellularAccess = true
+                        configuration.allowsConstrainedNetworkAccess = true
+                        configuration.allowsExpensiveNetworkAccess = true
+                        
+                        // Configurar explícitamente el DNS
+                        configuration.urlCache = nil
+                        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
+                        
+                        let urlSession = URLSession(configuration: configuration)
+                        
+                        // Crear la solicitud con configuraciones específicas
+                        guard let url = URL(string: config.syncUrl) else {
+                            throw URLError(.badURL)
+                        }
+                        
+                        var request = URLRequest(url: url)
+                        request.timeoutInterval = 30
+                        request.networkServiceType = .default
+                        request.allowsCellularAccess = true
+                        request.allowsConstrainedNetworkAccess = true
+                        request.allowsExpensiveNetworkAccess = true
+                        
+                        // Agregar entrada al log indicando inicio de solicitud
+                        await MainActor.run {
+                            logEntries.insert(
+                                SyncLogEntry(
+                                    timestamp: Date(),
+                                    cryptoSymbol: crypto.simbolo,
+                                    message: "Iniciando solicitud a: \(url.absoluteString)",
+                                    isError: false
+                                ),
+                                at: 0
+                            )
+                        }
+                        
+                        let (data, urlResponse) = try await urlSession.data(for: request)
+                        
+                        guard let httpResponse = urlResponse as? HTTPURLResponse else {
+                            throw URLError(.badServerResponse)
+                        }
+                        
+                        // Verificar el código de respuesta HTTP
+                        guard (200...299).contains(httpResponse.statusCode) else {
+                            throw NSError(
+                                domain: "HTTPError",
+                                code: httpResponse.statusCode,
+                                userInfo: [NSLocalizedDescriptionKey: "Error HTTP: \(httpResponse.statusCode)"]
+                            )
+                        }
+                        
+                        // Agregar entrada al log con la respuesta recibida
+                        await MainActor.run {
+                            logEntries.insert(
+                                SyncLogEntry(
+                                    timestamp: Date(),
+                                    cryptoSymbol: crypto.simbolo,
+                                    message: "Respuesta recibida (HTTP \(httpResponse.statusCode))",
+                                    isError: false
+                                ),
+                                at: 0
+                            )
+                        }
+                        
+                        // Intentar decodificar la respuesta
+                        let priceResponse = try JSONDecoder().decode(PriceResponse.self, from: data)
+                        
+                        // Usar el precio encontrado
+                        await MainActor.run {
+                            // Guardar el precio anterior en el histórico
+                            let precioHistorico = PrecioHistorico(
+                                crypto: crypto,
+                                precio: crypto.precio,
+                                fecha: crypto.ultimaActualizacion
+                            )
+                            modelContext.insert(precioHistorico)
+                            
+                            // Actualizar el precio actual
+                            crypto.precio = Decimal(priceResponse.price)
+                            crypto.ultimaActualizacion = Date()
+                            
+                            logEntries.insert(
+                                SyncLogEntry(
+                                    timestamp: Date(),
+                                    cryptoSymbol: crypto.simbolo,
+                                    message: "Precio actualizado: $\(priceResponse.price) (anterior: $\(precioHistorico.precio))",
+                                    isError: false
+                                ),
+                                at: 0
+                            )
+                        }
                     }
-                } catch {
+                }   catch {
                     await MainActor.run {
-                        crypto.precio = config.defaultPrice
-                        crypto.ultimaActualizacion = Date()
+                        if !Self.isDebugMode {
+                            crypto.precio = config.defaultPrice
+                            crypto.ultimaActualizacion = Date()
+                        }
                         
                         let errorMessage = switch error {
                             case URLError.secureConnectionFailed:
@@ -287,6 +333,19 @@ struct CryptoSyncView: View {
             
             await MainActor.run {
                 isSyncing = false
+                
+                // Agregar mensaje final
+                logEntries.insert(
+                    SyncLogEntry(
+                        timestamp: Date(),
+                        cryptoSymbol: "Sistema",
+                        message: Self.isDebugMode ?
+                            "[DEBUG] Simulación de sincronización completada." :
+                            "Sincronización completada. Se actualizaron los precios históricos.",
+                        isError: false
+                    ),
+                    at: 0
+                )
             }
         }
     }
@@ -301,6 +360,7 @@ struct CryptoSyncRowView: View {
     @State private var syncUrl: String = ""
     @State private var defaultPrice: Decimal = 0
     @State private var isEditing = false
+    @State private var showingHistory = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -334,10 +394,17 @@ struct CryptoSyncRowView: View {
             } else {
                 // Vista de solo lectura
                 if let config = syncConfig {
-                    Text("URL: \(config.syncUrl)")
-                        .font(.caption)
-                    Text("Precio Default: \(config.defaultPrice.formatted(.currency(code: "USD")))")
-                        .font(.caption)
+                    HStack {
+                        VStack(alignment: .leading) {
+                            Text("URL: \(config.syncUrl)")
+                                .font(.caption)
+                            Text("Precio Default: \(config.defaultPrice.formatted(.currency(code: "USD")))")
+                                .font(.caption)
+                        }
+                        Spacer()
+                        CryptoHistoryButton(crypto: crypto, showingHistory: $showingHistory)
+                            .font(.caption)
+                    }
                 } else {
                     Text("Sin configuración")
                         .font(.caption)

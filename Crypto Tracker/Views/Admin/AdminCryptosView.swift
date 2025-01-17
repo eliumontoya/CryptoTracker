@@ -36,7 +36,14 @@ struct AdminCryptosView: View {
                                 CryptoFormView(mode: crypto.id == nil ? .add : .edit(crypto))
                             }
                         }
-            
+            .alert("¿Eliminar crypto?", isPresented: $showingDeleteAlert) {
+                            Button("Cancelar", role: .cancel) { }
+                            Button("Eliminar", role: .destructive) {
+                                if let crypto = selectedCrypto {
+                                    modelContext.delete(crypto)
+                                    selectedCrypto = nil
+                                }
+                            }  }
             
         }
     }
@@ -48,9 +55,9 @@ struct AdminCryptosView: View {
         }
     }
 }
-
 struct CryptoRowView: View {
     let crypto: Crypto
+    @State private var showingHistory = false
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -64,9 +71,14 @@ struct CryptoRowView: View {
                     .font(.subheadline)
             }
             
-            Text("Última actualización: \(crypto.ultimaActualizacion.formatted())")
-                .font(.caption)
-                .foregroundColor(.secondary)
+            HStack {
+                Text("Última actualización: \(crypto.ultimaActualizacion.formatted())")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+                CryptoHistoryButton(crypto: crypto, showingHistory: $showingHistory)
+                    .font(.caption)
+            }
         }
         .padding(.vertical, 4)
     }
@@ -138,6 +150,15 @@ struct CryptoFormView: View {
             let newCrypto = Crypto(nombre: nombre, simbolo: simbolo, precio: precio)
             modelContext.insert(newCrypto)
         case .edit(let crypto):
+            // Guardar el precio anterior en el histórico
+            let precioHistorico = PrecioHistorico(
+                crypto: crypto,
+                precio: crypto.precio,
+                fecha: crypto.ultimaActualizacion
+            )
+            modelContext.insert(precioHistorico)
+            
+            // Actualizar la crypto
             crypto.nombre = nombre
             crypto.simbolo = simbolo
             crypto.precio = precio
@@ -146,7 +167,6 @@ struct CryptoFormView: View {
         dismiss()
     }
 }
-
 #Preview {
     AdminCryptosView()
 }
