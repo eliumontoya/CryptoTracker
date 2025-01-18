@@ -14,6 +14,7 @@ enum AdminMenuOption {
     case carteras
     case fiat
     case sync
+    case setup  //  caso para Setup Inicial
 
 }
 
@@ -91,6 +92,14 @@ struct ContentView: View {
                         ) {
                             Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
                         }
+                        // Setup Inicial
+                        NavigationLink(
+                                                    destination: SetupInicialView(),
+                                                    tag: .setup,
+                                                    selection: $selectedAdminMenu
+                                                ) {
+                                                    Label("Setup Inicial", systemImage: "gearshape.circle.fill")
+                                                }
                     },
                     label: {
                         Label("Administración", systemImage: "gear")
