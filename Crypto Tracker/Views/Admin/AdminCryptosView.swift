@@ -36,6 +36,11 @@ struct AdminCryptosView: View {
                                 CryptoFormView(mode: crypto.id == nil ? .add : .edit(crypto))
                             }
                         }
+            .sheet(isPresented: $showingAddSheet) {
+                        NavigationStack {
+                            CryptoFormView(mode: .add)
+                        }
+                    }
             .alert("¿Eliminar crypto?", isPresented: $showingDeleteAlert) {
                             Button("Cancelar", role: .cancel) { }
                             Button("Eliminar", role: .destructive) {

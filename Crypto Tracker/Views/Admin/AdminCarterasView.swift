@@ -36,6 +36,11 @@ struct AdminCarterasView: View {
                                 CarteraFormView(mode: cartera.id == nil ? .add : .edit(cartera))
                             }
                         }
+            .sheet(isPresented: $showingAddSheet) {
+                        NavigationStack {
+                            CarteraFormView(mode: .add)
+                        }
+                    }
             .alert("¿Eliminar cartera?", isPresented: $showingDeleteAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {

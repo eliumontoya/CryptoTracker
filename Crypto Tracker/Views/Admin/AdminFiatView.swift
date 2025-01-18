@@ -36,6 +36,11 @@ struct AdminFiatView: View {
                                 FiatFormView(mode: fiat.id == nil ? .add : .edit(fiat))
                             }
                         }
+            .sheet(isPresented: $showingAddSheet) {
+                        NavigationStack {
+                            FiatFormView(mode: .add)
+                        }
+                    }
             .alert("¿Eliminar FIAT?", isPresented: $showingDeleteAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {
