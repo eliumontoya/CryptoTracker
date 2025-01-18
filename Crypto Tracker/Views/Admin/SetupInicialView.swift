@@ -26,7 +26,7 @@ struct SetupInicialView: View {
             title: "Carga de Catálogos Iniciales",
             icon: "folder.circle.fill",
             description: "Carga los catálogos predeterminados de Cryptos, FIAT y Carteras",
-            destination: nil
+            destination: AnyView(CargaCatalogosView())
         ),
         SetupOption(
             title: "Carga de Movimientos Iniciales",
