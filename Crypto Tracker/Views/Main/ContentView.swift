@@ -26,9 +26,12 @@ enum MovimientosMenuOption {
 }
 
 struct ContentView: View {
+    @Environment(\.modelContext) private var modelContext
+
     @State private var selectedMainMenu: MainMenuOption? = .home
     @State private var selectedAdminMenu: AdminMenuOption?
     @State private var selectedMovimientosMenu: MovimientosMenuOption?
+    
     
     var body: some View {
         NavigationSplitView {
@@ -71,7 +74,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: AdminCarterasView(),
+                            destination: AdminCarterasView(modelContext: modelContext),
                             tag: .carteras,
                             selection: $selectedAdminMenu
                         ) {

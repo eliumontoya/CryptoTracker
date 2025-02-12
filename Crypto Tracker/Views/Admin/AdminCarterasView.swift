@@ -1,80 +1,88 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct AdminCarterasView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
+    @StateObject private var viewModel: AdminCarterasViewModel
     
-    @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
-    @State private var selectedCartera: Cartera?
-    @State private var showingDeleteAlert = false
+    init(modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: AdminCarterasViewModel(modelContext: modelContext))
+    }
     
     var body: some View {
         VStack {
             List {
-                ForEach(carteras) { cartera in
-                    CarteraRowView(cartera: cartera)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedCartera = cartera
-                            showingEditSheet = true
-                        }
+                ForEach(viewModel.carteras) { cartera in
+                    let calculos = viewModel.getCalculosCartera(cartera)
+                    CarteraRowView(
+                        cartera: cartera,
+                        valorTotalUSD: calculos.valorTotal,
+                        resumenCryptos: calculos.resumen,
+                        gananciaPerdida: calculos.ganancia
+                    )
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.showEditForm(for: cartera)
+                    }
                 }
-                .onDelete(perform: deleteCarteras)
+                .onDelete { offsets in
+                    for index in offsets {
+                        let cartera = viewModel.carteras[index]
+                        if viewModel.canDeleteCartera(cartera) {
+                            viewModel.deleteCartera(cartera)
+                        } else {
+                            viewModel.selectedCartera = cartera
+                            viewModel.showingDeleteAlert = true
+                        }
+                    }
+                }
             }
             .navigationTitle("Carteras")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddSheet = true }) {
+                    Button(action: { viewModel.showAddForm() }) {
                         Label("Agregar Cartera", systemImage: "plus")
                     }
                 }
             }
-            .sheet(item: $selectedCartera) { cartera in
-                            NavigationStack {
-                                CarteraFormView(mode: cartera.id == nil ? .add : .edit(cartera))
-                            }
+            .sheet(item: $viewModel.formState) { formState in
+                NavigationStack {
+                    CarteraFormView(formState: formState) { nombre, simbolo in
+                        switch formState {
+                        case .add:
+                            viewModel.addCartera(nombre: nombre, simbolo: simbolo)
+                        case .edit(let cartera):
+                            viewModel.updateCartera(cartera, nombre: nombre, simbolo: simbolo)
                         }
-            .sheet(isPresented: $showingAddSheet) {
-                        NavigationStack {
-                            CarteraFormView(mode: .add)
-                        }
+                        viewModel.closeForm()
                     }
-            .alert("¿Eliminar cartera?", isPresented: $showingDeleteAlert) {
+                }
+                .presentationDetents([.medium])
+                .presentationDragIndicator(.visible)
+            }
+            .alert("¿Eliminar cartera?", isPresented: $viewModel.showingDeleteAlert) {
                 Button("Cancelar", role: .cancel) { }
                 Button("Eliminar", role: .destructive) {
-                    if let cartera = selectedCartera {
-                        modelContext.delete(cartera)
-                        selectedCartera = nil
+                    if let cartera = viewModel.selectedCartera {
+                        viewModel.deleteCartera(cartera)
+                        viewModel.selectedCartera = nil
                     }
                 }
             } message: {
                 Text("Esta acción no se puede deshacer. ¿Está seguro de eliminar esta cartera?")
             }
         }
-    }
-    
-    private func deleteCarteras(at offsets: IndexSet) {
-        for index in offsets {
-            let cartera = carteras[index]
-            // Verificar si la cartera tiene movimientos antes de eliminar
-            if cartera.movimientosIngreso.isEmpty &&
-               cartera.movimientosEgreso.isEmpty &&
-               cartera.movimientosEntrada.isEmpty &&
-               cartera.movimientosSalida.isEmpty &&
-               cartera.swaps.isEmpty {
-                modelContext.delete(cartera)
-            } else {
-                selectedCartera = cartera
-                showingDeleteAlert = true
-            }
+        .onDisappear {
+            viewModel.clearCache()
         }
     }
 }
 
 struct CarteraRowView: View {
     let cartera: Cartera
+    let valorTotalUSD: Decimal
+    let resumenCryptos: String
+    let gananciaPerdida: (ganancia: Decimal, esGanancia: Bool)
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -89,91 +97,34 @@ struct CarteraRowView: View {
                     .foregroundColor(.blue)
             }
             
-            // Mostrar resumen de cryptos en la cartera
-            if !cartera.movimientosIngreso.isEmpty {
+            if !resumenCryptos.isEmpty {
                 Text("Cryptos: \(resumenCryptos)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
             
-            // Mostrar balance general
             HStack {
-                let (ganancia, esGanancia) = calcularGananciaPerdida()
-                Text(esGanancia ? "Ganancia:" : "Pérdida:")
+                Text(gananciaPerdida.esGanancia ? "Ganancia:" : "Pérdida:")
                     .font(.caption)
-                Text(ganancia.formatted(.currency(code: "USD")))
+                Text(gananciaPerdida.ganancia.formatted(.currency(code: "USD")))
                     .font(.caption)
-                    .foregroundColor(esGanancia ? .green : .red)
+                    .foregroundColor(gananciaPerdida.esGanancia ? .green : .red)
             }
         }
         .padding(.vertical, 4)
     }
-    
-    private var valorTotalUSD: Decimal {
-        let cryptos = Set(cartera.movimientosIngreso.compactMap { $0.crypto })
-        return cryptos.reduce(Decimal(0)) { total, crypto in
-            let balance = calcularBalanceCrypto(crypto)
-            return total + (balance * (crypto.precio))
-        }
-    }
-    
-    private var resumenCryptos: String {
-        let cryptos = Set(cartera.movimientosIngreso.compactMap { $0.crypto })
-        return cryptos.compactMap { $0.simbolo }.joined(separator: ", ")
-    }
-    
-    private func calcularBalanceCrypto(_ crypto: Crypto) -> Decimal {
-        let ingresos = cartera.movimientosIngreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadCrypto }
-        
-        let egresos = cartera.movimientosEgreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadCrypto }
-            
-        let transferenciasEntrada = cartera.movimientosEntrada
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
-        
-        let transferenciasSalida = cartera.movimientosSalida
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadCryptoSalida }
-        
-        let swapsEntrada = cartera.swaps
-            .filter { $0.cryptoDestino?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadDestino }
-        
-        let swapsSalida = cartera.swaps
-            .filter { $0.cryptoOrigen?.id == crypto.id }
-            .reduce(into: Decimal(0)) { $0 + $1.cantidadOrigen }
-        
-        return ingresos + transferenciasEntrada + swapsEntrada -
-               (egresos + transferenciasSalida + swapsSalida)
-    }
-    
-    private func calcularGananciaPerdida() -> (Decimal, Bool) {
-        let inversionTotalUSD = cartera.movimientosIngreso.reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
-        let gananciaPerdida = valorTotalUSD - inversionTotalUSD
-        return (abs(gananciaPerdida), gananciaPerdida >= 0)
-    }
-}
-
-enum CarteraFormMode {
-    case add
-    case edit(Cartera)
 }
 
 struct CarteraFormView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
-    let mode: CarteraFormMode
+    let formState: CarteraFormState
+    let onSave: (String, String) -> Void
     
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
     
     var title: String {
-        switch mode {
+        switch formState {
         case .add:
             return "Nueva Cartera"
         case .edit:
@@ -201,33 +152,17 @@ struct CarteraFormView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
-                    save()
+                    onSave(nombre, simbolo)
+                    dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
             }
         }
         .onAppear {
-            if case .edit(let cartera) = mode {
+            if case .edit(let cartera) = formState {
                 nombre = cartera.nombre
                 simbolo = cartera.simbolo
             }
         }
     }
-    
-    private func save() {
-        switch mode {
-        case .add:
-            let newCartera = Cartera(nombre: nombre, simbolo: simbolo)
-            modelContext.insert(newCartera)
-        case .edit(let cartera):
-            cartera.nombre = nombre
-            cartera.simbolo = simbolo
-        }
-        dismiss()
-    }
-}
-
-#Preview {
-    AdminCarterasView()
-        .withPreviewContainer()
 }
