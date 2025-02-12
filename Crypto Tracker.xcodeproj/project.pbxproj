@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		452B515C2D5B18E200D769EE /* CoreXLSX in Frameworks */ = {isa = PBXBuildFile; productRef = 452B515B2D5B18E200D769EE /* CoreXLSX */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		451670212D2F71B800E6F2D6 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				452B515C2D5B18E200D769EE /* CoreXLSX in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = "Crypto Tracker";
 			packageProductDependencies = (
+				452B515B2D5B18E200D769EE /* CoreXLSX */,
 			);
 			productName = "Crypto Tracker";
 			productReference = 4516700D2D2F71B700E6F2D6 /* Crypto Tracker.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 451670042D2F71B700E6F2D6;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				452B515A2D5B183A00D769EE /* XCRemoteSwiftPackageReference "CoreXLSX" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 4516700E2D2F71B700E6F2D6 /* Products */;
 			projectDirPath = "";
@@ -551,6 +560,24 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		452B515A2D5B183A00D769EE /* XCRemoteSwiftPackageReference "CoreXLSX" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/CoreOffice/CoreXLSX.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 0.14.2;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		452B515B2D5B18E200D769EE /* CoreXLSX */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CoreXLSX;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 451670052D2F71B700E6F2D6 /* Project object */;
 }

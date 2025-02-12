@@ -32,7 +32,7 @@ struct SetupInicialView: View {
             title: "Carga de Movimientos Iniciales",
             icon: "arrow.left.arrow.right.circle.fill",
             description: "Importa movimientos iniciales desde un archivo",
-            destination: nil
+            destination: AnyView(CargaMovimientosInicialesView())
         ),
         SetupOption(
             title: "Realizar y Cargar Backup",
