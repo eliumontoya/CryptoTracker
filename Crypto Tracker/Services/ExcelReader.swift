@@ -28,6 +28,13 @@ enum ExcelWorksheetError: LocalizedError {
         }
     }
 }
+extension ExcelWorksheet {
+    // Inicializador para pruebas
+    init(testHeaderRow: [String], testRows: [[String]]) {
+        self.headerRow = testHeaderRow
+        self.rows = testRows
+    }
+}
 
 // MARK: - ExcelWorksheet
 struct ExcelWorksheet {
