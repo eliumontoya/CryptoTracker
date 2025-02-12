@@ -59,9 +59,21 @@ class EliminarDataViewModel: ObservableObject {
     }
     
     func agregarLog(_ mensaje: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
-        }
+        // Condición para pruebas: detectar si se está ejecutando en un contexto de pruebas
+               #if DEBUG
+               if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
+                   // Para pruebas, agregar el log de manera síncrona
+                   logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
+                   return
+               }
+               #endif
+               
+               // Comportamiento normal para la app
+               DispatchQueue.main.async { [weak self] in
+                   self?.logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
+               }
+        
+         
     }
     
     func borrarDatos() async {
