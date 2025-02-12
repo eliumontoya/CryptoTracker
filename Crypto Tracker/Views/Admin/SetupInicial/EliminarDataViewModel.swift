@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-class DataDeletionViewModel: ObservableObject {
+class EliminarDataViewModel: ObservableObject {
     @Published var logs: [String] = []
     @Published var isDeleting = false
     @Published var deleteCompleted = false

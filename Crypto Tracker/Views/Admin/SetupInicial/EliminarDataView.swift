@@ -6,12 +6,12 @@ struct EliminarDataView: View {
     
     @Environment(\.modelContext) private var environmentModelContext
     private let modelContext: ModelContext
-    @StateObject private var viewModel: DataDeletionViewModel
+    @StateObject private var viewModel: EliminarDataViewModel
 
     
     init(modelContext: ModelContext) {
             self.modelContext = modelContext
-        _viewModel = StateObject(wrappedValue: DataDeletionViewModel(modelContext: modelContext))
+        _viewModel = StateObject(wrappedValue: EliminarDataViewModel(modelContext: modelContext))
 
         }
     
