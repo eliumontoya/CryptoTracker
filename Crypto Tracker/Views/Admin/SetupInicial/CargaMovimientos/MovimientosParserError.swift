@@ -9,6 +9,8 @@ enum MovimientosParserError: LocalizedError {
     case invalidFormat(String)
     case missingData(row: Int, field: String)
     case insufficientFunds(row: Int, crypto: String, requested: Decimal, available: Decimal)
+    case sameWallet(row: Int)
+       case invalidReceivedAmount(row: Int, sent: Decimal, received: Decimal)
     
     var errorDescription: String? {
         switch self {
@@ -38,6 +40,13 @@ enum MovimientosParserError: LocalizedError {
                 Solicitado: \(requested)
                 Disponible: \(available)
                 """
+        case .sameWallet(let row):
+                    return "Error en fila \(row): La cartera origen y destino no pueden ser la misma"
+            case .invalidReceivedAmount(let row, let sent, let received):
+                    return """
+                        Error en fila \(row): El monto recibido (\(received)) no puede ser mayor 
+                        al monto enviado (\(sent))
+                        """
         }
     }
 }

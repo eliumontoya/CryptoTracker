@@ -9,7 +9,8 @@ struct CargaMovimientosInicialesView: View {
     // URLs de archivos
     @State private var movimientosEntradaURL: URL?
     @State private var movimientosSalidaURL: URL?
-    
+    @State private var movimientosEntreCarterasURL: URL?
+
     // Estados
     @State private var isLoading = false
     @State private var logs: [String] = []
@@ -84,6 +85,13 @@ struct CargaMovimientosInicialesView: View {
                         url: $movimientosSalidaURL,
                         types: ExcelReader.validateExcelTypes()
                     )
+                    // Movimientos Entre Carteras
+                            FileSelectionRow(
+                                title: "Movimientos Entre Carteras",
+                                subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera_Origen, ID_Cartera_Destino, Cripto, Monto Envio, Monto recibido, Comision",
+                                url: $movimientosEntreCarterasURL,
+                                types: ExcelReader.validateExcelTypes()
+                            )
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))
@@ -196,8 +204,10 @@ struct CargaMovimientosInicialesView: View {
     }
     
     private var hayArchivosSeleccionados: Bool {
-        movimientosEntradaURL != nil || movimientosSalidaURL != nil
-    }
+            movimientosEntradaURL != nil ||
+            movimientosSalidaURL != nil ||
+            movimientosEntreCarterasURL != nil
+        }
     
     private var hayCatalogosNecesarios: Bool {
         !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
@@ -226,6 +236,15 @@ struct CargaMovimientosInicialesView: View {
                         totalCargados["Movimientos de Salida"] = total
                     }
                 }
+                
+                // Cargar movimientos entre carteras si existe el archivo
+                               if let url = movimientosEntreCarterasURL {
+                                   let service = CargaMovimientosEntreCarterasService(modelContext: modelContext, delegate: self)
+                                   let total = try await service.cargarMovimientos(desde: url)
+                                   DispatchQueue.main.async {
+                                       totalCargados["Movimientos Entre Carteras"] = total
+                                   }
+                               }
                 
             } catch {
                 DispatchQueue.main.async {
