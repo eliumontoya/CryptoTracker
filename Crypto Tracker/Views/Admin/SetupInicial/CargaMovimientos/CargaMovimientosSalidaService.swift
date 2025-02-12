@@ -10,7 +10,11 @@ class CargaMovimientosSalidaService {
         self.delegate = delegate
     }
     
-    func cargarMovimientos(desde url: URL) async throws -> Int {
+    func cargarMovimientos( desde url: URL,
+                            cryptos: [Crypto],
+                            carteras: [Cartera],
+                            fiats: [FIAT]
+    ) async throws -> Int {
         delegate?.didUpdateProgress("Iniciando carga de Movimientos de Salida...")
         
         // Leer archivo Excel

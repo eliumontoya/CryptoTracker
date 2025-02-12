@@ -4,31 +4,40 @@ import UniformTypeIdentifiers
 
 struct CargaMovimientosInicialesView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    
-    // URLs de archivos
-    @State private var movimientosEntradaURL: URL?
-    @State private var movimientosSalidaURL: URL?
-    @State private var movimientosEntreCarterasURL: URL?
-
-    // Estados
-    @State private var isLoading = false
-    @State private var logs: [String] = []
-    @State private var totalCargados = [String: Int]()
-    
-    // Estados para errores
-    @State private var showError = false
-    @State private var errorMessage = ""
-    
-    // Queries para validar existencia de catálogos
-    @Query private var cryptos: [Crypto]
-    @Query private var carteras: [Cartera]
-    @Query private var fiats: [FIAT]
-    
-    // Servicios
-    private var entradaService: CargaMovimientosEntradaService?
-    private var salidaService: CargaMovimientosSalidaService?
-    
+       @Environment(\.dismiss) private var dismiss
+       
+       // URLs de archivos
+       @State private var movimientosEntradaURL: URL?
+       @State private var movimientosSalidaURL: URL?
+       @State private var movimientosEntreCarterasURL: URL?
+       
+       // Estados
+       @State private var isLoading = false
+       @State private var logs: [String] = []
+       @State private var totalCargados = [String: Int]()
+       
+       // Estados para errores
+       @State private var showError = false
+       @State private var errorMessage = ""
+       
+       // Fetch Descriptors para los catálogos
+       private let cryptosDescriptor = FetchDescriptor<Crypto>(sortBy: [SortDescriptor(\.nombre)])
+       private let carterasDescriptor = FetchDescriptor<Cartera>(sortBy: [SortDescriptor(\.nombre)])
+       private let fiatsDescriptor = FetchDescriptor<FIAT>(sortBy: [SortDescriptor(\.nombre)])
+       
+       // Computed properties para los catálogos
+       private var cryptos: [Crypto] {
+           (try? modelContext.fetch(cryptosDescriptor)) ?? []
+       }
+       
+       private var carteras: [Cartera] {
+           (try? modelContext.fetch(carterasDescriptor)) ?? []
+       }
+       
+       private var fiats: [FIAT] {
+           (try? modelContext.fetch(fiatsDescriptor)) ?? []
+       }
+       
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -202,93 +211,125 @@ struct CargaMovimientosInicialesView: View {
             }
         }
     }
-    
     private var hayArchivosSeleccionados: Bool {
             movimientosEntradaURL != nil ||
             movimientosSalidaURL != nil ||
             movimientosEntreCarterasURL != nil
         }
-    
-    private var hayCatalogosNecesarios: Bool {
-        !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
-    }
-    
-    private func cargarArchivos() {
-        isLoading = true
-        totalCargados.removeAll()
         
-        Task {
-            do {
-                // Cargar movimientos de entrada si existe el archivo
-                if let url = movimientosEntradaURL {
-                    let service = CargaMovimientosEntradaService(modelContext: modelContext, delegate: self)
-                    let total = try await service.cargarMovimientos(desde: url)
+        private var hayCatalogosNecesarios: Bool {
+            !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
+        }
+        
+        private func cargarArchivos() {
+            isLoading = true
+            totalCargados.removeAll()
+            
+            // Obtener los catálogos una sola vez
+            let cryptosActuales = cryptos
+            let carterasActuales = carteras
+            let fiatsActuales = fiats
+            
+            Task {
+                do {
+                    // Cargar movimientos de entrada si existe el archivo
+                    if let url = movimientosEntradaURL {
+                        let service = CargaMovimientosEntradaService(
+                            modelContext: modelContext,
+                            delegate: self
+                        )
+                        
+                        let total = try await service.cargarMovimientos(
+                            desde: url,
+                            cryptos: cryptosActuales,
+                            carteras: carterasActuales,
+                            fiats: fiatsActuales
+                        )
+                        
+                        DispatchQueue.main.async {
+                            totalCargados["Movimientos de Entrada"] = total
+                        }
+                    }
+                    
+                    // Cargar movimientos de salida si existe el archivo
+                    if let url = movimientosSalidaURL {
+                        let service = CargaMovimientosSalidaService(
+                            modelContext: modelContext,
+                            delegate: self
+                        )
+                        
+                        let total = try await service.cargarMovimientos(
+                            desde: url,
+                            cryptos: cryptosActuales,
+                            carteras: carterasActuales,
+                            fiats: fiatsActuales
+                        )
+                        
+                        DispatchQueue.main.async {
+                            totalCargados["Movimientos de Salida"] = total
+                        }
+                    }
+                    
+                    // Cargar movimientos entre carteras si existe el archivo
+                    if let url = movimientosEntreCarterasURL {
+                        let service = CargaMovimientosEntreCarterasService(
+                            modelContext: modelContext,
+                            delegate: self
+                        )
+                        
+                        let total = try await service.cargarMovimientos(
+                            desde: url,
+                            cryptos: cryptosActuales,
+                            carteras: carterasActuales
+                        )
+                        
+                        DispatchQueue.main.async {
+                            totalCargados["Movimientos Entre Carteras"] = total
+                        }
+                    }
+                    
+                } catch {
                     DispatchQueue.main.async {
-                        totalCargados["Movimientos de Entrada"] = total
+                        errorMessage = error.localizedDescription
+                        showError = true
                     }
                 }
                 
-                // Cargar movimientos de salida si existe el archivo
-                if let url = movimientosSalidaURL {
-                    let service = CargaMovimientosSalidaService(modelContext: modelContext, delegate: self)
-                    let total = try await service.cargarMovimientos(desde: url)
-                    DispatchQueue.main.async {
-                        totalCargados["Movimientos de Salida"] = total
-                    }
-                }
-                
-                // Cargar movimientos entre carteras si existe el archivo
-                               if let url = movimientosEntreCarterasURL {
-                                   let service = CargaMovimientosEntreCarterasService(modelContext: modelContext, delegate: self)
-                                   let total = try await service.cargarMovimientos(desde: url)
-                                   DispatchQueue.main.async {
-                                       totalCargados["Movimientos Entre Carteras"] = total
-                                   }
-                               }
-                
-            } catch {
                 DispatchQueue.main.async {
-                    errorMessage = error.localizedDescription
-                    showError = true
+                    isLoading = false
                 }
             }
-            
+        }
+    }
+
+    // MARK: - CargaMovimientosDelegate Implementation
+    extension CargaMovimientosInicialesView: CargaMovimientosDelegate {
+        func didUpdateProgress(_ message: String) {
             DispatchQueue.main.async {
+                logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
+            }
+        }
+        
+        func didCompleteTask(_ type: String, total: Int) {
+            DispatchQueue.main.async {
+                totalCargados[type] = total
                 isLoading = false
             }
         }
-    }
-}
-
-// MARK: - CargaMovimientosDelegate Implementation
-extension CargaMovimientosInicialesView: CargaMovimientosDelegate {
-    func didUpdateProgress(_ message: String) {
-        DispatchQueue.main.async {
-            logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
-        }
-    }
-    
-    func didCompleteTask(_ type: String, total: Int) {
-        DispatchQueue.main.async {
-            totalCargados[type] = total
-            isLoading = false
-        }
-    }
-    
-    func didEncounterError(_ error: Error) {
-        DispatchQueue.main.async {
-            if let excelError = error as? ExcelWorksheetError {
-                errorMessage = excelError.errorDescription ?? "Error desconocido"
-            } else {
-                errorMessage = error.localizedDescription
+        
+        func didEncounterError(_ error: Error) {
+            DispatchQueue.main.async {
+                if let excelError = error as? ExcelWorksheetError {
+                    errorMessage = excelError.errorDescription ?? "Error desconocido"
+                } else {
+                    errorMessage = error.localizedDescription
+                }
+                showError = true
+                isLoading = false
+                logs.append("❌ ERROR: \(errorMessage)")
             }
-            showError = true
-            isLoading = false
-            logs.append("❌ ERROR: \(errorMessage)")
         }
     }
-}
-
 #Preview {
     CargaMovimientosInicialesView()
         .frame(width: 800, height: 800)
