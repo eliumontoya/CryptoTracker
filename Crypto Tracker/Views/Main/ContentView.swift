@@ -89,7 +89,9 @@ struct ContentView: View {
                             Label("FIAT", systemImage: "dollarsign.circle")
                         }
                         NavigationLink(
-                            destination: CryptoSyncView(),
+                            destination: CryptoSyncView(
+                                modelContext: modelContext
+                            ),
                             tag: .sync,
                             selection: $selectedAdminMenu
                         ) {
