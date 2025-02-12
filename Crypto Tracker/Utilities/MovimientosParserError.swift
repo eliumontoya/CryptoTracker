@@ -10,8 +10,11 @@ enum MovimientosParserError: LocalizedError {
     case missingData(row: Int, field: String)
     case insufficientFunds(row: Int, crypto: String, requested: Decimal, available: Decimal)
     case sameWallet(row: Int)
-       case invalidReceivedAmount(row: Int, sent: Decimal, received: Decimal)
-    
+    case invalidReceivedAmount(row: Int, sent: Decimal, received: Decimal)
+    case sameCrypto(row: Int, crypto: String)
+       
+      
+           
     var errorDescription: String? {
         switch self {
         case .invalidDate(let row, let value):
@@ -31,8 +34,8 @@ enum MovimientosParserError: LocalizedError {
             return "Error de formato: \(message)"
         case .missingData(let row, let field):
             let ayuda = field.contains("Cartera") ?
-                "Debe especificar el ID/Símbolo de la cartera (ejemplo: BIN para Binance)" :
-                "Este campo es obligatorio"
+            "Debe especificar el ID/Símbolo de la cartera (ejemplo: BIN para Binance)" :
+            "Este campo es obligatorio"
             return "Error en fila \(row): Falta el valor para el campo '\(field)'. \(ayuda)"
         case .insufficientFunds(let row, let crypto, let requested, let available):
             return """
@@ -41,12 +44,14 @@ enum MovimientosParserError: LocalizedError {
                 Disponible: \(available)
                 """
         case .sameWallet(let row):
-                    return "Error en fila \(row): La cartera origen y destino no pueden ser la misma"
-            case .invalidReceivedAmount(let row, let sent, let received):
-                    return """
+            return "Error en fila \(row): La cartera origen y destino no pueden ser la misma"
+        case .invalidReceivedAmount(let row, let sent, let received):
+            return """
                         Error en fila \(row): El monto recibido (\(received)) no puede ser mayor 
                         al monto enviado (\(sent))
                         """
+        case .sameCrypto(let row, let crypto):
+            return "Error en fila \(row): No se puede hacer swap de \(crypto) por sí misma"
         }
     }
 }

@@ -10,6 +10,8 @@ struct CargaMovimientosInicialesView: View {
        @State private var movimientosEntradaURL: URL?
        @State private var movimientosSalidaURL: URL?
        @State private var movimientosEntreCarterasURL: URL?
+    @State private var movimientosSwapURL: URL?
+
        
        // Estados
        @State private var isLoading = false
@@ -101,6 +103,16 @@ struct CargaMovimientosInicialesView: View {
                                 url: $movimientosEntreCarterasURL,
                                 types: ExcelReader.validateExcelTypes()
                             )
+                    
+                    // Movimientos Swap
+                           FileSelectionRow(
+                               title: "Movimientos Swap",
+                               subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera, Cripto origen, Monto Descontado, Cripto final, Monto Adquirido, precio de venta, precio de compra",
+                               url: $movimientosSwapURL,
+                               types: ExcelReader.validateExcelTypes()
+                           )
+                    
+                    
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))
@@ -214,9 +226,11 @@ struct CargaMovimientosInicialesView: View {
     private var hayArchivosSeleccionados: Bool {
             movimientosEntradaURL != nil ||
             movimientosSalidaURL != nil ||
-            movimientosEntreCarterasURL != nil
+            movimientosEntreCarterasURL != nil ||
+            movimientosSwapURL != nil
         }
-        
+    
+    
         private var hayCatalogosNecesarios: Bool {
             !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
         }
@@ -287,6 +301,23 @@ struct CargaMovimientosInicialesView: View {
                             totalCargados["Movimientos Entre Carteras"] = total
                         }
                     }
+                    // Movimientos Swap
+                    if let url = movimientosSwapURL {
+                            let service = CargaMovimientosSwapService(
+                                modelContext: modelContext,
+                                delegate: self
+                            )
+                            
+                            let total = try await service.cargarMovimientos(
+                                desde: url,
+                                cryptos: cryptosActuales,
+                                carteras: carterasActuales
+                            )
+                            
+                            DispatchQueue.main.async {
+                                totalCargados["Movimientos Swap"] = total
+                            }
+                        }
                     
                 } catch {
                     DispatchQueue.main.async {
