@@ -3,43 +3,19 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct CargaMovimientosInicialesView: View {
-    @Environment(\.modelContext) private var modelContext
-       @Environment(\.dismiss) private var dismiss
-       
-       // URLs de archivos
-       @State private var movimientosEntradaURL: URL?
-       @State private var movimientosSalidaURL: URL?
-       @State private var movimientosEntreCarterasURL: URL?
-    @State private var movimientosSwapURL: URL?
+    @Environment(\.modelContext) private var environmentModelContext
+    @Environment(\.dismiss) private var dismiss
+    
+    @StateObject private var viewModel: CargaMovimientosViewModel
+    private let modelContext: ModelContext
 
-       
-       // Estados
-       @State private var isLoading = false
-       @State private var logs: [String] = []
-       @State private var totalCargados = [String: Int]()
-       
-       // Estados para errores
-       @State private var showError = false
-       @State private var errorMessage = ""
-       
-       // Fetch Descriptors para los catálogos
-       private let cryptosDescriptor = FetchDescriptor<Crypto>(sortBy: [SortDescriptor(\.nombre)])
-       private let carterasDescriptor = FetchDescriptor<Cartera>(sortBy: [SortDescriptor(\.nombre)])
-       private let fiatsDescriptor = FetchDescriptor<FIAT>(sortBy: [SortDescriptor(\.nombre)])
-       
-       // Computed properties para los catálogos
-       private var cryptos: [Crypto] {
-           (try? modelContext.fetch(cryptosDescriptor)) ?? []
-       }
-       
-       private var carteras: [Cartera] {
-           (try? modelContext.fetch(carterasDescriptor)) ?? []
-       }
-       
-       private var fiats: [FIAT] {
-           (try? modelContext.fetch(fiatsDescriptor)) ?? []
-       }
-       
+    // Initializer
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        _viewModel = StateObject(wrappedValue: CargaMovimientosViewModel(modelContext: modelContext))
+
+    }
+    
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
@@ -64,7 +40,7 @@ struct CargaMovimientosInicialesView: View {
                 }
                 
                 // Validación de catálogos
-                if !hayCatalogosNecesarios {
+                if !viewModel.hayCatalogosNecesarios {
                     VStack(spacing: 8) {
                         Label("Catálogos incompletos", systemImage: "exclamationmark.triangle.fill")
                             .foregroundStyle(.red)
@@ -85,7 +61,7 @@ struct CargaMovimientosInicialesView: View {
                     FileSelectionRow(
                         title: "Movimientos de Entrada",
                         subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera, Cripto, Cripto adquirido, USD Invertido, Costo Cripto/USD, FIAT Invertido, FIAT_Simbolo",
-                        url: $movimientosEntradaURL,
+                        url: $viewModel.movimientosEntradaURL,
                         types: ExcelReader.validateExcelTypes()
                     )
                     
@@ -93,34 +69,33 @@ struct CargaMovimientosInicialesView: View {
                     FileSelectionRow(
                         title: "Movimientos de Salida",
                         subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera, Cripto, Crypto Salido, Precio USD Venta, USD Total Salido, FIAT Recibido, FIAT_Simbolo",
-                        url: $movimientosSalidaURL,
+                        url: $viewModel.movimientosSalidaURL,
                         types: ExcelReader.validateExcelTypes()
                     )
+                    
                     // Movimientos Entre Carteras
-                            FileSelectionRow(
-                                title: "Movimientos Entre Carteras",
-                                subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera_Origen, ID_Cartera_Destino, Cripto, Monto Envio, Monto recibido, Comision",
-                                url: $movimientosEntreCarterasURL,
-                                types: ExcelReader.validateExcelTypes()
-                            )
+                    FileSelectionRow(
+                        title: "Movimientos Entre Carteras",
+                        subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera_Origen, ID_Cartera_Destino, Cripto, Monto Envio, Monto recibido, Comision",
+                        url: $viewModel.movimientosEntreCarterasURL,
+                        types: ExcelReader.validateExcelTypes()
+                    )
                     
                     // Movimientos Swap
-                           FileSelectionRow(
-                               title: "Movimientos Swap",
-                               subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera, Cripto origen, Monto Descontado, Cripto final, Monto Adquirido, precio de venta, precio de compra",
-                               url: $movimientosSwapURL,
-                               types: ExcelReader.validateExcelTypes()
-                           )
-                    
-                    
+                    FileSelectionRow(
+                        title: "Movimientos Swap",
+                        subtitle: "Formato: Fecha (DD/MM/YYYY), ID_Cartera, Cripto origen, Monto Descontado, Cripto final, Monto Adquirido, precio de venta, precio de compra",
+                        url: $viewModel.movimientosSwapURL,
+                        types: ExcelReader.validateExcelTypes()
+                    )
                 }
                 .padding()
                 .background(Color.gray.opacity(0.1))
                 .cornerRadius(12)
                 
                 // Botón de carga
-                Button(action: cargarArchivos) {
-                    if isLoading {
+                Button(action: viewModel.cargarArchivos) {
+                    if viewModel.isLoading {
                         ProgressView()
                             .progressViewStyle(CircularProgressViewStyle())
                     } else {
@@ -133,18 +108,18 @@ struct CargaMovimientosInicialesView: View {
                             .cornerRadius(10)
                     }
                 }
-                .disabled(isLoading || !hayArchivosSeleccionados || !hayCatalogosNecesarios)
+                .disabled(viewModel.isLoading || !viewModel.hayArchivosSeleccionados || !viewModel.hayCatalogosNecesarios)
                 .padding(.horizontal)
                 
                 // Área de logs
-                if !logs.isEmpty {
+                if !viewModel.logs.isEmpty {
                     VStack(alignment: .leading) {
                         Text("Log de operaciones:")
                             .font(.headline)
                         
                         ScrollView {
                             VStack(alignment: .leading, spacing: 4) {
-                                ForEach(logs, id: \.self) { log in
+                                ForEach(viewModel.logs, id: \.self) { log in
                                     Text(log)
                                         .font(.system(.body, design: .monospaced))
                                 }
@@ -158,13 +133,13 @@ struct CargaMovimientosInicialesView: View {
                 }
                 
                 // Resumen de carga
-                if !totalCargados.isEmpty {
+                if !viewModel.totalCargados.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Resumen de carga:")
                             .font(.headline)
                         
-                        ForEach(Array(totalCargados.keys.sorted()), id: \.self) { key in
-                            if let total = totalCargados[key] {
+                        ForEach(Array(viewModel.totalCargados.keys.sorted()), id: \.self) { key in
+                            if let total = viewModel.totalCargados[key] {
                                 Text("\(key): \(total) registros cargados")
                                     .foregroundColor(.green)
                             }
@@ -176,14 +151,14 @@ struct CargaMovimientosInicialesView: View {
                 }
                 
                 // Ayuda con IDs
-                if totalCargados.isEmpty && logs.contains(where: { $0.contains("cartera") || $0.contains("crypto") }) {
+                if viewModel.totalCargados.isEmpty && viewModel.logs.contains(where: { $0.contains("cartera") || $0.contains("crypto") }) {
                     VStack(alignment: .leading, spacing: 12) {
                         // Carteras
                         VStack(alignment: .leading, spacing: 8) {
                             Text("IDs de Carteras disponibles:")
                                 .font(.headline)
                             
-                            ForEach(carteras) { cartera in
+                            ForEach(viewModel.carteras) { cartera in
                                 Text("• \(cartera.simbolo) → \(cartera.nombre)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -195,7 +170,7 @@ struct CargaMovimientosInicialesView: View {
                             Text("Cryptos disponibles:")
                                 .font(.headline)
                             
-                            ForEach(cryptos) { crypto in
+                            ForEach(viewModel.cryptos) { crypto in
                                 Text("• \(crypto.simbolo) → \(crypto.nombre)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
@@ -209,160 +184,25 @@ struct CargaMovimientosInicialesView: View {
             }
             .padding()
         }
-        .alert("Error", isPresented: $showError) {
+        .alert("Error", isPresented: $viewModel.showError) {
             Button("OK", role: .cancel) { }
         } message: {
-            Text(errorMessage)
+            Text(viewModel.errorMessage)
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cerrar") {
                     dismiss()
                 }
-                .disabled(isLoading)
+                .disabled(viewModel.isLoading)
             }
         }
     }
-    private var hayArchivosSeleccionados: Bool {
-            movimientosEntradaURL != nil ||
-            movimientosSalidaURL != nil ||
-            movimientosEntreCarterasURL != nil ||
-            movimientosSwapURL != nil
-        }
-    
-    
-        private var hayCatalogosNecesarios: Bool {
-            !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
-        }
-        
-        private func cargarArchivos() {
-            isLoading = true
-            totalCargados.removeAll()
-            
-            // Obtener los catálogos una sola vez
-            let cryptosActuales = cryptos
-            let carterasActuales = carteras
-            let fiatsActuales = fiats
-            
-            Task {
-                do {
-                    // Cargar movimientos de entrada si existe el archivo
-                    if let url = movimientosEntradaURL {
-                        let service = CargaMovimientosEntradaService(
-                            modelContext: modelContext,
-                            delegate: self
-                        )
-                        
-                        let total = try await service.cargarMovimientos(
-                            desde: url,
-                            cryptos: cryptosActuales,
-                            carteras: carterasActuales,
-                            fiats: fiatsActuales
-                        )
-                        
-                        DispatchQueue.main.async {
-                            totalCargados["Movimientos de Entrada"] = total
-                        }
-                    }
-                    
-                    // Cargar movimientos de salida si existe el archivo
-                    if let url = movimientosSalidaURL {
-                        let service = CargaMovimientosSalidaService(
-                            modelContext: modelContext,
-                            delegate: self
-                        )
-                        
-                        let total = try await service.cargarMovimientos(
-                            desde: url,
-                            cryptos: cryptosActuales,
-                            carteras: carterasActuales,
-                            fiats: fiatsActuales
-                        )
-                        
-                        DispatchQueue.main.async {
-                            totalCargados["Movimientos de Salida"] = total
-                        }
-                    }
-                    
-                    // Cargar movimientos entre carteras si existe el archivo
-                    if let url = movimientosEntreCarterasURL {
-                        let service = CargaMovimientosEntreCarterasService(
-                            modelContext: modelContext,
-                            delegate: self
-                        )
-                        
-                        let total = try await service.cargarMovimientos(
-                            desde: url,
-                            cryptos: cryptosActuales,
-                            carteras: carterasActuales
-                        )
-                        
-                        DispatchQueue.main.async {
-                            totalCargados["Movimientos Entre Carteras"] = total
-                        }
-                    }
-                    // Movimientos Swap
-                    if let url = movimientosSwapURL {
-                            let service = CargaMovimientosSwapService(
-                                modelContext: modelContext,
-                                delegate: self
-                            )
-                            
-                            let total = try await service.cargarMovimientos(
-                                desde: url,
-                                cryptos: cryptosActuales,
-                                carteras: carterasActuales
-                            )
-                            
-                            DispatchQueue.main.async {
-                                totalCargados["Movimientos Swap"] = total
-                            }
-                        }
-                    
-                } catch {
-                    DispatchQueue.main.async {
-                        errorMessage = error.localizedDescription
-                        showError = true
-                    }
-                }
-                
-                DispatchQueue.main.async {
-                    isLoading = false
-                }
-            }
-        }
-    }
-
-    // MARK: - CargaMovimientosDelegate Implementation
-    extension CargaMovimientosInicialesView: CargaMovimientosDelegate {
-        func didUpdateProgress(_ message: String) {
-            DispatchQueue.main.async {
-                logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
-            }
-        }
-        
-        func didCompleteTask(_ type: String, total: Int) {
-            DispatchQueue.main.async {
-                totalCargados[type] = total
-                isLoading = false
-            }
-        }
-        
-        func didEncounterError(_ error: Error) {
-            DispatchQueue.main.async {
-                if let excelError = error as? ExcelWorksheetError {
-                    errorMessage = excelError.errorDescription ?? "Error desconocido"
-                } else {
-                    errorMessage = error.localizedDescription
-                }
-                showError = true
-                isLoading = false
-                logs.append("❌ ERROR: \(errorMessage)")
-            }
-        }
-    }
-#Preview {
-    CargaMovimientosInicialesView()
-        .frame(width: 800, height: 800)
-        .withPreviewContainer()
 }
+    /*
+     #Preview {
+     CargaMovimientosInicialesView()
+     .frame(width: 800, height: 800)
+     .withPreviewContainer()
+     }
+     */
