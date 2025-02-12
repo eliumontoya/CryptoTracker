@@ -3,65 +3,63 @@ import SwiftData
 
 struct AdminCryptosView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
+    @StateObject private var viewModel: AdminCryptosViewModel
     
-    @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
-    @State private var selectedCrypto: Crypto?
-    @State private var showingDeleteAlert = false
+    init(modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: AdminCryptosViewModel(modelContext: modelContext))
+    }
     
     var body: some View {
         VStack {
             List {
-                ForEach(cryptos) { crypto in
-                    CryptoRowView(crypto: crypto)
+                ForEach(viewModel.cryptos) { crypto in
+                    CryptoRowView(crypto: crypto, viewModel: viewModel)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            selectedCrypto = crypto
-                            showingEditSheet = true
+                            viewModel.selectedCrypto = crypto
+                            viewModel.showEditForm(for: crypto)
                         }
                 }
-                .onDelete(perform: deleteCryptos)
+                .onDelete { offsets in
+                    offsets.forEach { index in
+                        viewModel.deleteCrypto(viewModel.cryptos[index])
+                    }
+                }
             }
             .navigationTitle("Cryptos")
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddSheet = true }) {
+                    Button(action: { viewModel.showAddForm() }) {
                         Label("Agregar Crypto", systemImage: "plus")
                     }
                 }
             }
-            .sheet(item: $selectedCrypto) { crypto in
-                            NavigationStack {
-                                CryptoFormView(mode: crypto.id == nil ? .add : .edit(crypto))
-                            }
-                        }
-            .sheet(isPresented: $showingAddSheet) {
-                        NavigationStack {
-                            CryptoFormView(mode: .add)
-                        }
+            .sheet(item: $viewModel.formState) { formState in
+                NavigationStack {
+                    switch formState {
+                    case .add:
+                        CryptoFormView(viewModel: viewModel)
+                    case .edit(let crypto):
+                        CryptoFormView(viewModel: viewModel, crypto: crypto)
                     }
-            .alert("¿Eliminar crypto?", isPresented: $showingDeleteAlert) {
-                            Button("Cancelar", role: .cancel) { }
-                            Button("Eliminar", role: .destructive) {
-                                if let crypto = selectedCrypto {
-                                    modelContext.delete(crypto)
-                                    selectedCrypto = nil
-                                }
-                            }  }
-            
-        }
-    }
-    
-    private func deleteCryptos(at offsets: IndexSet) {
-        for index in offsets {
-            let crypto = cryptos[index]
-            modelContext.delete(crypto)
+                }
+            }
+            .alert("¿Eliminar crypto?", isPresented: $viewModel.showingDeleteAlert) {
+                Button("Cancelar", role: .cancel) { }
+                Button("Eliminar", role: .destructive) {
+                    if let crypto = viewModel.selectedCrypto {
+                        viewModel.deleteCrypto(crypto)
+                        viewModel.selectedCrypto = nil
+                    }
+                }
+            }
         }
     }
 }
+
 struct CryptoRowView: View {
     let crypto: Crypto
+    let viewModel: AdminCryptosViewModel
     @State private var showingHistory = false
     
     var body: some View {
@@ -72,12 +70,14 @@ struct CryptoRowView: View {
                 Text("(\(crypto.simbolo))")
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(crypto.precio.formatted(.currency(code: "USD")))
+                let calculos = viewModel.getCalculosCrypto(crypto)
+                Text(calculos.precio.formatted(.currency(code: "USD")))
                     .font(.subheadline)
             }
             
             HStack {
-                Text("Última actualización: \(crypto.ultimaActualizacion.formatted())")
+                let calculos = viewModel.getCalculosCrypto(crypto)
+                Text("Última actualización: \(calculos.ultimaActualizacion.formatted())")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()
@@ -89,28 +89,26 @@ struct CryptoRowView: View {
     }
 }
 
-enum CryptoFormMode {
-    case add
-    case edit(Crypto)
-}
-
 struct CryptoFormView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject var viewModel: AdminCryptosViewModel
     
-    let mode: CryptoFormMode
+    let crypto: Crypto?
     
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
     @State private var precio: Decimal = 0.0
     
+    init(viewModel: AdminCryptosViewModel, crypto: Crypto? = nil) {
+        self.viewModel = viewModel
+        self.crypto = crypto
+        _nombre = State(initialValue: crypto?.nombre ?? "")
+        _simbolo = State(initialValue: crypto?.simbolo ?? "")
+        _precio = State(initialValue: crypto?.precio ?? 0.0)
+    }
+    
     var title: String {
-        switch mode {
-        case .add:
-            return "Nueva Crypto"
-        case .edit:
-            return "Editar Crypto"
-        }
+        crypto == nil ? "Nueva Crypto" : "Editar Crypto"
     }
     
     var body: some View {
@@ -130,48 +128,23 @@ struct CryptoFormView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
+                    viewModel.closeForm()
                     dismiss()
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
-                    save()
+                    if let crypto = crypto {
+                        viewModel.updateCrypto(crypto, nombre: nombre, simbolo: simbolo, precio: precio)
+                    } else {
+                        viewModel.addCrypto(nombre: nombre, simbolo: simbolo, precio: precio)
+                    }
+                    viewModel.closeForm()
+                    dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
             }
         }
-        .onAppear {
-            if case .edit(let crypto) = mode {
-                nombre = crypto.nombre
-                simbolo = crypto.simbolo
-                precio = crypto.precio
-            }
-        }
-    }
-    
-    private func save() {
-        switch mode {
-        case .add:
-            let newCrypto = Crypto(nombre: nombre, simbolo: simbolo, precio: precio)
-            modelContext.insert(newCrypto)
-        case .edit(let crypto):
-            // Guardar el precio anterior en el histórico
-            let precioHistorico = PrecioHistorico(
-                crypto: crypto,
-                precio: crypto.precio,
-                fecha: crypto.ultimaActualizacion
-            )
-            modelContext.insert(precioHistorico)
-            
-            // Actualizar la crypto
-            crypto.nombre = nombre
-            crypto.simbolo = simbolo
-            crypto.precio = precio
-            crypto.ultimaActualizacion = Date()
-        }
-        dismiss()
     }
 }
-#Preview {
-    AdminCryptosView()
-}
+

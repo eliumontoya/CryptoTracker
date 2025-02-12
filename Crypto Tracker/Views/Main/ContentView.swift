@@ -66,7 +66,7 @@ struct ContentView: View {
                 DisclosureGroup(
                     content: {
                         NavigationLink(
-                            destination: AdminCryptosView(),
+                            destination: AdminCryptosView(modelContext: modelContext),
                             tag: .cryptos,
                             selection: $selectedAdminMenu
                         ) {
