@@ -2,49 +2,51 @@ import SwiftUI
 import SwiftData
 
 struct EliminarDataView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     
-    @State private var showingConfirmation = false
-    @State private var logs: [String] = []
-    @State private var isDeleting = false
-    @State private var deleteCompleted = false
+    @Environment(\.modelContext) private var environmentModelContext
+    private let modelContext: ModelContext
+    @StateObject private var viewModel: DataDeletionViewModel
+
     
-    // Queries para obtener todos los datos
-    @Query private var cryptos: [Crypto]
-    @Query private var carteras: [Cartera]
-    @Query private var fiats: [FIAT]
-    @Query private var movimientosIngreso: [MovimientoIngreso]
-    @Query private var movimientosEgreso: [MovimientoEgreso]
-    @Query private var movimientosEntreCarteras: [MovimientoEntreCarteras]
-    @Query private var movimientosSwap: [MovimientoSwap]
-    @Query private var preciosHistoricos: [PrecioHistorico]
-    @Query private var syncConfigs: [CryptoSyncConfig]
+    init(modelContext: ModelContext) {
+            self.modelContext = modelContext
+        _viewModel = StateObject(wrappedValue: DataDeletionViewModel(modelContext: modelContext))
+
+        }
+    
+    // Estado para logs y otras propiedades
+        @State private var showingConfirmation = false
+        @State private var logs: [String] = []
+        @State private var isDeleting = false
+        @State private var deleteCompleted = false
+    
+   
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Ícono de advertencia
+                // Warning Icon
                 Image(systemName: "exclamationmark.triangle.fill")
                     .font(.system(size: 48))
                     .foregroundColor(.red)
                 
-                // Texto de advertencia
+                // Warning Title
                 Text("¡ADVERTENCIA!")
                     .font(.title)
                     .bold()
                     .foregroundColor(.red)
                 
-                // Descripción detallada
+                // Detailed Description
                 Text("Todos los datos que se encuentran en la aplicación serán borrados y no podrán recuperarse. Esto implica todos los movimientos, información de carteras, cryptos, FIAT e históricos existentes.")
                     .font(.title3)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
-                // Botones de acción
-                if !deleteCompleted {
+                // Action Buttons
+                if !viewModel.deleteCompleted {
                     VStack(spacing: 16) {
-                        // Botón de cancelar (más prominente)
+                        // Cancel Button
                         Button(action: {
                             dismiss()
                         }) {
@@ -57,7 +59,7 @@ struct EliminarDataView: View {
                                 .cornerRadius(10)
                         }
                         
-                        // Botón de borrado (más discreto)
+                        // Delete Button
                         Button(action: {
                             showingConfirmation = true
                         }) {
@@ -70,19 +72,19 @@ struct EliminarDataView: View {
                                 .background(Color.red)
                                 .cornerRadius(8)
                         }
-                        .disabled(isDeleting)
+                        .disabled(viewModel.isDeleting)
                     }
                 }
                 
-                // Área de logs
-                if !logs.isEmpty {
+                // Logs Area
+                if !viewModel.logs.isEmpty {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Log de operaciones:")
                             .font(.headline)
                         
                         ScrollView {
                             VStack(alignment: .leading, spacing: 4) {
-                                ForEach(logs, id: \.self) { log in
+                                ForEach(viewModel.logs, id: \.self) { log in
                                     Text(log)
                                         .font(.system(.body, design: .monospaced))
                                 }
@@ -95,8 +97,8 @@ struct EliminarDataView: View {
                     }
                 }
                 
-                // Botón Cerrar (aparece solo cuando se completa el borrado)
-                if deleteCompleted {
+                // Close Button
+                if viewModel.deleteCompleted {
                     Button(action: {
                         dismiss()
                     }) {
@@ -116,90 +118,42 @@ struct EliminarDataView: View {
             Button("Cancelar", role: .cancel) { }
             Button("Sí, Borrar Todo", role: .destructive) {
                 Task {
-                    await borrarDatos()
+                    await viewModel.borrarDatos()
                 }
             }
         } message: {
             Text("¿Está completamente seguro que desea eliminar todos los datos? Esta acción no se puede deshacer.")
         }
     }
-    
-    private func agregarLog(_ mensaje: String) {
-        DispatchQueue.main.async {
-            logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
-        }
-    }
-    
-    private func borrarDatos() async {
-        isDeleting = true
-        
-        // Borrando movimientos
-        agregarLog("Iniciando borrado de datos...")
-        
-        // Movimientos
-        agregarLog("Borrando movimientos de ingreso...")
-        for movimiento in movimientosIngreso {
-            modelContext.delete(movimiento)
-        }
-        
-        agregarLog("Borrando movimientos de egreso...")
-        for movimiento in movimientosEgreso {
-            modelContext.delete(movimiento)
-        }
-        
-        agregarLog("Borrando movimientos entre carteras...")
-        for movimiento in movimientosEntreCarteras {
-            modelContext.delete(movimiento)
-        }
-        
-        agregarLog("Borrando movimientos de swap...")
-        for movimiento in movimientosSwap {
-            modelContext.delete(movimiento)
-        }
-        
-        // Históricos
-        agregarLog("Borrando precios históricos...")
-        for precio in preciosHistoricos {
-            modelContext.delete(precio)
-        }
-        
-        // Configuraciones
-        agregarLog("Borrando configuraciones de sincronización...")
-        for config in syncConfigs {
-            modelContext.delete(config)
-        }
-        
-        // Catálogos
-        agregarLog("Borrando carteras...")
-        for cartera in carteras {
-            modelContext.delete(cartera)
-        }
-        
-        agregarLog("Borrando cryptos...")
-        for crypto in cryptos {
-            modelContext.delete(crypto)
-        }
-        
-        agregarLog("Borrando monedas FIAT...")
-        for fiat in fiats {
-            modelContext.delete(fiat)
-        }
-        
-        do {
-            try modelContext.save()
-            agregarLog("✅ Borrado completado exitosamente")
-            // Marcar como completado para mostrar el botón de cerrar
-            DispatchQueue.main.async {
-                deleteCompleted = true
-            }
-        } catch {
-            agregarLog("❌ Error al guardar cambios: \(error.localizedDescription)")
-        }
-        
-        isDeleting = false
-    }
 }
 
+/*
 #Preview {
-    EliminarDataView()
+    struct PreviewWrapper: View {
+            let context: ModelContext
+            
+            init() {
+                let config = ModelConfiguration(isStoredInMemoryOnly: true)
+                let container = try! ModelContainer(
+                    for: Crypto.self,
+                        Cartera.self,
+                        FIAT.self,
+                        MovimientoIngreso.self,
+                        MovimientoEgreso.self,
+                        MovimientoEntreCarteras.self,
+                        MovimientoSwap.self,
+                        PrecioHistorico.self,
+                        CryptoSyncConfig.self,
+                    configurations: config
+                )
+                self.context = container.mainContext
+            }
+            
+            var body: some View {
+                EliminarDataView(modelContext: context)
+            }
+        }
+        
+          return PreviewWrapper()
 }
+*/
