@@ -43,8 +43,8 @@ struct SetupInicialView: View {
                 title: "Carga de Movimientos Iniciales",
                 icon: "arrow.left.arrow.right.circle.fill",
                 description: "Importa movimientos iniciales desde un archivo",
-                createDestination: { _ in
-                    AnyView(CargaMovimientosInicialesView())
+                createDestination: { modelContext in
+                    AnyView(CargaMovimientosInicialesView(modelContext: modelContext))
                 }
             ),
             SetupOption(
