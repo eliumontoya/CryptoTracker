@@ -1,26 +1,16 @@
 import Foundation
 import SwiftData
 
-// MARK: - CargaMovimientosDelegate
-protocol CargaMovimientosDelegate {
-    func didUpdateProgress(_ message: String)
-    func didCompleteTask(_ type: String, total: Int)
-    func didEncounterError(_ error: Error)
-}
-
-// MARK: - CargaMovimientosService
-class CargaMovimientosService {
+class CargaMovimientosEntradaService {
     private let modelContext: ModelContext
     private var delegate: CargaMovimientosDelegate?
     
-    
-    init(modelContext: ModelContext, delegate: CargaMovimientosDelegate) {
+    init(modelContext: ModelContext, delegate: CargaMovimientosDelegate? = nil) {
         self.modelContext = modelContext
         self.delegate = delegate
     }
     
-    // MARK: - Carga de Movimientos de Entrada
-    func cargarMovimientosEntrada(desde url: URL) async throws -> Int {
+    func cargarMovimientos(desde url: URL) async throws -> Int {
         delegate?.didUpdateProgress("Iniciando carga de Movimientos de Entrada...")
         
         // Leer archivo Excel
@@ -32,7 +22,7 @@ class CargaMovimientosService {
         let fiats = try modelContext.fetch(FetchDescriptor<FIAT>())
         
         // Procesar movimientos
-        let movimientos = try MovimientosParser.parseMovimientoEntrada(
+        let movimientos = try MovimientoEntradaParser.parse(
             worksheet: worksheet,
             carteras: carteras,
             cryptos: cryptos,
