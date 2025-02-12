@@ -35,8 +35,8 @@ struct SetupInicialView: View {
                 title: "Carga de Catálogos Iniciales",
                 icon: "folder.circle.fill",
                 description: "Carga los catálogos predeterminados de Cryptos, FIAT y Carteras",
-                createDestination: { _ in
-                    AnyView(CargaCatalogosView())
+                createDestination: { modelContext in
+                    AnyView(CargaCatalogosView(modelContext: modelContext))
                 }
             ),
             SetupOption(
