@@ -82,7 +82,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: AdminFiatView(),
+                            destination: AdminFiatView(modelContext: modelContext),
                             tag: .fiat,
                             selection: $selectedAdminMenu
                         ) {

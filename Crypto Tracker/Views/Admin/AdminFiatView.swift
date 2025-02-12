@@ -1,75 +1,67 @@
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 struct AdminFiatView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
+    @StateObject private var viewModel: AdminFiatViewModel
     
-    @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
-    @State private var selectedFiat: FIAT?
-    @State private var showingDeleteAlert = false
-    
-    var body: some View {
-        VStack {
-            List {
-                ForEach(fiats) { fiat in
-                    FiatRowView(fiat: fiat)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedFiat = fiat
-                            showingEditSheet = true
-                        }
-                }
-                .onDelete(perform: deleteFiats)
-            }
-            .navigationTitle("Monedas FIAT")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddSheet = true }) {
-                        Label("Agregar FIAT", systemImage: "plus")
-                    }
-                }
-            }
-            .sheet(item: $selectedFiat) { fiat in
-                            NavigationStack {
-                                FiatFormView(mode: fiat.id == nil ? .add : .edit(fiat))
-                            }
-                        }
-            .sheet(isPresented: $showingAddSheet) {
-                        NavigationStack {
-                            FiatFormView(mode: .add)
-                        }
-                    }
-            .alert("¿Eliminar FIAT?", isPresented: $showingDeleteAlert) {
-                Button("Cancelar", role: .cancel) { }
-                Button("Eliminar", role: .destructive) {
-                    if let fiat = selectedFiat {
-                        modelContext.delete(fiat)
-                        selectedFiat = nil
-                    }
-                }
-            } message: {
-                Text("¿Está seguro de eliminar esta moneda? Esta acción no se puede deshacer.")
-            }
-        }
+    init(modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: AdminFiatViewModel(modelContext: modelContext))
     }
     
-    private func deleteFiats(at offsets: IndexSet) {
-        for index in offsets {
-            let fiat = fiats[index]
-            if fiat.movimientosIngreso.isEmpty && fiat.movimientosEgreso.isEmpty {
-                modelContext.delete(fiat)
-            } else {
-                selectedFiat = fiat
-                showingDeleteAlert = true
+    var body: some View {
+        List {
+            ForEach(viewModel.fiats) { fiat in
+                FiatRowView(fiat: fiat, precio: viewModel.getPrecioUSD(fiat))
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        viewModel.selectedFiat = fiat
+                        viewModel.showEditForm(for: fiat)
+                    }
             }
+            .onDelete { offsets in
+                for index in offsets {
+                    let fiat = viewModel.fiats[index]
+                    if viewModel.canDeleteFiat(fiat) {
+                        viewModel.deleteFiat(fiat)
+                    } else {
+                        viewModel.selectedFiat = fiat
+                        viewModel.showingDeleteAlert = true
+                    }
+                }
+            }
+        }
+        .navigationTitle("Monedas FIAT")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { viewModel.showAddForm() }) {
+                    Label("Agregar FIAT", systemImage: "plus")
+                }
+            }
+        }
+        .sheet(item: $viewModel.formState) { formState in
+            NavigationStack {
+                FiatFormView(viewModel: viewModel, mode: formState)
+            }
+        }
+        .alert("¿Eliminar FIAT?", isPresented: $viewModel.showingDeleteAlert) {
+            Button("Cancelar", role: .cancel) { }
+            Button("Eliminar", role: .destructive) {
+                if let fiat = viewModel.selectedFiat {
+                    viewModel.deleteFiat(fiat)
+                    viewModel.selectedFiat = nil
+                }
+            }
+        } message: {
+            Text("¿Está seguro de eliminar esta moneda? Esta acción no se puede deshacer.")
         }
     }
 }
 
+// MARK: - Vistas Auxiliares
 struct FiatRowView: View {
     let fiat: FIAT
+    let precio: Decimal
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -79,7 +71,7 @@ struct FiatRowView: View {
                 Text("(\(fiat.simbolo))")
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(fiat.precioUSD.formatted(.currency(code: "USD")))
+                Text(precio.formatted(.currency(code: "USD")))
                     .font(.subheadline)
             }
         }
@@ -87,16 +79,10 @@ struct FiatRowView: View {
     }
 }
 
-enum FiatFormMode {
-    case add
-    case edit(FIAT)
-}
-
 struct FiatFormView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
-    let mode: FiatFormMode
+    let viewModel: AdminFiatViewModel
+    let mode: FiatFormState
     
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
@@ -130,12 +116,15 @@ struct FiatFormView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
+                    viewModel.closeForm()
                     dismiss()
                 }
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
                     save()
+                    viewModel.closeForm()
+                    dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty || precioUSD <= 0)
             }
@@ -152,18 +141,9 @@ struct FiatFormView: View {
     private func save() {
         switch mode {
         case .add:
-            let newFiat = FIAT(nombre: nombre, simbolo: simbolo, precioUSD: precioUSD)
-            modelContext.insert(newFiat)
+            viewModel.addFiat(nombre: nombre, simbolo: simbolo, precioUSD: precioUSD)
         case .edit(let fiat):
-            fiat.nombre = nombre
-            fiat.simbolo = simbolo
-            fiat.precioUSD = precioUSD
+            viewModel.updateFiat(fiat, nombre: nombre, simbolo: simbolo, precioUSD: precioUSD)
         }
-        dismiss()
     }
-}
-
-#Preview {
-    AdminFiatView()
-        .withPreviewContainer()
 }
