@@ -1,6 +1,7 @@
 import SwiftUI
 import SwiftData
 
+@MainActor
 class EliminarDataViewModel: ObservableObject {
     @Published var logs: [String] = []
     @Published var isDeleting = false

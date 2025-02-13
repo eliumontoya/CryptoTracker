@@ -3,6 +3,7 @@ import SwiftData
 import UniformTypeIdentifiers
 
 // MARK: - ViewModel
+@MainActor
 class CargaCatalogosViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var logs: [String] = []

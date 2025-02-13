@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 import Combine
 
+@MainActor
 class CargaMovimientosViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var movimientosEntradaURL: URL?

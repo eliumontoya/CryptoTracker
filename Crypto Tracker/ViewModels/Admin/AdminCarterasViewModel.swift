@@ -15,6 +15,8 @@ enum CarteraFormState: Identifiable {
         }
     }
 }
+
+@MainActor
 class AdminCarterasViewModel: ObservableObject {
     @Published private(set) var carteras: [Cartera] = []
     @Published var formState: CarteraFormState?

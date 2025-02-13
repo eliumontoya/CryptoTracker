@@ -2,6 +2,7 @@ import XCTest
 import SwiftData
 @testable import Crypto_Tracker
 
+@MainActor
 final class AdminCarterasViewModelTests: XCTestCase {
     var modelContainer: ModelContainer!
     var modelContext: ModelContext!
