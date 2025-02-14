@@ -1,43 +1,20 @@
+// MovimientoEntradaView.swift
 import SwiftUI
 import SwiftData
-
-enum MovimientoEntradaFormMode: Hashable {
-    case add
-    case edit(MovimientoIngreso)
-    
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .add:
-            hasher.combine(0)
-        case .edit(let movimiento):
-            hasher.combine(1)
-            hasher.combine(movimiento.id)
-        }
-    }
-    
-    static func == (lhs: MovimientoEntradaFormMode, rhs: MovimientoEntradaFormMode) -> Bool {
-        switch (lhs, rhs) {
-        case (.add, .add):
-            return true
-        case (.edit(let m1), .edit(let m2)):
-            return m1.id == m2.id
-        default:
-            return false
-        }
-    }
-}
 
 struct MovimientosEntradaView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoIngreso.fecha, order: .reverse) private var movimientos: [MovimientoIngreso]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
-    
     @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
     @State private var selectedMovimiento: MovimientoIngreso?
-    @State private var showingDeleteAlert = false
+    
+    @StateObject private var viewModel: MovimientoEntradaViewModel
+ 
+        // Hacer el inicializador público
+        init(viewModel: MovimientoEntradaViewModel) {
+            _viewModel = StateObject(wrappedValue: viewModel)
+        }
+    
     
     var body: some View {
         List {
@@ -46,7 +23,6 @@ struct MovimientosEntradaView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         selectedMovimiento = movimiento
-                        showingEditSheet = true
                     }
             }
             .onDelete(perform: deleteMovimientos)
@@ -57,25 +33,29 @@ struct MovimientosEntradaView: View {
                 Button(action: { showingAddSheet = true }) {
                     Label("Nuevo Movimiento", systemImage: "plus")
                 }
-                .disabled(cryptos.isEmpty || carteras.isEmpty)
             }
         }
- 
-
         .sheet(item: $selectedMovimiento) { movimiento in
-                    NavigationStack {
-                        MovimientoEntradaFormView(
-                            mode: movimiento.id == nil ? .add : .edit(movimiento)
-                        )
-                    }
-                    .frame(minWidth: 500, minHeight: 700)
-                }
+            NavigationStack {
+                MovimientoEntradaFormView(
+                    viewModel: MovimientoEntradaViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
         .sheet(isPresented: $showingAddSheet) {
-                    NavigationStack {
-                        MovimientoEntradaFormView(mode: .add)
-                    }
-                    .frame(minWidth: 500, minHeight: 700)
-                }
+            NavigationStack {
+                MovimientoEntradaFormView(
+                    viewModel: MovimientoEntradaViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {
@@ -132,8 +112,3 @@ struct MovimientoEntradaRowView: View {
         .padding(.vertical, 4)
     }
 }
-
-    #Preview {
-        MovimientosEntradaView()
-            .withPreviewContainer()
-    }

@@ -1,86 +1,60 @@
 import SwiftUI
 import SwiftData
-enum MovimientoEntreCarterasFormMode: Hashable {
-    case add
-    case edit(MovimientoEntreCarteras)
-    
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .add:
-            hasher.combine(0)
-        case .edit(let movimiento):
-            hasher.combine(1)
-            hasher.combine(movimiento.id)
-        }
-    }
-    
-    static func == (lhs: MovimientoEntreCarterasFormMode, rhs: MovimientoEntreCarterasFormMode) -> Bool {
-        switch (lhs, rhs) {
-        case (.add, .add):
-            return true
-        case (.edit(let m1), .edit(let m2)):
-            return m1.id == m2.id
-        default:
-            return false
-        }
-    }
-}
+
 struct MovimientosEntreCarterasView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoEntreCarteras.fecha, order: .reverse) private var movimientos: [MovimientoEntreCarteras]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    
     @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
     @State private var selectedMovimiento: MovimientoEntreCarteras?
-    @State private var showingDeleteAlert = false
     
     var body: some View {
-        VStack {
-            List {
-                ForEach(movimientos) { movimiento in
-                    MovimientoEntreCarterasRowView(movimiento: movimiento)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedMovimiento = movimiento
-                            showingEditSheet = true
-                        }
-                }
-                .onDelete(perform: deleteMovimientos)
-            }
-            .navigationTitle("Movimientos Entre Carteras")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddSheet = true }) {
-                        Label("Nuevo Movimiento", systemImage: "plus")
+        List {
+            ForEach(movimientos) { movimiento in
+                MovimientoEntreCarterasRowView(movimiento: movimiento)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedMovimiento = movimiento
                     }
-                    .disabled(cryptos.isEmpty || carteras.count < 2)
+            }
+            .onDelete(perform: deleteMovimientos)
+        }
+        .navigationTitle("Movimientos Entre Carteras")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingAddSheet = true }) {
+                    Label("Nuevo Movimiento", systemImage: "plus")
                 }
             }
- 
-          
-            .sheet(item: $selectedMovimiento) { movimiento in
-                        NavigationStack {
-                            MovimientoEntreCarterasFormView(
-                                mode: movimiento.id == nil ? .add : .edit(movimiento)
-                            )
-                        }
-                        .frame(minWidth: 500, minHeight: 700)
-                    }
-            .sheet(isPresented: $showingAddSheet) {
-                        NavigationStack {
-                            MovimientoEntreCarterasFormView(mode: .add)
-                        }
-                        .frame(minWidth: 500, minHeight: 700)
-                    }
-            
+        }
+        .sheet(item: $selectedMovimiento) { movimiento in
+            NavigationStack {
+                MovimientoEntreCarterasFormView(
+                    viewModel: MovimientoEntreCarterasViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoEntreCarterasFormView(
+                    viewModel: MovimientoEntreCarterasViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
         }
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(movimientos[index])
+        Task {
+            for index in offsets {
+                modelContext.delete(movimientos[index])
+            }
+            try? modelContext.save()
         }
     }
 }
@@ -102,8 +76,8 @@ struct MovimientoEntreCarterasRowView: View {
             
             HStack {
                 if let crypto = movimiento.crypto {
-                    Text("Cantidad Salida: \(movimiento.cantidadCryptoSalida.formatted()) \(crypto.simbolo)")
-                    Text("Cantidad Entrada: \(movimiento.cantidadCryptoEntrada.formatted()) \(crypto.simbolo)")
+                    Text("Salida: \(movimiento.cantidadCryptoSalida.formatted()) \(crypto.simbolo)")
+                    Text("Entrada: \(movimiento.cantidadCryptoEntrada.formatted()) \(crypto.simbolo)")
                 }
             }
             .font(.subheadline)
@@ -131,9 +105,4 @@ struct MovimientoEntreCarterasRowView: View {
         }
         .padding(.vertical, 4)
     }
-}
-
-#Preview {
-    MovimientosEntreCarterasView()
-        .withPreviewContainer()
 }

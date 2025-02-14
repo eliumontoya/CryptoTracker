@@ -37,6 +37,8 @@ struct ContentView: View {
         NavigationSplitView {
             // Sidebar con menú principal
             List {
+                
+                /*
                 // Opción Home
                 NavigationLink(
                     destination: PortfolioView(),
@@ -61,7 +63,8 @@ struct ContentView: View {
                 ) {
                     Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
                 }
-                
+               */
+                  
                 // Menú Administración
                 DisclosureGroup(
                     content: {
@@ -115,15 +118,21 @@ struct ContentView: View {
                 DisclosureGroup(
                     content: {
                         NavigationLink(
-                            destination: MovimientosEntradaView(),
-                            tag: .entrada,
-                            selection: $selectedMovimientosMenu
-                        ) {
-                            Label("Entrada", systemImage: "arrow.down.circle")
-                        }
+                                                    destination: MovimientosEntradaView(
+                                                        viewModel: MovimientoEntradaViewModel(
+                                                            modelContext: modelContext
+                                                        )
+                                                    ),
+                                                    tag: .entrada,
+                                                    selection: $selectedMovimientosMenu
+                                                ) {
+                                                    Label("Entrada", systemImage: "arrow.down.circle")
+                                                }
+                        
                         
                         NavigationLink(
-                            destination: MovimientosSalidaView(),
+                            destination: MovimientosSalidaView()
+                                .environment(\.modelContext, modelContext),
                             tag: .salida,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -131,7 +140,8 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: MovimientosEntreCarterasView(),
+                            destination: MovimientosEntreCarterasView()
+                                .environment(\.modelContext, modelContext),
                             tag: .entreCarteras,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -139,7 +149,8 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: MovimientosSwapsView(),
+                            destination: MovimientosSwapsView()
+                                .environment(\.modelContext, modelContext),
                             tag: .swaps,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -154,7 +165,7 @@ struct ContentView: View {
             .listStyle(SidebarListStyle())
             .navigationTitle("Crypto Tracker")
         } detail: {
-            PortfolioView()
+           // PortfolioView()
         }
     }
 }

@@ -1,45 +1,13 @@
 import SwiftUI
 import SwiftData
 
-enum MovimientoSalidaFormMode: Hashable {
-    case add
-    case edit(MovimientoEgreso)
-    
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .add:
-            hasher.combine(0)
-        case .edit(let movimiento):
-            hasher.combine(1)
-            hasher.combine(movimiento.id)
-        }
-    }
-    
-    static func == (lhs: MovimientoSalidaFormMode, rhs: MovimientoSalidaFormMode) -> Bool {
-        switch (lhs, rhs) {
-        case (.add, .add):
-            return true
-        case (.edit(let m1), .edit(let m2)):
-            return m1.id == m2.id
-        default:
-            return false
-        }
-    }
-}
-
-
 struct MovimientosSalidaView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoEgreso.fecha, order: .reverse) private var movimientos: [MovimientoEgreso]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
-    
     @State private var showingAddSheet = false
-    @State private var showingEditSheet = false
     @State private var selectedMovimiento: MovimientoEgreso?
-    @State private var showingDeleteAlert = false
     
+ 
     var body: some View {
         List {
             ForEach(movimientos) { movimiento in
@@ -47,7 +15,6 @@ struct MovimientosSalidaView: View {
                     .contentShape(Rectangle())
                     .onTapGesture {
                         selectedMovimiento = movimiento
-                        showingEditSheet = true
                     }
             }
             .onDelete(perform: deleteMovimientos)
@@ -58,32 +25,37 @@ struct MovimientosSalidaView: View {
                 Button(action: { showingAddSheet = true }) {
                     Label("Nuevo Movimiento", systemImage: "plus")
                 }
-                .disabled(cryptos.isEmpty || carteras.isEmpty)
             }
         }
- 
-        
         .sheet(item: $selectedMovimiento) { movimiento in
-                    NavigationStack {
-                        MovimientoSalidaFormView(
-                            mode: movimiento.id == nil ? .add : .edit(movimiento)
-                        )
-                    }
-                    .frame(minWidth: 500, minHeight: 700)
-                }
+            NavigationStack {
+                MovimientoSalidaFormView(
+                    viewModel: MovimientoSalidaViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
         .sheet(isPresented: $showingAddSheet) {
-                    NavigationStack {
-                        MovimientoSalidaFormView(mode: .add)
-                    }
-                    .frame(minWidth: 500, minHeight: 700)
-                }
+            NavigationStack {
+                MovimientoSalidaFormView(
+                    viewModel: MovimientoSalidaViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
     }
     
-   
-
     private func deleteMovimientos(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(movimientos[index])
+        Task {
+            for index in offsets {
+                modelContext.delete(movimientos[index])
+            }
+            try? modelContext.save()
         }
     }
 }
@@ -134,9 +106,4 @@ struct MovimientoSalidaRowView: View {
         }
         .padding(.vertical, 4)
     }
-}
-
-#Preview {
-    MovimientosSalidaView()
-        .withPreviewContainer()
 }

@@ -1,93 +1,63 @@
 import SwiftUI
 import SwiftData
 
-enum MovimientoSwapFormMode: Hashable {
-    case add
-    case edit(MovimientoSwap)
-    
-    func hash(into hasher: inout Hasher) {
-        switch self {
-        case .add:
-            hasher.combine(0)
-        case .edit(let movimiento):
-            hasher.combine(1)
-            hasher.combine(movimiento.id)
-        }
-    }
-    
-    static func == (lhs: MovimientoSwapFormMode, rhs: MovimientoSwapFormMode) -> Bool {
-        switch (lhs, rhs) {
-        case (.add, .add):
-            return true
-        case (.edit(let m1), .edit(let m2)):
-            return m1.id == m2.id
-        default:
-            return false
-        }
-    }
-}
-
-
 struct MovimientosSwapsView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoSwap.fecha, order: .reverse) private var movimientos: [MovimientoSwap]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    
     @State private var showingAddSheet = false
-    @State private var showingEditSheet = false  // Agregado
     @State private var selectedMovimiento: MovimientoSwap?
-    @State private var showingDeleteAlert = false
     
     var body: some View {
-        VStack {
-            List {
-                ForEach(movimientos) { movimiento in
-                    MovimientoSwapRowView(movimiento: movimiento)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            selectedMovimiento = movimiento
-                            showingEditSheet = true  // Cambiado
-                        }
-                }
-                .onDelete(perform: deleteMovimientos)
-            }
-            .navigationTitle("Movimientos de Swaps")
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button(action: { showingAddSheet = true }) {
-                        Label("Nuevo Movimiento", systemImage: "plus")
+        List {
+            ForEach(movimientos) { movimiento in
+                MovimientoSwapRowView(movimiento: movimiento)
+                    .contentShape(Rectangle())
+                    .onTapGesture {
+                        selectedMovimiento = movimiento
                     }
-                    .disabled(cryptos.isEmpty || carteras.isEmpty)
+            }
+            .onDelete(perform: deleteMovimientos)
+        }
+        .navigationTitle("Movimientos de Swaps")
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button(action: { showingAddSheet = true }) {
+                    Label("Nuevo Movimiento", systemImage: "plus")
                 }
             }
-       
-         
-            .sheet(item: $selectedMovimiento) { movimiento in
-                        NavigationStack {
-                            MovimientoSwapFormView(
-                                mode: movimiento.id == nil ? .add : .edit(movimiento)
-                            )
-                        }
-                        .frame(minWidth: 500, minHeight: 700)
-                    }
-            .sheet(isPresented: $showingAddSheet) {
-                        NavigationStack {
-                            MovimientoSwapFormView(mode: .add)
-                        }
-                        .frame(minWidth: 500, minHeight: 700)
-                    }
-            
+        }
+        .sheet(item: $selectedMovimiento) { movimiento in
+            NavigationStack {
+                MovimientoSwapFormView(
+                    viewModel: MovimientoSwapViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
+        }
+        .sheet(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoSwapFormView(
+                    viewModel: MovimientoSwapViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+            .frame(minWidth: 500, minHeight: 700)
         }
     }
+    
     private func deleteMovimientos(at offsets: IndexSet) {
-        for index in offsets {
-            modelContext.delete(movimientos[index])
+        Task {
+            for index in offsets {
+                modelContext.delete(movimientos[index])
+            }
+            try? modelContext.save()
         }
     }
-
 }
-   
 
 struct MovimientoSwapRowView: View {
     let movimiento: MovimientoSwap
@@ -145,9 +115,4 @@ struct MovimientoSwapRowView: View {
         }
         .padding(.vertical, 4)
     }
-}
-
-#Preview {
-    MovimientosSwapsView()
-        .withPreviewContainer()
 }

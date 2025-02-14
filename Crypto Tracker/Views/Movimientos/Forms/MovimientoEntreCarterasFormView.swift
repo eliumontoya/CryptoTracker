@@ -2,178 +2,36 @@ import SwiftUI
 import SwiftData
 
 struct MovimientoEntreCarterasFormView: View {
-    
-   
-    let preselectedCartera: Cartera? // Nueva propiedad
-
-    init(mode: MovimientoEntreCarterasFormMode, preselectedCartera: Cartera? = nil) {
-            self.mode = mode
-            self.preselectedCartera = preselectedCartera
-        _selectedCarteraOrigen = State(initialValue: preselectedCartera)
-        }
-    
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
-    let mode: MovimientoEntreCarterasFormMode
-    
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     
-    @State private var fecha = Date()
-    @State private var selectedCrypto: Crypto?
-    @State private var selectedCarteraOrigen: Cartera?
-    @State private var selectedCarteraDestino: Cartera?
-    @State private var cantidadCryptoSalida: Decimal = 0
-    @State private var cantidadCryptoEntrada: Decimal = 0
-    
-    private var cryptoDisponible: Decimal {
-        guard let cartera = selectedCarteraOrigen, let crypto = selectedCrypto else { return 0 }
-        
-        if case .edit(let movimiento) = mode {
-            return cartera.getCryptoDisponible(crypto: crypto, movimientoActual: movimiento.cantidadCryptoSalida)
-        } else {
-            return cartera.getCryptoDisponible(crypto: crypto)
-        }
-    }
-    
-    private var comision: Decimal {
-        cantidadCryptoSalida - cantidadCryptoEntrada
-    }
-    
+    @StateObject var viewModel: MovimientoEntreCarterasViewModel
     
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
-                // Fecha como primer campo
-                Group {
-                    Text("Fecha *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    DatePicker("", selection: $fecha, displayedComponents: [.date, .hourAndMinute])
-                        .frame(maxWidth: .infinity)
-                }
+                // Fecha
+                dateSection
                 
                 // Crypto
-                Group {
-                    Text("Crypto *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    Picker("Seleccionar Crypto", selection: $selectedCrypto) {
-                        Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
-                        ForEach(cryptos) { crypto in
-                            Text(crypto.nombre).tag(Optional(crypto))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .pickerStyle(.menu)
-                }
+                cryptoSection
                 
                 // Cartera Origen
-                Group {
-                    Text("Cartera Origen *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    Picker("Seleccionar Cartera Origen", selection: $selectedCarteraOrigen) {
-                        Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
-                        ForEach(carteras) { cartera in
-                            Text(cartera.nombre).tag(Optional(cartera))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .pickerStyle(.menu)
-                }
+                carteraOrigenSection
                 
                 // Cantidad Crypto Salida
-                Group {
-                    Text("Cantidad Crypto Salida *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    
-                    if let crypto = selectedCrypto {
-                        Text("Disponible: \(cryptoDisponible.formatted()) \(crypto.simbolo)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                        
-                        HStack {
-                            TextField("", value: $cantidadCryptoSalida, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: .infinity)
-                                .onChange(of: cantidadCryptoSalida) { oldValue, newValue in
-                                    if newValue > cryptoDisponible {
-                                        cantidadCryptoSalida = cryptoDisponible
-                                    }
-                                    // Ajustar entrada si es necesario
-                                    if cantidadCryptoEntrada > cantidadCryptoSalida {
-                                        cantidadCryptoEntrada = cantidadCryptoSalida
-                                    }
-                                }
-                            
-                            Button("MAX") {
-                                cantidadCryptoSalida = cryptoDisponible
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundColor(.blue)
-                        }
-                    }
-                }
+                cantidadSalidaSection
                 
                 // Cartera Destino
-                Group {
-                    Text("Cartera Destino *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    Picker("Seleccionar Cartera Destino", selection: $selectedCarteraDestino) {
-                        Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
-                        ForEach(carteras.filter { $0.id != selectedCarteraOrigen?.id }) { cartera in
-                            Text(cartera.nombre).tag(Optional(cartera))
-                        }
-                    }
-                    .frame(maxWidth: .infinity)
-                    .pickerStyle(.menu)
-                }
+                carteraDestinoSection
                 
                 // Cantidad Crypto Entrada
-                Group {
-                    Text("Cantidad Crypto Entrada *")
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .font(.headline)
-                    
-                    if let crypto = selectedCrypto {
-                        HStack {
-                            TextField("", value: $cantidadCryptoEntrada, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(maxWidth: .infinity)
-                                .onChange(of: cantidadCryptoEntrada) { oldValue, newValue in
-                                    if newValue > cantidadCryptoSalida {
-                                        cantidadCryptoEntrada = cantidadCryptoSalida
-                                    }
-                                }
-                            
-                            Button("MAX") {
-                                cantidadCryptoEntrada = cantidadCryptoSalida
-                            }
-                            .buttonStyle(.borderless)
-                            .foregroundColor(.blue)
-                        }
-                        
-                        // Mostrar comisión
-                        if cantidadCryptoSalida > 0 && cantidadCryptoEntrada > 0 {
-                            HStack {
-                                Text("Comisión:")
-                                Spacer()
-                                Text("\(comision.formatted()) \(crypto.simbolo)")
-                                    .foregroundStyle(comision > 0 ? .red : .green)
-                            }
-                            .font(.caption)
-                            .padding(.top, 4)
-                        }
-                    }
-                }
+                cantidadEntradaSection
                 
-                Spacer()
+                Spacer(minLength: 20)
                 
-                // Nota sobre campos obligatorios
+                // Nota campos obligatorios
                 Text("* Campos obligatorios")
                     .font(.caption)
                     .foregroundStyle(.secondary)
@@ -184,7 +42,7 @@ struct MovimientoEntreCarterasFormView: View {
         }
         .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
-        .navigationTitle(mode == .add ? "Nueva Transferencia" : "Editar Transferencia")
+        .navigationTitle(viewModel.movimiento == nil ? "Nueva Transferencia" : "Editar Transferencia")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancelar") {
@@ -192,65 +50,161 @@ struct MovimientoEntreCarterasFormView: View {
                 }
             }
             
+            if viewModel.movimiento != nil {
+                ToolbarItem(placement: .automatic) {
+                    Button(role: .destructive) {
+                        Task {
+                            try? await viewModel.delete()
+                            dismiss()
+                        }
+                    } label: {
+                        Text("Eliminar")
+                    }
+                }
+            }
+            
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
-                    save()
+                    Task {
+                        do {
+                            try await viewModel.save()
+                            dismiss()
+                        } catch {
+                            // Error handling is managed by ViewModel
+                        }
+                    }
                 }
-                .disabled(!formIsValid)
+                .disabled(!viewModel.formIsValid)
             }
         }
-        .onAppear {
-            if case .edit(let movimiento) = mode {
-                loadMovimiento(movimiento)
-            }
+        .alert("Error", isPresented: $viewModel.hasError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(viewModel.errorMessage)
         }
     }
     
-    private var formIsValid: Bool {
-        selectedCrypto != nil &&
-        selectedCarteraOrigen != nil &&
-        selectedCarteraDestino != nil &&
-        selectedCarteraOrigen?.id != selectedCarteraDestino?.id &&
-        cantidadCryptoSalida > 0 &&
-        cantidadCryptoEntrada > 0 &&
-        cantidadCryptoEntrada <= cantidadCryptoSalida &&
-        cantidadCryptoSalida <= cryptoDisponible
+    private var dateSection: some View {
+        Group {
+            Text("Fecha *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
+            DatePicker("", selection: $viewModel.fecha, displayedComponents: [.date, .hourAndMinute])
+                .frame(maxWidth: .infinity)
+        }
     }
     
-    private func loadMovimiento(_ movimiento: MovimientoEntreCarteras) {
-        selectedCrypto = movimiento.crypto
-        selectedCarteraOrigen = movimiento.carteraOrigen
-        selectedCarteraDestino = movimiento.carteraDestino
-        fecha = movimiento.fecha
-        cantidadCryptoSalida = movimiento.cantidadCryptoSalida
-        cantidadCryptoEntrada = movimiento.cantidadCryptoEntrada
+    private var cryptoSection: some View {
+        Group {
+            Text("Crypto *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
+            Picker("Seleccionar Crypto", selection: $viewModel.selectedCrypto) {
+                Text("Seleccionar Crypto").tag(Optional<Crypto>.none)
+                ForEach(cryptos) { crypto in
+                    Text(crypto.nombre).tag(Optional(crypto))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .pickerStyle(.menu)
+        }
     }
     
-    private func save() {
-        guard let crypto = selectedCrypto,
-              let carteraOrigen = selectedCarteraOrigen,
-              let carteraDestino = selectedCarteraDestino else { return }
-        switch mode {
-        case .add:
-        let movimiento = MovimientoEntreCarteras(
-            fecha: fecha,
-            cantidadCryptoSalida: cantidadCryptoSalida,
-            cantidadCryptoEntrada: cantidadCryptoEntrada,
-            carteraOrigen: carteraOrigen,
-            carteraDestino: carteraDestino,
-            crypto: crypto
-        )
-        
-        modelContext.insert(movimiento)
+    private var carteraOrigenSection: some View {
+        Group {
+            Text("Cartera Origen *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
+            Picker("Seleccionar Cartera Origen", selection: $viewModel.selectedCarteraOrigen) {
+                Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
+                ForEach(carteras) { cartera in
+                    Text(cartera.nombre).tag(Optional(cartera))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .pickerStyle(.menu)
+        }
+    }
+    
+    private var cantidadSalidaSection: some View {
+        Group {
+            Text("Cantidad Crypto Salida *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
             
-        case .edit(let movimiento):
-            movimiento.fecha = fecha
-            movimiento.cantidadCryptoSalida = cantidadCryptoSalida
-            movimiento.cantidadCryptoEntrada = cantidadCryptoEntrada
-            movimiento.carteraOrigen = carteraOrigen
-            movimiento.carteraDestino = carteraDestino
-            movimiento.crypto = crypto
+            if let crypto = viewModel.selectedCrypto {
+                Text("Disponible: \(viewModel.cryptoDisponible.formatted()) \(crypto.simbolo)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                
+                HStack {
+                    TextField("", value: $viewModel.cantidadCryptoSalida, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: viewModel.cantidadCryptoSalida) { _, _ in
+                            viewModel.adjustCantidades()
+                        }
+                    
+                    Button("MAX") {
+                        viewModel.setMaxCantidadSalida()
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundColor(.blue)
+                }
+            }
         }
-        dismiss()
+    }
+    
+    private var carteraDestinoSection: some View {
+        Group {
+            Text("Cartera Destino *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
+            Picker("Seleccionar Cartera Destino", selection: $viewModel.selectedCarteraDestino) {
+                Text("Seleccionar Cartera").tag(Optional<Cartera>.none)
+                ForEach(carteras.filter { $0.id != viewModel.selectedCarteraOrigen?.id }) { cartera in
+                    Text(cartera.nombre).tag(Optional(cartera))
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .pickerStyle(.menu)
+        }
+    }
+    
+    private var cantidadEntradaSection: some View {
+        Group {
+            Text("Cantidad Crypto Entrada *")
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .font(.headline)
+            
+            if let crypto = viewModel.selectedCrypto {
+                HStack {
+                    TextField("", value: $viewModel.cantidadCryptoEntrada, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(maxWidth: .infinity)
+                        .onChange(of: viewModel.cantidadCryptoEntrada) { _, _ in
+                            viewModel.adjustCantidades()
+                        }
+                    
+                    Button("MAX") {
+                        viewModel.setMaxCantidadEntrada()
+                    }
+                    .buttonStyle(.borderless)
+                    .foregroundColor(.blue)
+                }
+                
+                // Mostrar comisión
+                if viewModel.cantidadCryptoSalida > 0 && viewModel.cantidadCryptoEntrada > 0 {
+                    HStack {
+                        Text("Comisión:")
+                        Spacer()
+                        Text("\(viewModel.comision.formatted()) \(crypto.simbolo)")
+                            .foregroundStyle(viewModel.comision > 0 ? .red : .green)
+                    }
+                    .font(.caption)
+                    .padding(.top, 4)
+                }
+            }
+        }
     }
 }
