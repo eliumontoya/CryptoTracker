@@ -38,7 +38,7 @@ struct ContentView: View {
             // Sidebar con menú principal
             List {
                 
-                /*
+               
                 // Opción Home
                 NavigationLink(
                     destination: PortfolioView(),
@@ -49,13 +49,13 @@ struct ContentView: View {
                 }
                 
                 NavigationLink(
-                    destination: PortfolioCryptosView(),
+                    destination: PortfolioPorCryptosView(),
                     tag: MainMenuOption.portfolioCryptos,
                     selection: $selectedMainMenu
                 ) {
                     Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
                 }
-                 */
+                 
                 NavigationLink(
                     destination: PortfolioDetalleView(),
                     tag: MainMenuOption.portfolioDetalle,

@@ -1,142 +1,96 @@
 import SwiftUI
 import SwiftData
-import Foundation
 
 struct CryptoDetailView: View {
-    let crypto: Crypto
     @Environment(\.dismiss) private var dismiss
     @Query private var carteras: [Cartera]
+    @StateObject private var viewModel: CryptoDetailViewModel
     
-    @State private var movimientos: [MovimientoDetalle] = []
-    @State private var selectedMovimiento: MovimientoDetalle?
-    @State private var showingEditSheet = false
+    init(crypto: Crypto) {
+        _viewModel = StateObject(wrappedValue: CryptoDetailViewModel(
+            crypto: crypto,
+            carteras: []  // Se actualizará con @Query
+        ))
+    }
     
     var body: some View {
         VStack(spacing: 20) {
-            // Header
-            HStack {
-                Button(action: { dismiss() }) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "chevron.left")
-                        Text("Volver")
-                    }
-                }
-                Spacer()
-                Text("\(crypto.nombre) (\(crypto.simbolo))")
-                    .font(.title2)
-                    .bold()
-                Spacer()
-            }
-            .padding(.bottom)
+            headerView
             
-            // Lista de movimientos
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(movimientos) { movimiento in
-                        MovimientoDetalleRowView(movimiento: movimiento)
-                    }
-                }
-                .padding(.horizontal)
+            if viewModel.isLoading {
+                MovimientoLoadingView()
+            } else if viewModel.movimientos.isEmpty {
+                MovimientoEmptyView(message: "No hay movimientos para esta crypto")
+            } else {
+                movimientosList
             }
         }
         .padding()
+        .onChange(of: carteras) { _, newCarteras in
+            viewModel.carteras = newCarteras
+            viewModel.cargarMovimientos()
+        }
         .onAppear {
-            cargarMovimientos()
+            viewModel.carteras = carteras
+            viewModel.cargarMovimientos()
+        }
+        .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
+            NavigationStack {
+                MovimientoSearchView(movimientoDetalle: movimientoDetalle)
+            }
+            .onDisappear {
+                viewModel.cargarMovimientos()
+            }
+        }
+        .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
+            Button("OK") {
+                viewModel.errorMessage = nil
+            }
+        } message: {
+            if let errorMessage = viewModel.errorMessage {
+                Text(errorMessage)
+            }
         }
     }
     
-    private func cargarMovimientos() {
-        var movimientosTemp: [MovimientoDetalle] = []
-        
-        // Procesar todas las carteras
-        for cartera in carteras {
-            // Movimientos de entrada
-            for movimiento in cartera.movimientosIngreso where movimiento.crypto?.id == crypto.id {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .entrada,
-                    carteraOrigen: nil,
-                    carteraDestino: cartera.nombre,
-                    cantidadOrigen: movimiento.cantidadCrypto,
-                    cantidadDestino: movimiento.cantidadCrypto,
-                    cryptoOrigen: crypto.simbolo,
-                    cryptoDestino: crypto.simbolo,
-                    valorUSD: movimiento.valorTotalUSD
-                ))
+    private var headerView: some View {
+        HStack {
+            Button(action: { dismiss() }) {
+                HStack(spacing: 8) {
+                    Image(systemName: "chevron.left")
+                    Text("Volver")
+                }
             }
-            
-            // Movimientos de salida
-            for movimiento in cartera.movimientosEgreso where movimiento.crypto?.id == crypto.id {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .salida,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: nil,
-                    cantidadOrigen: movimiento.cantidadCrypto,
-                    cantidadDestino: movimiento.cantidadCrypto,
-                    cryptoOrigen: crypto.simbolo,
-                    cryptoDestino: crypto.simbolo,
-                    valorUSD: movimiento.valorTotalUSD
-                ))
-            }
-            
-            // Transferencias entre carteras (como origen)
-            for movimiento in cartera.movimientosSalida where movimiento.crypto?.id == crypto.id {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .transferencia,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: movimiento.carteraDestino?.nombre ?? "Desconocida",
-                    cantidadOrigen: movimiento.cantidadCryptoSalida,
-                    cantidadDestino: movimiento.cantidadCryptoEntrada,
-                    cryptoOrigen: crypto.simbolo,
-                    cryptoDestino: crypto.simbolo,
-                    valorUSD: nil
-                ))
-            }
-            
-            // Swaps (como origen)
-            for movimiento in cartera.swaps where movimiento.cryptoOrigen?.id == crypto.id {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .swap,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: cartera.nombre,
-                    cantidadOrigen: movimiento.cantidadOrigen,
-                    cantidadDestino: movimiento.cantidadDestino,
-                    cryptoOrigen: crypto.simbolo,
-                    cryptoDestino: movimiento.cryptoDestino?.simbolo ?? "Desconocida",
-                    valorUSD: movimiento.cantidadOrigen * movimiento.precioUSDOrigen
-                ))
-            }
-            
-            // Swaps (como destino)
-            for movimiento in cartera.swaps where movimiento.cryptoDestino?.id == crypto.id {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .swap,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: cartera.nombre,
-                    cantidadOrigen: movimiento.cantidadOrigen,
-                    cantidadDestino: movimiento.cantidadDestino,
-                    cryptoOrigen: movimiento.cryptoOrigen?.simbolo ?? "Desconocida",
-                    cryptoDestino: crypto.simbolo,
-                    valorUSD: movimiento.cantidadDestino * movimiento.precioUSDDestino
-                ))
-            }
+            Spacer()
+            Text(viewModel.title)
+                .font(.title2)
+                .bold()
+            Spacer()
         }
-        
-        // Ordenar movimientos por fecha (más reciente primero)
-        movimientos = movimientosTemp.sorted { $0.fecha > $1.fecha }
+        .padding(.bottom)
+    }
+    
+    private var movimientosList: some View {
+        ScrollView {
+            LazyVStack(spacing: 12) {
+                ForEach(viewModel.movimientos) { movimiento in
+                    MovimientoDetalleRowView(
+                        movimiento: movimiento,
+                        onTap: {
+                            viewModel.selectedMovimientoDetalle = movimiento
+                        }
+                    )
+                }
+            }
+            .padding(.horizontal)
+        }
     }
 }
 
-// MARK: - Preview
 #Preview {
+    let previewContainer = PreviewContainer.shared
+    let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 45000)
     
+    return CryptoDetailView(crypto: crypto)
+        .modelContainer(previewContainer.container)
 }

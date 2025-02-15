@@ -1,25 +1,16 @@
 import SwiftUI
 
-// MARK: - Componentes reutilizables para la vista de portafolio por cryptos
+// MARK: - Header Row Component
 struct CryptoPortfolioHeaderRow: View {
+    private let viewModel = PortfolioCryptoComponentsViewModel()
+    private let headerData = PortfolioCryptoComponentsViewModel.HeaderData()
+    
     var body: some View {
         HStack(spacing: 0) {
-            Text("Crypto")
-                .frame(width: 80, alignment: .leading)
-            Text("Disponible")
-                .frame(width: 120, alignment: .trailing)
-            Text("Precio USD")
-                .frame(width: 120, alignment: .trailing)
-            Text("USD Adquirido")
-                .frame(width: 120, alignment: .trailing)
-            Text("Valor USD")
-                .frame(width: 120, alignment: .trailing)
-            Text("USD Ventas")
-                .frame(width: 120, alignment: .trailing)
-            Text("Ganancia")
-                .frame(width: 120, alignment: .trailing)
-            Text("%")
-                .frame(width: 80, alignment: .trailing)
+            ForEach(Array(headerData.titles.enumerated()), id: \.element.title) { _, title in
+                Text(title.title)
+                    .frame(width: title.width, alignment: title.alignment)
+            }
         }
         .font(.caption)
         .bold()
@@ -29,29 +20,35 @@ struct CryptoPortfolioHeaderRow: View {
     }
 }
 
+// MARK: - Row Component
 struct CryptoPortfolioRow: View {
     let summary: CryptoPortfolioSummary
+    private let viewModel: PortfolioCryptoComponentsViewModel.RowData
     
+    init(summary: CryptoPortfolioSummary) {
+        self.summary = summary
+        self.viewModel = PortfolioCryptoComponentsViewModel.RowData(summary: summary)
+    }
     var body: some View {
         HStack(spacing: 0) {
             Text(summary.crypto.simbolo)
                 .frame(width: 80, alignment: .leading)
-            Text(summary.totalDisponible.formatted())
+            Text(viewModel.formatearCantidad(summary.totalDisponible))
                 .frame(width: 120, alignment: .trailing)
-            Text(summary.precioActual.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(summary.precioActual))
                 .frame(width: 120, alignment: .trailing)
-            Text(summary.totalUSDAdquirido.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(summary.totalUSDAdquirido))
                 .frame(width: 120, alignment: .trailing)
-            Text(summary.valorActualUSD.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(summary.valorActualUSD))
                 .frame(width: 120, alignment: .trailing)
-            Text(summary.totalUSDVentas.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(summary.totalUSDVentas))
                 .frame(width: 120, alignment: .trailing)
-            Text(summary.gananciaUSD.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(summary.gananciaUSD))
                 .frame(width: 120, alignment: .trailing)
-                .foregroundColor(summary.gananciaUSD >= 0 ? .green : .red)
-            Text(summary.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
+                .foregroundColor(viewModel.isGananciaPositive ? .green : .red)
+            Text(viewModel.formatearPorcentaje(summary.porcentajeGanancia))
                 .frame(width: 80, alignment: .trailing)
-                .foregroundColor(summary.porcentajeGanancia >= 0 ? .green : .red)
+                .foregroundColor(viewModel.isPorcentajePositive ? .green : .red)
         }
         .font(.callout)
         .padding(.horizontal, 8)
@@ -59,28 +56,14 @@ struct CryptoPortfolioRow: View {
     }
 }
 
+// MARK: - Total Row Component
 struct CryptoPortfolioTotalRow: View {
     let summaries: [CryptoPortfolioSummary]
+    private let viewModel: PortfolioCryptoComponentsViewModel.TotalRowData
     
-    private var totalUSDAdquirido: Decimal {
-        summaries.reduce(0) { $0 + $1.totalUSDAdquirido }
-    }
-    
-    private var totalValorActual: Decimal {
-        summaries.reduce(0) { $0 + $1.valorActualUSD }
-    }
-    
-    private var totalUSDVentas: Decimal {
-        summaries.reduce(0) { $0 + $1.totalUSDVentas }
-    }
-    
-    private var totalGanancia: Decimal {
-        summaries.reduce(0) { $0 + $1.gananciaUSD }
-    }
-    
-    private var porcentajeGananciaTotal: Decimal {
-        guard totalUSDAdquirido > 0 else { return 0 }
-        return ((totalValorActual - totalUSDAdquirido) / totalUSDAdquirido) * 100
+    init(summaries: [CryptoPortfolioSummary]) {
+        self.summaries = summaries
+        self.viewModel = PortfolioCryptoComponentsViewModel.TotalRowData(summaries: summaries)
     }
     
     var body: some View {
@@ -92,23 +75,23 @@ struct CryptoPortfolioTotalRow: View {
                 .frame(width: 120, alignment: .trailing)
             Text("")
                 .frame(width: 120, alignment: .trailing)
-            Text(totalUSDAdquirido.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(viewModel.totalUSDAdquirido))
                 .frame(width: 120, alignment: .trailing)
                 .bold()
-            Text(totalValorActual.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(viewModel.totalValorActual))
                 .frame(width: 120, alignment: .trailing)
                 .bold()
-            Text(totalUSDVentas.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(viewModel.totalUSDVentas))
                 .frame(width: 120, alignment: .trailing)
                 .bold()
-            Text(totalGanancia.formatted(.currency(code: "USD")))
+            Text(viewModel.formatearUSD(viewModel.totalGanancia))
                 .frame(width: 120, alignment: .trailing)
                 .bold()
-                .foregroundColor(totalGanancia >= 0 ? .green : .red)
-            Text(porcentajeGananciaTotal.formatted(.number.precision(.fractionLength(2))) + "%")
+                .foregroundColor(viewModel.isGananciaPositive ? .green : .red)
+            Text(viewModel.formatearPorcentaje(viewModel.porcentajeGananciaTotal))
                 .frame(width: 80, alignment: .trailing)
                 .bold()
-                .foregroundColor(porcentajeGananciaTotal >= 0 ? .green : .red)
+                .foregroundColor(viewModel.isPorcentajePositive ? .green : .red)
         }
         .font(.callout)
         .padding(.horizontal, 8)
