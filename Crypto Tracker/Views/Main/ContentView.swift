@@ -55,7 +55,7 @@ struct ContentView: View {
                 ) {
                     Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
                 }
-                
+                 */
                 NavigationLink(
                     destination: PortfolioDetalleView(),
                     tag: MainMenuOption.portfolioDetalle,
@@ -63,7 +63,7 @@ struct ContentView: View {
                 ) {
                     Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
                 }
-               */
+         
                   
                 // Menú Administración
                 DisclosureGroup(
