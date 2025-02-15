@@ -65,6 +65,55 @@ struct ContentView: View {
                 }
          
                   
+               
+                // Menú Movimientos
+                DisclosureGroup(
+                    content: {
+                        NavigationLink(
+                                                    destination: MovimientosEntradaView(
+                                                        viewModel: MovimientoEntradaViewModel(
+                                                            modelContext: modelContext
+                                                        )
+                                                    ),
+                                                    tag: .entrada,
+                                                    selection: $selectedMovimientosMenu
+                                                ) {
+                                                    Label("Entrada", systemImage: "arrow.down.circle")
+                                                }
+                        
+                        
+                        NavigationLink(
+                            destination: MovimientosSalidaView()
+                                .environment(\.modelContext, modelContext),
+                            tag: .salida,
+                            selection: $selectedMovimientosMenu
+                        ) {
+                            Label("Salida", systemImage: "arrow.up.circle")
+                        }
+                        
+                        NavigationLink(
+                            destination: MovimientosEntreCarterasView()
+                                .environment(\.modelContext, modelContext),
+                            tag: .entreCarteras,
+                            selection: $selectedMovimientosMenu
+                        ) {
+                            Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
+                        }
+                        
+                        NavigationLink(
+                            destination: MovimientosSwapsView()
+                                .environment(\.modelContext, modelContext),
+                            tag: .swaps,
+                            selection: $selectedMovimientosMenu
+                        ) {
+                            Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
+                        }
+                    },
+                    label: {
+                        Label("Movimientos", systemImage: "arrow.left.right")
+                    }
+                )
+                
                 // Menú Administración
                 DisclosureGroup(
                     content: {
@@ -114,53 +163,7 @@ struct ContentView: View {
                     }
                 )
                 
-                // Menú Movimientos
-                DisclosureGroup(
-                    content: {
-                        NavigationLink(
-                                                    destination: MovimientosEntradaView(
-                                                        viewModel: MovimientoEntradaViewModel(
-                                                            modelContext: modelContext
-                                                        )
-                                                    ),
-                                                    tag: .entrada,
-                                                    selection: $selectedMovimientosMenu
-                                                ) {
-                                                    Label("Entrada", systemImage: "arrow.down.circle")
-                                                }
-                        
-                        
-                        NavigationLink(
-                            destination: MovimientosSalidaView()
-                                .environment(\.modelContext, modelContext),
-                            tag: .salida,
-                            selection: $selectedMovimientosMenu
-                        ) {
-                            Label("Salida", systemImage: "arrow.up.circle")
-                        }
-                        
-                        NavigationLink(
-                            destination: MovimientosEntreCarterasView()
-                                .environment(\.modelContext, modelContext),
-                            tag: .entreCarteras,
-                            selection: $selectedMovimientosMenu
-                        ) {
-                            Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
-                        }
-                        
-                        NavigationLink(
-                            destination: MovimientosSwapsView()
-                                .environment(\.modelContext, modelContext),
-                            tag: .swaps,
-                            selection: $selectedMovimientosMenu
-                        ) {
-                            Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
-                        }
-                    },
-                    label: {
-                        Label("Movimientos", systemImage: "arrow.left.right")
-                    }
-                )
+                
             }
             .listStyle(SidebarListStyle())
             .navigationTitle("Crypto Tracker")
