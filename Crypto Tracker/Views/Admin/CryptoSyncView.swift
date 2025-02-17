@@ -89,9 +89,11 @@ struct CryptoSyncView: View {
         .onAppear {
             viewModel.loadData()
         }
-        .onDisappear {
-            viewModel.cleanup()
-        }
+ 
+        .task {
+                    // Asegurar que se limpie cuando la vista se desmonte
+            await viewModel.cleanup()
+                }
     }
 }
 

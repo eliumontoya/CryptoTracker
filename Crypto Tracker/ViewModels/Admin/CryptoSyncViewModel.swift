@@ -26,25 +26,25 @@ class CryptoSyncViewModel: ObservableObject {
     @Published private(set) var state = CryptoSyncState()
     private let modelContext: ModelContext
     private var cancellables = Set<AnyCancellable>()
+    
     // Actor para manejar las tareas de forma thread-safe
     private actor TaskManager {
-        private var tasks: [Task<Void, Never>] = []
-        
-        func add(_ task: Task<Void, Never>) {
-            tasks.append(task)
+            private var tasks: Set<Task<Void, Never>> = []
+            
+            func add(_ task: Task<Void, Never>) {
+                tasks.insert(task)
+            }
+            
+            func cancelAll() {
+                tasks.forEach { $0.cancel() }
+                tasks.removeAll()
+            }
         }
-        
-        func remove(_ task: Task<Void, Never>) {
-            tasks.removeAll { $0 == task }
-        }
-        
-        func cancelAll() {
-            tasks.forEach { $0.cancel() }
-            tasks.removeAll()
-        }
-    }
     
     private let taskManager = TaskManager()
+    private var cleanupTask: Task<Void, Never>?
+
+    
     
     // Cache para evitar lecturas innecesarias
     private var syncConfigCache: [UUID: CryptoSyncConfig] = [:]
@@ -56,11 +56,7 @@ class CryptoSyncViewModel: ObservableObject {
         setupInitialState()
     }
     
-    deinit {
-        Task.detached {
-            await self.taskManager.cancelAll()
-        }
-    }
+   
     
     // MARK: - Initial Setup
     private func setupInitialState() {
@@ -121,35 +117,56 @@ class CryptoSyncViewModel: ObservableObject {
         syncConfigCache[cryptoId] ?? state.syncConfigs.first { $0.crypto?.id == cryptoId }
     }
     
+    nonisolated func cleanupSync() {
+            Task { @MainActor in
+                await taskManager.cancelAll()
+                state = CryptoSyncState()
+                syncConfigCache.removeAll()
+                cancellables.removeAll()
+            }
+        }
+    
+    
     // MARK: - Sync Process
     func startSync() {
-        guard !state.isSyncing else { return }
-        
-        state.isSyncing = true
-        state.logEntries.removeAll()
-        addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
-        
-        let task = Task {
-            for config in state.syncConfigs {
-                guard let crypto = config.crypto else { continue }
-                await syncCrypto(crypto, with: config)
-                try? await Task.sleep(nanoseconds: 500_000_000) // 0.5 segundos entre solicitudes
+            guard !state.isSyncing else { return }
+            
+            state.isSyncing = true
+            state.logEntries.removeAll()
+            addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
+            
+            let syncTask = Task {
+                do {
+                    for config in state.syncConfigs {
+                        guard let crypto = config.crypto else { continue }
+                        if Task.isCancelled { break }
+                        await syncCrypto(crypto, with: config)
+                        try await Task.sleep(nanoseconds: 500_000_000)
+                    }
+                } catch {
+                    addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida", isError: true)
+                }
+                
+                await MainActor.run {
+                    self.state.isSyncing = false
+                    addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización completada", isError: false)
+                }
             }
             
-            await MainActor.run {
-                state.isSyncing = false
-                addLogEntry(
-                    cryptoSymbol: "Sistema",
-                    message: "Sincronización completada",
-                    isError: false
-                )
+            Task {
+                await taskManager.add(syncTask)
             }
         }
-        
-        Task {
-            await taskManager.add(task)
+
+    deinit {
+            cleanupTask = Task { @MainActor in
+                await taskManager.cancelAll()
+                state = CryptoSyncState()
+                syncConfigCache.removeAll()
+                cancellables.removeAll()
+            }
         }
-    }
+    
     
     private func syncCrypto(_ crypto: Crypto, with config: CryptoSyncConfig) async {
         do {
@@ -257,11 +274,14 @@ class CryptoSyncViewModel: ObservableObject {
     
   
     
-    func cleanup() {
-        Task {
+    func cleanup() async {
             await taskManager.cancelAll()
+            await MainActor.run {
+                state = CryptoSyncState()
+                syncConfigCache.removeAll()
+                cancellables.removeAll()
+            }
         }
-        cancellables.removeAll()
-        syncConfigCache.removeAll()
-    }
+    
+    
 }

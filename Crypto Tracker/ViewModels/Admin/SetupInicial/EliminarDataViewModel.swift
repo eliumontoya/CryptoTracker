@@ -1,8 +1,38 @@
 import SwiftUI
 import SwiftData
 
+
+struct DeleteOptions {
+    var cryptos: Bool = false
+    var carteras: Bool = false
+    var fiats: Bool = false
+    var movimientos: Bool = false
+    var historicos: Bool = false
+    var all: Bool = false
+    
+    mutating func toggleAll() {
+        all = !all
+        if all {
+            cryptos = true
+            carteras = true
+            fiats = true
+            movimientos = true
+            historicos = true
+        } else {
+            cryptos = false
+            carteras = false
+            fiats = false
+            movimientos = false
+            historicos = false
+        }
+    }
+}
+
+
 @MainActor
 class EliminarDataViewModel: ObservableObject {
+    @Published var deleteOptions = DeleteOptions()
+
     @Published var logs: [String] = []
     @Published var isDeleting = false
     @Published var deleteCompleted = false
@@ -19,6 +49,15 @@ class EliminarDataViewModel: ObservableObject {
     private var movimientosSwap: [MovimientoSwap]
     private var preciosHistoricos: [PrecioHistorico]
     private var syncConfigs: [CryptoSyncConfig]
+    
+    var canDelete: Bool {
+            deleteOptions.all ||
+            deleteOptions.cryptos ||
+            deleteOptions.carteras ||
+            deleteOptions.fiats ||
+            deleteOptions.movimientos ||
+            deleteOptions.historicos
+        }
     
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -80,45 +119,55 @@ class EliminarDataViewModel: ObservableObject {
     func borrarDatos() async {
         isDeleting = true
         
-        // Borrando movimientos
+        
         agregarLog("Iniciando borrado de datos...")
         
-        // Movimientos
-        agregarLog("Borrando movimientos de ingreso...")
-        movimientosIngreso.forEach { modelContext.delete($0) }
-        
-        agregarLog("Borrando movimientos de egreso...")
-        movimientosEgreso.forEach { modelContext.delete($0) }
-        
-        agregarLog("Borrando movimientos entre carteras...")
-        movimientosEntreCarteras.forEach { modelContext.delete($0) }
-        
-        agregarLog("Borrando movimientos de swap...")
-        movimientosSwap.forEach { modelContext.delete($0) }
-        
-        // Históricos
-        agregarLog("Borrando precios históricos...")
-        preciosHistoricos.forEach { modelContext.delete($0) }
-        
-        // Configuraciones
-        agregarLog("Borrando configuraciones de sincronización...")
-        syncConfigs.forEach { modelContext.delete($0) }
-        
-        // Catálogos
-        agregarLog("Borrando carteras...")
-        carteras.forEach { modelContext.delete($0) }
-        
-        agregarLog("Borrando cryptos...")
-        cryptos.forEach { modelContext.delete($0) }
-        
-        agregarLog("Borrando monedas FIAT...")
-        fiats.forEach { modelContext.delete($0) }
-        
+        // Borrando movimientos
+        if deleteOptions.all || deleteOptions.movimientos {
+            agregarLog("Borrando movimientos de ingreso...")
+            movimientosIngreso.forEach { modelContext.delete($0) }
+            
+            agregarLog("Borrando movimientos de egreso...")
+            movimientosEgreso.forEach { modelContext.delete($0) }
+            
+            agregarLog("Borrando movimientos entre carteras...")
+            movimientosEntreCarteras.forEach { modelContext.delete($0) }
+            
+            agregarLog("Borrando movimientos de swap...")
+            movimientosSwap.forEach { modelContext.delete($0) }
+        }
+
+        // borrando precios historicos
+        if deleteOptions.all || deleteOptions.historicos {
+            agregarLog("Borrando precios históricos...")
+            preciosHistoricos.forEach { modelContext.delete($0) }
+            
+            agregarLog("Borrando configuraciones de sincronización...")
+            syncConfigs.forEach { modelContext.delete($0) }
+        }
+
+        // borrando carteras
+        if deleteOptions.all || deleteOptions.carteras {
+            agregarLog("Borrando carteras...")
+            carteras.forEach { modelContext.delete($0) }
+        }
+
+        // borrando cryptos
+        if deleteOptions.all || deleteOptions.cryptos {
+            agregarLog("Borrando cryptos...")
+            cryptos.forEach { modelContext.delete($0) }
+        }
+
+        //borrando fiat
+        if deleteOptions.all || deleteOptions.fiats {
+            agregarLog("Borrando monedas FIAT...")
+            fiats.forEach { modelContext.delete($0) }
+        }
+
+        // ejecutando los borrados
         do {
             try modelContext.save()
             agregarLog("✅ Borrado completado exitosamente")
-            
-            // Marcar como completado para mostrar el botón de cerrar
             DispatchQueue.main.async { [weak self] in
                 self?.deleteCompleted = true
                 self?.isDeleting = false
@@ -129,5 +178,6 @@ class EliminarDataViewModel: ObservableObject {
                 self?.isDeleting = false
             }
         }
+        
     }
 }

@@ -59,23 +59,15 @@ struct SetupInicialView: View {
     }
     
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 24) {
-                    headerView
-                    optionsGridView
-                }
+        ScrollView {
+            VStack(spacing: 24) {
+                headerView
+                optionsGridView
             }
-            .sheet(isPresented: $showingDestination) {
-                sheetDestinationView
-            }
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cerrar") {
-                        dismiss()
-                    }
-                }
-            }
+        }
+        .navigationTitle("Configuración Inicial")
+        .sheet(isPresented: $showingDestination) {
+            sheetDestinationView
         }
     }
     
@@ -139,8 +131,4 @@ struct SetupOptionCard: View {
                 .fill(.gray.opacity(0.1))
         )
     }
-}
-
-#Preview {
-    SetupInicialView()
 }

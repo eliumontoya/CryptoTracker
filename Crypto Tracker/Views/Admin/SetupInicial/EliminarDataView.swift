@@ -43,8 +43,42 @@ struct EliminarDataView: View {
                     .multilineTextAlignment(.center)
                     .padding(.horizontal)
                 
-                // Action Buttons
                 if !viewModel.deleteCompleted {
+                    // Sección de opciones de eliminación
+                    VStack(alignment: .leading, spacing: 12) {
+                            Text("Seleccione los elementos a eliminar:")
+                                .font(.headline)
+                                .padding(.bottom, 4)
+
+                            Toggle("Eliminar Todo", isOn: Binding(
+                                get: { viewModel.deleteOptions.all },
+                                set: { newValue in
+                                    viewModel.deleteOptions.toggleAll()
+                                }
+                            ))
+                            .toggleStyle(.switch)
+                            .tint(.red)
+                            
+                            if !viewModel.deleteOptions.all {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    Toggle("Cryptos", isOn: $viewModel.deleteOptions.cryptos)
+                                    Toggle("Carteras", isOn: $viewModel.deleteOptions.carteras)
+                                    Toggle("Monedas FIAT", isOn: $viewModel.deleteOptions.fiats)
+                                    Toggle("Todos los Movimientos", isOn: $viewModel.deleteOptions.movimientos)
+                                    Toggle("Precios Históricos", isOn: $viewModel.deleteOptions.historicos)
+                                }
+                                .toggleStyle(.switch)
+                                .tint(.red)
+                                .padding(.leading)
+                            }
+                        }
+                        .padding()
+                        .background(Color.gray.opacity(0.1))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
+
+                    
+                    // Action Buttons
                     VStack(spacing: 16) {
                         // Cancel Button
                         Button(action: {
