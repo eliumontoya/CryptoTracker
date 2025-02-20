@@ -1,50 +1,30 @@
 import SwiftUI
 import SwiftData
 import Combine
+import Foundation
 
-// MARK: - View State
-struct CryptoSyncState {
-    var cryptos: [Crypto] = []
-    var syncConfigs: [CryptoSyncConfig] = []
-    var logEntries: [SyncLogEntry] = []
-    var isSyncing = false
-}
-
-// MARK: - Log Entry Model
-struct SyncLogEntry: Identifiable {
-    let id = UUID()
-    let timestamp: Date
-    let cryptoSymbol: String
-    let message: String
-    let isError: Bool
-}
-
-
-// MARK: - ViewModel
 @MainActor
 class CryptoSyncViewModel: ObservableObject {
     @Published private(set) var state = CryptoSyncState()
-    private let modelContext: ModelContext
+    let modelContext: ModelContext
     private var cancellables = Set<AnyCancellable>()
     
     // Actor para manejar las tareas de forma thread-safe
     private actor TaskManager {
-            private var tasks: Set<Task<Void, Never>> = []
-            
-            func add(_ task: Task<Void, Never>) {
-                tasks.insert(task)
-            }
-            
-            func cancelAll() {
-                tasks.forEach { $0.cancel() }
-                tasks.removeAll()
-            }
+        private var tasks: Set<Task<Void, Never>> = []
+        
+        func add(_ task: Task<Void, Never>) {
+            tasks.insert(task)
         }
+        
+        func cancelAll() {
+            tasks.forEach { $0.cancel() }
+            tasks.removeAll()
+        }
+    }
     
     private let taskManager = TaskManager()
     private var cleanupTask: Task<Void, Never>?
-
-    
     
     // Cache para evitar lecturas innecesarias
     private var syncConfigCache: [UUID: CryptoSyncConfig] = [:]
@@ -56,14 +36,10 @@ class CryptoSyncViewModel: ObservableObject {
         setupInitialState()
     }
     
-   
-    
-    // MARK: - Initial Setup
     private func setupInitialState() {
         loadData()
     }
     
-    // MARK: - Data Loading
     func loadData() {
         guard shouldRefreshCache() else { return }
         
@@ -94,7 +70,6 @@ class CryptoSyncViewModel: ObservableObject {
         )
     }
     
-    // MARK: - Sync Config Management
     func saveSyncConfig(for crypto: Crypto, url: String, defaultPrice: Decimal) {
         if let existingConfig = getSyncConfig(for: crypto.id) {
             existingConfig.syncUrl = url
@@ -117,58 +92,37 @@ class CryptoSyncViewModel: ObservableObject {
         syncConfigCache[cryptoId] ?? state.syncConfigs.first { $0.crypto?.id == cryptoId }
     }
     
-    nonisolated func cleanupSync() {
-            Task { @MainActor in
-                await taskManager.cancelAll()
-                state = CryptoSyncState()
-                syncConfigCache.removeAll()
-                cancellables.removeAll()
-            }
-        }
-    
-    
-    // MARK: - Sync Process
     func startSync() {
-            guard !state.isSyncing else { return }
-            
-            state.isSyncing = true
-            state.logEntries.removeAll()
-            addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
-            
-            let syncTask = Task {
-                do {
-                    for config in state.syncConfigs {
-                        guard let crypto = config.crypto else { continue }
-                        if Task.isCancelled { break }
-                        await syncCrypto(crypto, with: config)
-                        try await Task.sleep(nanoseconds: 500_000_000)
-                    }
-                } catch {
-                    addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida", isError: true)
+        guard !state.isSyncing else { return }
+        
+        state.isSyncing = true
+        state.logEntries.removeAll()
+        addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
+        
+        let syncTask = Task {
+            do {
+                for config in state.syncConfigs {
+                    guard let crypto = config.crypto else { continue }
+                    if Task.isCancelled { break }
+                    try await syncCrypto(crypto, with: config)
+                    try await Task.sleep(nanoseconds: 500_000_000)
                 }
-                
-                await MainActor.run {
-                    self.state.isSyncing = false
-                    addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización completada", isError: false)
-                }
+            } catch {
+                addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida", isError: true)
             }
             
-            Task {
-                await taskManager.add(syncTask)
+            await MainActor.run {
+                self.state.isSyncing = false
+                addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización completada", isError: false)
             }
         }
-
-    deinit {
-            cleanupTask = Task { @MainActor in
-                await taskManager.cancelAll()
-                state = CryptoSyncState()
-                syncConfigCache.removeAll()
-                cancellables.removeAll()
-            }
+        
+        Task {
+            await taskManager.add(syncTask)
         }
+    }
     
-    
-    private func syncCrypto(_ crypto: Crypto, with config: CryptoSyncConfig) async {
+    private func syncCrypto(_ crypto: Crypto, with config: CryptoSyncConfig) async throws {
         do {
             let price = try await fetchPrice(from: config.syncUrl)
             await updateCryptoPrice(crypto, newPrice: price)
@@ -231,6 +185,12 @@ class CryptoSyncViewModel: ObservableObject {
         crypto.precio = config.defaultPrice
         crypto.ultimaActualizacion = Date()
         
+        do {
+            try modelContext.save()
+        } catch {
+            print("Error saving context: \(error)")
+        }
+        
         addLogEntry(
             cryptoSymbol: crypto.simbolo,
             message: "\(errorMessage). Usando precio por defecto (\(config.defaultPrice))",
@@ -261,7 +221,6 @@ class CryptoSyncViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Log Management
     private func addLogEntry(cryptoSymbol: String, message: String, isError: Bool) {
         let entry = SyncLogEntry(
             timestamp: Date(),
@@ -272,16 +231,21 @@ class CryptoSyncViewModel: ObservableObject {
         state.logEntries.insert(entry, at: 0)
     }
     
-  
-    
     func cleanup() async {
-            await taskManager.cancelAll()
-            await MainActor.run {
-                state = CryptoSyncState()
-                syncConfigCache.removeAll()
-                cancellables.removeAll()
-            }
+        await taskManager.cancelAll()
+        await MainActor.run { [weak self] in
+            guard let self = self else { return }
+            self.state = CryptoSyncState()
+            self.syncConfigCache.removeAll()
+            self.cancellables.removeAll()
         }
+        cleanupTask?.cancel()
+        cleanupTask = nil
+    }
     
-    
+    deinit {
+        cleanupTask = Task { @MainActor in
+            await cleanup()
+        }
+    }
 }
