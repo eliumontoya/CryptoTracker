@@ -5,10 +5,12 @@ struct PortfolioPorCryptosView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    
-    @StateObject private var viewModel: PortfolioPorCryptosViewModel = PortfolioPorCryptosViewModel(
-        modelContext: ModelContext(try! ModelContainer(for: Cartera.self))
-    )
+ 
+    @StateObject private var viewModel: PortfolioPorCryptosViewModel
+
+    init(viewModel: PortfolioPorCryptosViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
     
     var body: some View {
         ScrollView {
@@ -150,8 +152,4 @@ private extension View {
             }
     }
 }
-
-#Preview {
-    PortfolioPorCryptosView()
-        .withPreviewContainer()
-}
+ 

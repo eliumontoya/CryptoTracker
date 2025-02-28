@@ -7,7 +7,7 @@ struct MovimientoEntradaFormView: View {
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
     
-    @StateObject var viewModel: MovimientoEntradaViewModel
+    @ObservedObject var viewModel: MovimientoEntradaViewModel
     
     var body: some View {
         ScrollView {
@@ -22,6 +22,8 @@ struct MovimientoEntradaFormView: View {
                 usdFieldsSection
                 
                 // FIAT Alterno
+                fiatAlternoToggle
+                
                 if viewModel.usaFiatAlterno {
                     fiatAlternoSection
                 }
@@ -36,6 +38,15 @@ struct MovimientoEntradaFormView: View {
             }
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
+            .disabled(viewModel.isLoading)
+            .overlay {
+                if viewModel.isLoading {
+                    ProgressView()
+                        .scaleEffect(1.5)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(Color.black.opacity(0.1))
+                }
+            }
         }
         .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
                minHeight: 700, idealHeight: 800, maxHeight: .infinity)
@@ -71,7 +82,7 @@ struct MovimientoEntradaFormView: View {
                         }
                     }
                 }
-                .disabled(!viewModel.formIsValid)
+                .disabled(!viewModel.formIsValid || viewModel.isLoading)
             }
         }
         .alert("Error", isPresented: $viewModel.hasError) {
@@ -155,12 +166,14 @@ struct MovimientoEntradaFormView: View {
         }
     }
     
+    private var fiatAlternoToggle: some View {
+        Toggle("FIAT Invertido en Crypto", isOn: $viewModel.usaFiatAlterno)
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+    }
+    
     private var fiatAlternoSection: some View {
         Group {
-            Toggle("FIAT Invertido en Crypto", isOn: $viewModel.usaFiatAlterno)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-            
             Picker("FIAT Alterno", selection: $viewModel.selectedFiatAlterno) {
                 Text("Seleccionar FIAT").tag(Optional<FIAT>.none)
                 ForEach(fiats.filter { $0.simbolo != "USD" }) { fiat in
@@ -187,7 +200,20 @@ struct MovimientoEntradaFormView: View {
                         }
                 }
                 .frame(maxWidth: .infinity)
+                
+                if viewModel.valorTotalFiatAlterno > 0 && viewModel.cantidadCrypto > 0 {
+                    Text("Precio por crypto: \(viewModel.precioFiatAlterno.formatted(.currency(code: fiat.simbolo)))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
         }
+    }
+}
+
+// Extension para facilitar la vista previa
+extension MovimientoEntradaFormView {
+    init(viewModel: MovimientoEntradaViewModel) {
+        self.viewModel = viewModel
     }
 }

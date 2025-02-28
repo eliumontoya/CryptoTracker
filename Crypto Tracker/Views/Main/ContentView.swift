@@ -15,7 +15,6 @@ enum AdminMenuOption {
     case fiat
     case sync
     case setup  //  caso para Setup Inicial
-
 }
 
 enum MovimientosMenuOption {
@@ -27,18 +26,23 @@ enum MovimientosMenuOption {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-
+    
+    // Contenedor de dependencias
+    private let dependencies: AppDependencyContainer
+    
+    // Inicializador que recibe el contenedor de dependencias
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+    }
+    
     @State private var selectedMainMenu: MainMenuOption? = .home
     @State private var selectedAdminMenu: AdminMenuOption?
     @State private var selectedMovimientosMenu: MovimientosMenuOption?
-    
     
     var body: some View {
         NavigationSplitView {
             // Sidebar con menú principal
             List {
-                
-               
                 // Opción Home
                 NavigationLink(
                     destination: PortfolioView(),
@@ -49,13 +53,13 @@ struct ContentView: View {
                 }
                 
                 NavigationLink(
-                    destination: PortfolioPorCryptosView(),
+                    destination: PortfolioPorCryptosView(viewModel: dependencies.portfolioPorCryptosViewModel),
                     tag: MainMenuOption.portfolioCryptos,
                     selection: $selectedMainMenu
                 ) {
                     Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
                 }
-                 
+                
                 NavigationLink(
                     destination: PortfolioDetalleView(),
                     tag: MainMenuOption.portfolioDetalle,
@@ -63,24 +67,17 @@ struct ContentView: View {
                 ) {
                     Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
                 }
-         
-                  
-               
+                
                 // Menú Movimientos
                 DisclosureGroup(
                     content: {
                         NavigationLink(
-                                                    destination: MovimientosEntradaView(
-                                                        viewModel: MovimientoEntradaViewModel(
-                                                            modelContext: modelContext
-                                                        )
-                                                    ),
-                                                    tag: .entrada,
-                                                    selection: $selectedMovimientosMenu
-                                                ) {
-                                                    Label("Entrada", systemImage: "arrow.down.circle")
-                                                }
-                        
+                            destination: MovimientosEntradaView(viewModel: dependencies.movimientosEntradaListViewModel),
+                            tag: .entrada,
+                            selection: $selectedMovimientosMenu
+                        ) {
+                            Label("Entrada", systemImage: "arrow.down.circle")
+                        }
                         
                         NavigationLink(
                             destination: MovimientosSalidaView()
@@ -142,7 +139,7 @@ struct ContentView: View {
                         }
                         NavigationLink(
                             destination: CryptoSyncView()
-                                                           .environment(\.modelContext, modelContext),
+                                .environment(\.modelContext, modelContext),
                             tag: .sync,
                             selection: $selectedAdminMenu
                         ) {
@@ -150,28 +147,22 @@ struct ContentView: View {
                         }
                         // Setup Inicial
                         NavigationLink(
-                                                    destination: SetupInicialView(),
-                                                    tag: .setup,
-                                                    selection: $selectedAdminMenu
-                                                ) {
-                                                    Label("Setup Inicial", systemImage: "gearshape.circle.fill")
-                                                }
+                            destination: SetupInicialView(),
+                            tag: .setup,
+                            selection: $selectedAdminMenu
+                        ) {
+                            Label("Setup Inicial", systemImage: "gearshape.circle.fill")
+                        }
                     },
                     label: {
                         Label("Administración", systemImage: "gear")
                     }
                 )
-                
-                
             }
             .listStyle(SidebarListStyle())
             .navigationTitle("Crypto Tracker")
         } detail: {
-           // PortfolioView()
+            PortfolioView()
         }
     }
-}
-
-#Preview {
-    ContentView()
-}
+} 

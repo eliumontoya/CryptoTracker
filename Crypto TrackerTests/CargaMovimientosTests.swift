@@ -1,4 +1,4 @@
-/*import XCTest
+import XCTest
 import SwiftData
 @testable import Crypto_Tracker
 
@@ -265,4 +265,4 @@ protocol CargaMovimientosDelegate {
     func didCompleteTask(_ task: String, total: Int)
     func didReceiveErrorMessage(_ error: Error)
 }
-*/
+ 

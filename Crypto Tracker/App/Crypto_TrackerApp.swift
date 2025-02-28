@@ -4,7 +4,8 @@ import SwiftData
 @main
 struct CryptoTrackerApp: App {
     let container: ModelContainer
-    
+    let dependencies: AppDependencyContainer
+
     init() {
         do {
             // Definimos el esquema con versión
@@ -33,6 +34,11 @@ struct CryptoTrackerApp: App {
                 for: schema,
                 configurations: [modelConfiguration]
             )
+            
+            // Inicializar el contenedor de dependencias
+                dependencies = AppDependencyContainer(modelContext: container.mainContext)
+                        
+            
         } catch {
             fatalError("Could not initialize ModelContainer: \(error.localizedDescription)")
         }
@@ -40,7 +46,7 @@ struct CryptoTrackerApp: App {
     
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(dependencies: dependencies)
         }
         .modelContainer(container)
     }
