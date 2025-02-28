@@ -46,11 +46,14 @@ struct PortfolioDetalleView: View {
     
     private var contenidoPortfolio: some View {
         VStack(spacing: 20) {
+            /*
             ForEach(0..<viewModel.numeroRenglones, id: \.self) { renglon in
                 HStack(alignment: .top, spacing: 20) {
                     // Primera columna del renglón
                     if renglon * 2 < viewModel.carterasDetail.count {
+
                         CarteraDetailView(
+                            movimientoService: movimientoService
                             carteraDetail: viewModel.carterasDetail[renglon * 2],
                             onUpdateData: {
                                 viewModel.actualizarPortfolio(
@@ -79,6 +82,7 @@ struct PortfolioDetalleView: View {
                     }
                 }
             }
+            */
         }
         .padding()
     }

@@ -39,7 +39,7 @@ struct CarteraMovimientosView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-                MovimientoSearchView(movimientoDetalle: movimientoDetalle)
+               // MovimientoSearchView(movimientoDetalle: movimientoDetalle)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()

@@ -17,8 +17,19 @@ enum EditMovementMode: Equatable {
 struct MovimientoSearchView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    var mode: EditMovementMode
+
     
-    let movimientoDetalle: MovimientoDetalle
+    @StateObject private var movimientoEntradaViewModel: MovimientoEntradaViewModel
+     let  movimientoDetalle: MovimientoDetalle
+
+        // Hacer el inicializador público
+        init(movimientoDetalle: MovimientoDetalle, mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel) {
+            self.mode = mode
+            self.movimientoDetalle = movimientoDetalle
+
+            _movimientoEntradaViewModel = StateObject(wrappedValue: movimientoEntradaViewModel)
+        }
     
     @Query private var movimientosIngreso: [MovimientoIngreso]
     @Query private var movimientosEgreso: [MovimientoEgreso]
@@ -28,7 +39,7 @@ struct MovimientoSearchView: View {
     var body: some View {
         NavigationStack {
             if let mode = findEditMode() {
-                EditMovimientoView(mode: mode)
+                EditMovimientoView(mode: mode, movimientoEntradaViewModel: self.movimientoEntradaViewModel)
             } else {
                 ContentUnavailableView(
                     "Movimiento no encontrado",
@@ -89,18 +100,22 @@ struct IdentifiableMovimientoDetalle: Identifiable {
 // MARK: - Vista de Edición de Movimiento
 struct EditMovimientoView: View {
     @Environment(\.dismiss) private var dismiss
-    let mode: EditMovementMode
-    
+     var mode: EditMovementMode
+    private var movimientoEntradaViewModel: MovimientoEntradaViewModel
+ 
+        // Hacer el inicializador público
+        init(mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel) {
+            self.mode = mode
+            self.movimientoEntradaViewModel = movimientoEntradaViewModel
+        }
+        
     var body: some View {
         NavigationStack {
             Group {
                 switch mode {
                 case .entrada(let movimiento):
                     MovimientoEntradaFormView(
-                        viewModel: MovimientoEntradaViewModel(
-                            modelContext: ModelContext(try! ModelContainer(for: MovimientoIngreso.self)),
-                            movimiento: movimiento
-                        )
+                        viewModel: self.movimientoEntradaViewModel
                     )
                 case .salida(let movimiento):
                     MovimientoSalidaFormView(
@@ -129,3 +144,4 @@ struct EditMovimientoView: View {
         }
     }
 }
+

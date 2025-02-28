@@ -39,9 +39,9 @@ struct CarteraHeaderView: View {
 struct CarteraDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: CarteraDetailViewModel
-    
-    init(carteraDetail: CarteraDetail, onUpdateData: @escaping () -> Void) {
-        _viewModel = StateObject(wrappedValue: CarteraDetailViewModel(
+ 
+    init( carteraDetail: CarteraDetail, onUpdateData: @escaping () -> Void) {
+         _viewModel = StateObject(wrappedValue: CarteraDetailViewModel(
             carteraDetail: carteraDetail,
             onUpdateData: onUpdateData
         ))
@@ -71,7 +71,7 @@ struct CarteraDetailView: View {
         }
         .applyMovimientoSheets(
             viewModel: viewModel,
-            context: modelContext,
+             context: modelContext,
             showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
             showingEntradaForm: $viewModel.showingEntradaForm,
             showingSalidaForm: $viewModel.showingSalidaForm,
@@ -205,7 +205,7 @@ struct CarteraDetailView: View {
 private extension View {
     func applyMovimientoSheets(
         viewModel: CarteraDetailViewModel,
-        context: ModelContext,
+         context: ModelContext,
         showingCarteraMovimientos: Binding<Bool>,
         showingEntradaForm: Binding<Bool>,
         showingSalidaForm: Binding<Bool>,
@@ -223,8 +223,8 @@ private extension View {
                 NavigationStack {
                     MovimientoEntradaFormView(
                         viewModel: MovimientoEntradaViewModel(
-                            modelContext: context,
-                            movimiento: nil
+                            movimiento: nil,
+                            movimientoService: MovimientosEntradaService(modelContext: context)
                         )
                     )
                 }

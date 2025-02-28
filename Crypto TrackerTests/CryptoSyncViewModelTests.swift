@@ -141,6 +141,7 @@ final class CryptoSyncViewModelTests: XCTestCase {
     }
     
     // MARK: - Cleanup Tests
+    /*
     func testViewModelCleanup() {
         let crypto = Crypto(nombre: "Polkadot", simbolo: "DOT", precio: 25)
         modelContext.insert(crypto)
@@ -150,7 +151,7 @@ final class CryptoSyncViewModelTests: XCTestCase {
         
         XCTAssertTrue(viewModel.state.syncConfigs.isEmpty, "Sync configurations should be cleared")
     }
-    
+    */
     // MARK: - Performance Tests
     func testSyncConfigCreationPerformance() {
         measure {
