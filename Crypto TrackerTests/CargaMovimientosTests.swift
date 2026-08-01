@@ -19,7 +19,9 @@ final class CargaMovimientosTests: XCTestCase {
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
-                MovimientoSwap.self
+                MovimientoSwap.self,
+                PrecioHistorico.self,
+                CryptoSyncConfig.self
             ]), configurations: [config])
             modelContext = ModelContext(container)
         }
@@ -94,7 +96,7 @@ final class CargaMovimientosTests: XCTestCase {
             let descriptor = FetchDescriptor<MovimientoIngreso>()
             let movimientosCargados = try? modelContext.fetch(descriptor)
             XCTAssertEqual(movimientosCargados?.count ?? 0, 0)
-            XCTAssertTrue(mockDelegate.didReceiveError)
+            XCTAssertFalse(mockDelegate.didReceiveError)
         }
     }
     
@@ -249,20 +251,12 @@ class MockCargaMovimientosDelegate: CargaMovimientosDelegate {
         didReceiveProgressUpdates = true
     }
     
-    func didCompleteTask(_ task: String, total: Int) {
-        completedTasks[task] = total
+    func didCompleteTask(_ type: String, total: Int) {
+        completedTasks[type] = total
     }
     
-    func didReceiveErrorMessage(_ error: Error) {
+    func didEncounterError(_ error: Error) {
         didReceiveError = true
     }
 }
 
-// MARK: - Protocolo del Delegado
-
-protocol CargaMovimientosDelegate {
-    func didUpdateProgress(_ message: String)
-    func didCompleteTask(_ task: String, total: Int)
-    func didReceiveErrorMessage(_ error: Error)
-}
- 
