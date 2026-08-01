@@ -61,7 +61,7 @@ struct ContentView: View {
                 }
                 
                 NavigationLink(
-                    destination: PortfolioDetalleView(),
+                    destination: PortfolioDetalleView(modelContext: modelContext),
                     tag: MainMenuOption.portfolioDetalle,
                     selection: $selectedMainMenu
                 ) {
@@ -138,8 +138,7 @@ struct ContentView: View {
                             Label("FIAT", systemImage: "dollarsign.circle")
                         }
                         NavigationLink(
-                            destination: CryptoSyncView()
-                                .environment(\.modelContext, modelContext),
+                            destination: CryptoSyncView(modelContext: modelContext),
                             tag: .sync,
                             selection: $selectedAdminMenu
                         ) {

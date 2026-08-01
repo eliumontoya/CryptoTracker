@@ -2,16 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct PortfolioDetalleView: View {
-    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: PortfolioDetalleViewModel
     
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     
-    init() {
-        // El StateObject debe inicializarse usando _varName para evitar problemas de memoria
+    init(modelContext: ModelContext) {
         _viewModel = StateObject(wrappedValue: PortfolioDetalleViewModel(
-            modelContext: ModelContext(try! ModelContainer(for: Cartera.self))
+            modelContext: modelContext
         ))
     }
     
@@ -82,6 +80,6 @@ struct PortfolioDetalleView: View {
 }
 
 #Preview {
-    PortfolioDetalleView()
+    PortfolioDetalleView(modelContext: PreviewContainer.shared.context)
         .withPreviewContainer()
 }

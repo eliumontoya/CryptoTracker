@@ -96,7 +96,8 @@ struct IdentifiableMovimientoDetalle: Identifiable {
 // MARK: - Vista de Edición de Movimiento
 struct EditMovimientoView: View {
     @Environment(\.dismiss) private var dismiss
-     var mode: EditMovementMode
+    @Environment(\.modelContext) private var modelContext
+    var mode: EditMovementMode
     private var movimientoEntradaViewModel: MovimientoEntradaViewModel
  
         // Hacer el inicializador público
@@ -116,21 +117,21 @@ struct EditMovimientoView: View {
                 case .salida(let movimiento):
                     MovimientoSalidaFormView(
                         viewModel: MovimientoSalidaViewModel(
-                            modelContext: ModelContext(try! ModelContainer(for: MovimientoEgreso.self)),
+                            modelContext: modelContext,
                             movimiento: movimiento
                         )
                     )
                 case .entreCarteras(let movimiento):
                     MovimientoEntreCarterasFormView(
                         viewModel: MovimientoEntreCarterasViewModel(
-                            modelContext: ModelContext(try! ModelContainer(for: MovimientoEntreCarteras.self)),
+                            modelContext: modelContext,
                             movimiento: movimiento
                         )
                     )
                 case .swap(let movimiento):
                     MovimientoSwapFormView(
                         viewModel: MovimientoSwapViewModel(
-                            modelContext: ModelContext(try! ModelContainer(for: MovimientoSwap.self)),
+                            modelContext: modelContext,
                             movimiento: movimiento
                         )
                     )
