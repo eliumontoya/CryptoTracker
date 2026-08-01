@@ -24,7 +24,7 @@ struct CarteraHeaderView: View {
             }
             
             HStack {
-                Text("Inversión: \(summary.totalInvertidoFIAT.formatted(.currency(code: "USD")))")
+                Text("Inversión: \(summary.totalInvertidoUSD.formatted(.currency(code: "USD")))")
                 Spacer()
                 Text("Rentabilidad: \(summary.rentabilidadTotal.formatted(.number.precision(.fractionLength(2))))%")
                     .foregroundStyle(summary.rentabilidadTotal >= 0 ? .green : .red)

@@ -11,14 +11,12 @@ struct CryptoDetail: Identifiable {
     var balanceActual: Decimal
     var totalInvertidoUSD: Decimal       // Total USD invertido en entradas
     var valorUSD: Decimal
-    var totalInvertidoFIAT: Decimal
-    var valorActualFIAT: Decimal
     var ganancia: Decimal
     
     // Calcular el porcentaje de ganancia/pérdida
     var porcentajeGanancia: Decimal {
-        guard totalInvertidoFIAT != 0 else { return 0 }
-        return ((valorActualFIAT - totalInvertidoFIAT) / totalInvertidoFIAT) * 100
+        guard totalInvertidoUSD != 0 else { return 0 }
+        return ((valorUSD - totalInvertidoUSD) / totalInvertidoUSD) * 100
     }
 }
 
@@ -31,12 +29,8 @@ struct CarteraDetail: Identifiable {
         cryptoDetails.reduce(0) { $0 + $1.valorUSD }
     }
     
-    var totalInvertidoFIAT: Decimal {
-        cryptoDetails.reduce(0) { $0 + $1.totalInvertidoFIAT }
-    }
-    
-    var totalValorFIAT: Decimal {
-        cryptoDetails.reduce(0) { $0 + $1.valorActualFIAT }
+    var totalInvertidoUSD: Decimal {
+        cryptoDetails.reduce(0) { $0 + $1.totalInvertidoUSD }
     }
     
     var gananciaTotal: Decimal {
@@ -44,7 +38,7 @@ struct CarteraDetail: Identifiable {
     }
     
     var rentabilidadTotal: Decimal {
-        guard totalInvertidoFIAT > 0 else { return 0 }
-        return ((totalValorFIAT - totalInvertidoFIAT) / totalInvertidoFIAT) * 100
+        guard totalInvertidoUSD > 0 else { return 0 }
+        return ((valorTotalUSD - totalInvertidoUSD) / totalInvertidoUSD) * 100
     }
 }
