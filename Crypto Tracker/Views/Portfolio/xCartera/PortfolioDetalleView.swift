@@ -2,15 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct PortfolioDetalleView: View {
+    private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: PortfolioDetalleViewModel
     
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: PortfolioDetalleViewModel(
-            modelContext: modelContext
-        ))
+    init(viewModel: PortfolioDetalleViewModel, dependencies: AppDependencyContainer) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+        self.dependencies = dependencies
     }
     
     var body: some View {
@@ -47,7 +47,7 @@ struct PortfolioDetalleView: View {
                     // Primera columna del renglón
                     if renglon * 2 < viewModel.carterasDetail.count {
 
-                        CarteraDetailView(
+                        dependencies.makeCarteraDetailView(
                             carteraDetail: viewModel.carterasDetail[renglon * 2],
                             onUpdateData: {
                                 viewModel.actualizarPortfolio(
@@ -61,7 +61,7 @@ struct PortfolioDetalleView: View {
                     
                     // Segunda columna del renglón
                     if (renglon * 2 + 1) < viewModel.carterasDetail.count {
-                        CarteraDetailView(
+                        dependencies.makeCarteraDetailView(
                             carteraDetail: viewModel.carterasDetail[renglon * 2 + 1],
                             onUpdateData: {
                                 viewModel.actualizarPortfolio(
@@ -80,6 +80,7 @@ struct PortfolioDetalleView: View {
 }
 
 #Preview {
-    PortfolioDetalleView(modelContext: PreviewContainer.shared.context)
+    let dependencies = AppDependencyContainer(modelContext: PreviewContainer.shared.context)
+    return PortfolioDetalleView(viewModel: dependencies.portfolioDetalleViewModel, dependencies: dependencies)
         .withPreviewContainer()
 }

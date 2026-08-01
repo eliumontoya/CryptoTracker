@@ -3,17 +3,13 @@ import SwiftData
 import UniformTypeIdentifiers
 
 struct CargaMovimientosInicialesView: View {
-    @Environment(\.modelContext) private var environmentModelContext
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var viewModel: CargaMovimientosViewModel
-    private let modelContext: ModelContext
 
     // Initializer
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
-        _viewModel = StateObject(wrappedValue: CargaMovimientosViewModel(modelContext: modelContext))
-
+    init(dependencies: AppDependencyContainer) {
+        _viewModel = StateObject(wrappedValue: dependencies.cargaMovimientosViewModel)
     }
     
     var body: some View {

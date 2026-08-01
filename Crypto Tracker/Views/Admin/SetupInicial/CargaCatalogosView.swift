@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 import UniformTypeIdentifiers
 struct CargaCatalogosView: View {
-    @Environment(\.modelContext) private var environmentModelContext
     @Environment(\.dismiss) private var dismiss
     
     // Estados para los archivos seleccionados
@@ -16,16 +15,10 @@ struct CargaCatalogosView: View {
     
     // Tipos de archivo permitidos
     let csvType = UTType(filenameExtension: "csv")!
-    
-    private let modelContext: ModelContext
 
     // Inicializador con inyección de dependencias
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
-
-        _viewModel = StateObject(wrappedValue: CargaCatalogosViewModel(modelContext: modelContext))
-        
-
+    init(dependencies: AppDependencyContainer) {
+        _viewModel = StateObject(wrappedValue: dependencies.cargaCatalogosViewModel)
     }
     
     var body: some View {

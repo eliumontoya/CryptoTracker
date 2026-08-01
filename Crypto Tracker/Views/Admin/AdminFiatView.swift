@@ -5,8 +5,8 @@ import UniformTypeIdentifiers
 struct AdminFiatView: View {
     @StateObject private var viewModel: AdminFiatViewModel
     
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: AdminFiatViewModel(modelContext: modelContext))
+    init(viewModel: AdminFiatViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {

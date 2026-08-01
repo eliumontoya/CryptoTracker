@@ -2,11 +2,10 @@ import SwiftUI
 import SwiftData
 
 struct AdminCryptosView: View {
-    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: AdminCryptosViewModel
     
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: AdminCryptosViewModel(modelContext: modelContext))
+    init(viewModel: AdminCryptosViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {

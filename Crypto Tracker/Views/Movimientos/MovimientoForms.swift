@@ -17,14 +17,13 @@ enum EditMovementMode: Equatable {
 struct MovimientoSearchView: View {
     @StateObject private var movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientoDetalle: MovimientoDetalle
-    let modelContext: ModelContext
+    private let dependencies: AppDependencyContainer
 
-    init(movimientoDetalle: MovimientoDetalle, modelContext: ModelContext) {
+    init(movimientoDetalle: MovimientoDetalle, dependencies: AppDependencyContainer) {
         self.movimientoDetalle = movimientoDetalle
-        self.modelContext = modelContext
-        let service = MovimientosEntradaService(modelContext: modelContext)
+        self.dependencies = dependencies
         _movimientoEntradaViewModel = StateObject(wrappedValue:
-            MovimientoEntradaViewModel(movimiento: nil, movimientoService: service))
+            dependencies.makeMovimientoEntradaViewModel())
     }
     
     @Query private var movimientosIngreso: [MovimientoIngreso]
@@ -35,7 +34,11 @@ struct MovimientoSearchView: View {
     var body: some View {
         NavigationStack {
             if let mode = findEditMode() {
-                EditMovimientoView(mode: mode, movimientoEntradaViewModel: self.movimientoEntradaViewModel)
+                EditMovimientoView(
+                    mode: mode,
+                    movimientoEntradaViewModel: self.movimientoEntradaViewModel,
+                    dependencies: dependencies
+                )
             } else {
                 ContentUnavailableView(
                     "Movimiento no encontrado",
@@ -96,45 +99,31 @@ struct IdentifiableMovimientoDetalle: Identifiable {
 // MARK: - Vista de Edición de Movimiento
 struct EditMovimientoView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     var mode: EditMovementMode
     private var movimientoEntradaViewModel: MovimientoEntradaViewModel
+    private let dependencies: AppDependencyContainer
  
         // Hacer el inicializador público
-        init(mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel) {
+        init(mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel, dependencies: AppDependencyContainer) {
             self.mode = mode
             self.movimientoEntradaViewModel = movimientoEntradaViewModel
+            self.dependencies = dependencies
         }
         
     var body: some View {
         NavigationStack {
             Group {
                 switch mode {
-                case .entrada(let movimiento):
+                case .entrada:
                     MovimientoEntradaFormView(
                         viewModel: self.movimientoEntradaViewModel
                     )
                 case .salida(let movimiento):
-                    MovimientoSalidaFormView(
-                        viewModel: MovimientoSalidaViewModel(
-                            modelContext: modelContext,
-                            movimiento: movimiento
-                        )
-                    )
+                    dependencies.makeMovimientoSalidaFormView(movimiento: movimiento)
                 case .entreCarteras(let movimiento):
-                    MovimientoEntreCarterasFormView(
-                        viewModel: MovimientoEntreCarterasViewModel(
-                            modelContext: modelContext,
-                            movimiento: movimiento
-                        )
-                    )
+                    dependencies.makeMovimientoEntreCarterasFormView(movimiento: movimiento)
                 case .swap(let movimiento):
-                    MovimientoSwapFormView(
-                        viewModel: MovimientoSwapViewModel(
-                            modelContext: modelContext,
-                            movimiento: movimiento
-                        )
-                    )
+                    dependencies.makeMovimientoSwapFormView(movimiento: movimiento)
                 }
             }
             .adaptiveSheetFrame()

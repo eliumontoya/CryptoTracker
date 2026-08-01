@@ -4,16 +4,12 @@ import SwiftData
 struct EliminarDataView: View {
     @Environment(\.dismiss) private var dismiss
     
-    @Environment(\.modelContext) private var environmentModelContext
-    private let modelContext: ModelContext
     @StateObject private var viewModel: EliminarDataViewModel
 
     
-    init(modelContext: ModelContext) {
-            self.modelContext = modelContext
-        _viewModel = StateObject(wrappedValue: EliminarDataViewModel(modelContext: modelContext))
-
-        }
+    init(dependencies: AppDependencyContainer) {
+        _viewModel = StateObject(wrappedValue: dependencies.eliminarDataViewModel)
+    }
     
     // Estado para logs y otras propiedades
         @State private var showingConfirmation = false

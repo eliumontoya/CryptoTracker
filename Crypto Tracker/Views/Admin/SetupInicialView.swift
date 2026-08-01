@@ -6,13 +6,13 @@ struct SetupOption: Identifiable {
     let title: String
     let icon: String
     let description: String
-    let createDestination: (ModelContext) -> AnyView
+    let createDestination: () -> AnyView
 }
 
 struct SetupInicialView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
     
+    private let dependencies: AppDependencyContainer
     private let columns = [
         GridItem(.adaptive(minimum: 280, maximum: 320), spacing: 20)
     ]
@@ -21,37 +21,38 @@ struct SetupInicialView: View {
     @State private var selectedOption: SetupOption?
     @State private var showingDestination = false
     
-    init() {
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _setupOptions = State(initialValue: [
             SetupOption(
                 title: "Eliminar Datos Existentes",
                 icon: "trash.circle.fill",
                 description: "Elimina todos los datos almacenados en la aplicación",
-                createDestination: { modelContext in
-                    AnyView(EliminarDataView(modelContext: modelContext))
+                createDestination: { [dependencies] in
+                    AnyView(dependencies.makeEliminarDataView())
                 }
             ),
             SetupOption(
                 title: "Carga de Catálogos Iniciales",
                 icon: "folder.circle.fill",
                 description: "Carga los catálogos predeterminados de Cryptos, FIAT y Carteras",
-                createDestination: { modelContext in
-                    AnyView(CargaCatalogosView(modelContext: modelContext))
+                createDestination: { [dependencies] in
+                    AnyView(dependencies.makeCargaCatalogosView())
                 }
             ),
             SetupOption(
                 title: "Carga de Movimientos Iniciales",
                 icon: "arrow.left.arrow.right.circle.fill",
                 description: "Importa movimientos iniciales desde un archivo",
-                createDestination: { modelContext in
-                    AnyView(CargaMovimientosInicialesView(modelContext: modelContext))
+                createDestination: { [dependencies] in
+                    AnyView(dependencies.makeCargaMovimientosInicialesView())
                 }
             ),
             SetupOption(
                 title: "Realizar y Cargar Backup",
                 icon: "externaldrive.badge.checkmark",
                 description: "Realiza copias de seguridad o restaura datos desde un backup",
-                createDestination: { _ in
+                createDestination: {
                     AnyView(EmptyView())
                 }
             )
@@ -98,7 +99,7 @@ struct SetupInicialView: View {
     private var sheetDestinationView: some View {
         Group {
             if let selectedOption = selectedOption {
-                selectedOption.createDestination(modelContext)
+                selectedOption.createDestination()
             } else {
                 EmptyView()
             }

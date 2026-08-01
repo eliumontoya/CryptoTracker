@@ -2,14 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct PortfolioPorCryptosView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
  
+    private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: PortfolioPorCryptosViewModel
 
-    init(viewModel: PortfolioPorCryptosViewModel) {
+    init(viewModel: PortfolioPorCryptosViewModel, dependencies: AppDependencyContainer) {
         _viewModel = StateObject(wrappedValue: viewModel)
+        self.dependencies = dependencies
     }
     
     var body: some View {
@@ -27,7 +28,7 @@ struct PortfolioPorCryptosView: View {
         #else
         scrollContent
             .sheet(item: $viewModel.selectedCrypto) { crypto in
-                CryptoDetailView(crypto: crypto)
+                dependencies.makeCryptoDetailView(crypto: crypto)
                     .onDisappear {
                         viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
                     }
@@ -57,7 +58,6 @@ struct PortfolioPorCryptosView: View {
         }
         .navigationTitle("Portafolio por Cryptos")
         .onAppear {
-            viewModel.modelContext = modelContext
             viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
         }
         .onChange(of: carteras) { _, newCarteras in
@@ -114,7 +114,7 @@ struct PortfolioPorCryptosView: View {
                 
                 ForEach(viewModel.cryptoSummaries) { summary in
                     #if os(iOS)
-                    NavigationLink(destination: CryptoDetailView(crypto: summary.crypto)) {
+                    NavigationLink(destination: dependencies.makeCryptoDetailView(crypto: summary.crypto)) {
                         CryptoPortfolioRow(summary: summary)
                     }
                     #else

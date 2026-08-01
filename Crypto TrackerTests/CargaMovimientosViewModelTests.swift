@@ -12,18 +12,14 @@ final class CargaMovimientosViewModelTests: XCTestCase {
         super.setUp()
         
         // Setup a mock model context for testing
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: Crypto.self,
-            Cartera.self,
-            FIAT.self,
-            configurations: config
-        )
+        let schema = Schema([Crypto.self, Cartera.self, FIAT.self])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: schema, configurations: [config])
         
         // Use Task to handle main actor context
         let expectation = XCTestExpectation(description: "Context Setup")
         Task { @MainActor in
-            mockModelContext = container.mainContext
+            mockModelContext = ModelContext(container)
             viewModel = CargaMovimientosViewModel(modelContext: mockModelContext)
             expectation.fulfill()
         }

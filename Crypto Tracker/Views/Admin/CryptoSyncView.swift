@@ -4,8 +4,8 @@ import SwiftUI
 struct CryptoSyncView: View {
     @StateObject private var viewModel: CryptoSyncViewModel
     
-    init(modelContext: ModelContext) {
-        _viewModel = StateObject(wrappedValue: CryptoSyncViewModel(modelContext: modelContext))
+    init(viewModel: CryptoSyncViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     var body: some View {

@@ -12,9 +12,10 @@ final class CryptoSyncViewModelTests: XCTestCase {
         super.setUp()
         
         do {
-            let config = ModelConfiguration(isStoredInMemoryOnly: true)
-            modelContainer = try ModelContainer(for: Crypto.self, CryptoSyncConfig.self, configurations: config)
-            modelContext = modelContainer.mainContext
+            let schema = Schema([Crypto.self, CryptoSyncConfig.self])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            modelContainer = try ModelContainer(for: schema, configurations: [config])
+            modelContext = ModelContext(modelContainer)
             viewModel = CryptoSyncViewModel(modelContext: modelContext)
         } catch {
             XCTFail("Failed to set up model container: \(error)")

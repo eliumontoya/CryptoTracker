@@ -2,11 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct MovimientosSalidaView: View {
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @Query(sort: \MovimientoEgreso.fecha, order: .reverse) private var movimientos: [MovimientoEgreso]
     @State private var showingAddSheet = false
     @State private var selectedMovimiento: MovimientoEgreso?
     
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+    }
  
     var body: some View {
         List {
@@ -30,42 +33,24 @@ struct MovimientosSalidaView: View {
         #if os(iOS)
         .fullScreenCover(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoSalidaFormView(
-                    viewModel: MovimientoSalidaViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoSalidaFormView(movimiento: movimiento)
             }
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoSalidaFormView(
-                    viewModel: MovimientoSalidaViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoSalidaFormView()
             }
         }
         #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoSalidaFormView(
-                    viewModel: MovimientoSalidaViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoSalidaFormView(movimiento: movimiento)
             }
             .adaptiveSheetFrame()
         }
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoSalidaFormView(
-                    viewModel: MovimientoSalidaViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoSalidaFormView()
             }
             .adaptiveSheetFrame()
         }
@@ -75,9 +60,9 @@ struct MovimientosSalidaView: View {
     private func deleteMovimientos(at offsets: IndexSet) {
         Task {
             for index in offsets {
-                modelContext.delete(movimientos[index])
+                dependencies.modelContext.delete(movimientos[index])
             }
-            try? modelContext.save()
+            try? dependencies.modelContext.save()
         }
     }
 }

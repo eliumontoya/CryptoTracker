@@ -2,7 +2,6 @@ import SwiftUI
 import SwiftData
 
 struct MovimientosEntradaView: View {
-    @Environment(\.modelContext) private var modelContext
     @Query(sort: \MovimientoIngreso.fecha, order: .reverse) private var movimientos: [MovimientoIngreso]
     
     @ObservedObject private var viewModel: MovimientosEntradaListViewModel

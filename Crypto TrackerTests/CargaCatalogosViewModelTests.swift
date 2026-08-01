@@ -10,17 +10,15 @@ final class CargaCatalogosViewModelTests: XCTestCase {
     
     override func setUp() async throws {
         // Configurar un contenedor de modelo en memoria para pruebas
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        modelContainer = try ModelContainer(
-            for:
-                Cartera.self,
-                Crypto.self,
-                FIAT.self,
-                CryptoSyncConfig.self
-            ,
-            configurations: config
-        )
-        modelContext = modelContainer.mainContext
+        let schema = Schema([
+            Cartera.self,
+            Crypto.self,
+            FIAT.self,
+            CryptoSyncConfig.self
+        ])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        modelContainer = try ModelContainer(for: schema, configurations: [config])
+        modelContext = ModelContext(modelContainer)
         
         // Crear ViewModel con el contexto de prueba
         viewModel = CargaCatalogosViewModel(modelContext: modelContext)

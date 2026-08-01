@@ -24,7 +24,6 @@ class CryptoSyncViewModel: ObservableObject {
     }
     
     private let taskManager = TaskManager()
-    private var cleanupTask: Task<Void, Never>?
     
     // Cache para evitar lecturas innecesarias
     private var syncConfigCache: [UUID: CryptoSyncConfig] = [:]
@@ -238,14 +237,6 @@ class CryptoSyncViewModel: ObservableObject {
             self.state = CryptoSyncState()
             self.syncConfigCache.removeAll()
             self.cancellables.removeAll()
-        }
-        cleanupTask?.cancel()
-        cleanupTask = nil
-    }
-    
-    deinit {
-        cleanupTask = Task { @MainActor in
-            await cleanup()
         }
     }
 }

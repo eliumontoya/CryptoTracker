@@ -7,9 +7,8 @@ import SwiftData
 class TestSetup {
     /// Crea un contexto de modelo en memoria para pruebas
     static func createModelContext() -> ModelContext {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: Crypto.self,
+        let schema = Schema([
+            Crypto.self,
             Cartera.self,
             FIAT.self,
             MovimientoIngreso.self,
@@ -17,10 +16,14 @@ class TestSetup {
             MovimientoEntreCarteras.self,
             MovimientoSwap.self,
             PrecioHistorico.self,
-            CryptoSyncConfig.self,
-            configurations: configuration
+            CryptoSyncConfig.self
+        ])
+        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(
+            for: schema,
+            configurations: [modelConfiguration]
         )
-        return container.mainContext
+        return ModelContext(container)
     }
     
     /// Configura un escenario de prueba complejo
