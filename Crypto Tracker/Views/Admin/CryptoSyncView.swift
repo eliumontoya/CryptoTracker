@@ -46,12 +46,14 @@ struct CryptoSyncView: View {
         }
         .task {
             // Configurar limpieza cuando la vista se desmonte
-            try? await Task.sleep(nanoseconds: 1_000_000) // Pequeña pausa para asegurar inicialización
+            try? await Task.sleep(nanoseconds: 1_000_000)
+            #if os(macOS)
             Task { @MainActor in
                 for await _ in NotificationCenter.default.notifications(named: NSWindow.willCloseNotification) {
                     await viewModel.cleanup()
                 }
             }
+            #endif
         }
     }
 } 

@@ -14,7 +14,7 @@ class CargaMovimientosEntreCarterasService {
                             cryptos: [Crypto],
                             carteras: [Cartera]
     ) async throws -> Int {
-        delegate?.didUpdateProgress("Iniciando carga de Movimientos Entre Carteras...")
+        await MainActor.run { delegate?.didUpdateProgress("Iniciando carga de Movimientos Entre Carteras...") }
         
         // Leer archivo Excel
         let worksheet = try await ExcelReader.read(from: url)
@@ -35,14 +35,16 @@ class CargaMovimientosEntreCarterasService {
             modelContext.insert(movimiento)
             
             if movimientos.count % 10 == 0 {
-                delegate?.didUpdateProgress("Procesados \(movimientos.count) movimientos...")
+                await MainActor.run { delegate?.didUpdateProgress("Procesados \(movimientos.count) movimientos...") }
             }
         }
         
         try modelContext.save()
         
-        delegate?.didUpdateProgress("Completada la carga de \(movimientos.count) movimientos entre carteras")
-        delegate?.didCompleteTask("Movimientos Entre Carteras", total: movimientos.count)
+        await MainActor.run {
+            delegate?.didUpdateProgress("Completada la carga de \(movimientos.count) movimientos entre carteras")
+            delegate?.didCompleteTask("Movimientos Entre Carteras", total: movimientos.count)
+        }
         
         return movimientos.count
     }
