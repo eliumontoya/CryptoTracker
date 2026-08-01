@@ -8,6 +8,8 @@ struct FileSelectionRow: View {
     @Binding var url: URL?
     let types: [UTType]  // Permite múltiples tipos de archivo
     
+    @State private var isShowingFileImporter = false
+    
     // Constructor para un solo tipo (retrocompatibilidad)
     init(title: String, subtitle: String, url: Binding<URL?>, type: UTType) {
         self.title = title
@@ -49,23 +51,18 @@ struct FileSelectionRow: View {
                 .buttonStyle(.plain)
             }
             
-            Button(action: seleccionarArchivo) {
+            Button(action: { isShowingFileImporter = true }) {
                 Label("Seleccionar", systemImage: "doc.badge.plus")
             }
             .buttonStyle(.bordered)
         }
-    }
-    
-    private func seleccionarArchivo() {
-        #if os(macOS)
-        let panel = NSOpenPanel()
-        panel.allowsMultipleSelection = false
-        panel.canChooseDirectories = false
-        panel.allowedContentTypes = types
-        
-        if panel.runModal() == .OK {
-            url = panel.url
+        .fileImporter(isPresented: $isShowingFileImporter, allowedContentTypes: types) { result in
+            switch result {
+            case .success(let selectedURL):
+                url = selectedURL
+            case .failure(let error):
+                print("❌ Error al seleccionar archivo: \(error.localizedDescription)")
+            }
         }
-        #endif
     }
 }
