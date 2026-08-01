@@ -7,7 +7,6 @@ struct PortfolioDetalleView: View {
     
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
     
     init() {
         // El StateObject debe inicializarse usando _varName para evitar problemas de memoria
@@ -29,8 +28,7 @@ struct PortfolioDetalleView: View {
         .onAppear {
             viewModel.actualizarPortfolio(
                 carteras: carteras,
-                cryptos: cryptos,
-                fiats: fiats
+                cryptos: cryptos
             )
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
@@ -56,8 +54,7 @@ struct PortfolioDetalleView: View {
                             onUpdateData: {
                                 viewModel.actualizarPortfolio(
                                     carteras: carteras,
-                                    cryptos: cryptos,
-                                    fiats: fiats
+                                    cryptos: cryptos
                                 )
                             }
                         )
@@ -71,8 +68,7 @@ struct PortfolioDetalleView: View {
                             onUpdateData: {
                                 viewModel.actualizarPortfolio(
                                     carteras: carteras,
-                                    cryptos: cryptos,
-                                    fiats: fiats
+                                    cryptos: cryptos
                                 )
                             }
                         )

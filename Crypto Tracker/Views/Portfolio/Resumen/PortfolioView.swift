@@ -5,7 +5,6 @@ struct PortfolioView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
     @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    @Query(sort: \FIAT.nombre) private var fiats: [FIAT]
     
     @State private var portfolioDetails: [CarteraDetail] = []
     @State private var portfolioSummary: MainPortfolioSummary?
@@ -62,8 +61,7 @@ struct PortfolioView: View {
         // Calcular detalles del portfolio
         portfolioDetails = PortfolioCalculator.calcularDetallesPortfolio(
             carteras: carteras,
-            cryptos: cryptos,
-            fiats: fiats
+            cryptos: cryptos
         )
         
         // Calcular resumen

@@ -2,7 +2,7 @@ import Foundation
 
 class MainPortfolioCalculator {
     static func calcularResumen(portfolioDetails: [CarteraDetail], carteras: [Cartera]) -> MainPortfolioSummary {
-        let totalInvertidoUSD = portfolioDetails.reduce(0) { $0 + $1.totalInvertidoFIAT }
+        let totalInvertidoUSD = portfolioDetails.reduce(0) { $0 + $1.totalInvertidoUSD }
         let valorActualUSD = portfolioDetails.reduce(0) { $0 + $1.valorTotalUSD }
         
         // Calcular total de ventas incluyendo swaps

@@ -3,7 +3,7 @@ import SwiftData
 
 // MARK: - Servicio de Cálculos de Portfolio
 class PortfolioCalculator {
-    static func calcularDetallesCartera(_ cartera: Cartera, cryptos: [Crypto], fiats: [FIAT]) -> CarteraDetail {
+    static func calcularDetallesCartera(_ cartera: Cartera, cryptos: [Crypto]) -> CarteraDetail {
         let cryptoDetails = cryptos.compactMap { crypto -> CryptoDetail? in
             // Calcular totales por crypto
             let ingresosPorEntradas = cartera.movimientosIngreso
@@ -53,22 +53,6 @@ class PortfolioCalculator {
             // Calcular valor actual en USD
             let valorUSD = balanceActual * crypto.precio
             
-            // Calcular inversión total en FIAT
-            let totalInvertidoFIAT = cartera.movimientosIngreso
-                .filter { $0.crypto?.id == crypto.id }
-                .reduce(Decimal(0)) { total, movimiento in
-                    if movimiento.usaFiatAlterno,
-                       let valorFiat = movimiento.valorTotalFiatAlterno {
-                        return total + valorFiat
-                    } else {
-                        return total + movimiento.valorTotalUSD
-                    }
-                }
-            
-            // Calcular valor actual en FIAT (usando el primer FIAT disponible)
-            let fiat = fiats.first
-            let valorActualFIAT = valorUSD * (fiat?.precioUSD ?? 1)
-            
             return CryptoDetail(
                 crypto: crypto,
                 totalCryptoIngresado: totalCryptoIngresado,
@@ -77,9 +61,7 @@ class PortfolioCalculator {
                 balanceActual: balanceActual,
                 totalInvertidoUSD: totalInvertidoUSD,
                 valorUSD: valorUSD,
-                totalInvertidoFIAT: totalInvertidoFIAT,
-                valorActualFIAT: valorActualFIAT,
-                ganancia: valorActualFIAT - totalInvertidoFIAT
+                ganancia: valorUSD - totalInvertidoUSD
             )
         }
         
@@ -89,9 +71,9 @@ class PortfolioCalculator {
         )
     }
     
-    static func calcularDetallesPortfolio(carteras: [Cartera], cryptos: [Crypto], fiats: [FIAT]) -> [CarteraDetail] {
+    static func calcularDetallesPortfolio(carteras: [Cartera], cryptos: [Crypto]) -> [CarteraDetail] {
         let carterasDetail = carteras.map { cartera in
-            calcularDetallesCartera(cartera, cryptos: cryptos, fiats: fiats)
+            calcularDetallesCartera(cartera, cryptos: cryptos)
         }
         // Filtrar carteras sin cryptos
         return carterasDetail.filter { !$0.cryptoDetails.isEmpty }
