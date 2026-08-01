@@ -27,6 +27,27 @@ struct MovimientosSalidaView: View {
                 }
             }
         }
+        #if os(iOS)
+        .fullScreenCover(item: $selectedMovimiento) { movimiento in
+            NavigationStack {
+                MovimientoSalidaFormView(
+                    viewModel: MovimientoSalidaViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoSalidaFormView(
+                    viewModel: MovimientoSalidaViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+        }
+        #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
                 MovimientoSalidaFormView(
@@ -48,6 +69,7 @@ struct MovimientosSalidaView: View {
             }
             .frame(minWidth: 500, minHeight: 700)
         }
+        #endif
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

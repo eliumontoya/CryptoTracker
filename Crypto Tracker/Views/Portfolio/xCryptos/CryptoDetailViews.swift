@@ -15,6 +15,16 @@ struct CryptoDetailView: View {
     }
     
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            cryptoDetailContent
+        }
+        #else
+        cryptoDetailContent
+        #endif
+    }
+    
+    private var cryptoDetailContent: some View {
         VStack(spacing: 20) {
             headerView
             
@@ -75,12 +85,22 @@ struct CryptoDetailView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.movimientos) { movimiento in
+                    #if os(iOS)
+                    NavigationLink(destination: MovimientoSearchView(
+                        movimientoDetalle: movimiento,
+                        modelContext: modelContext
+                    )) {
+                        MovimientoDetalleRowView(movimiento: movimiento, onTap: {})
+                    }
+                    .buttonStyle(.plain)
+                    #else
                     MovimientoDetalleRowView(
                         movimiento: movimiento,
                         onTap: {
                             viewModel.selectedMovimientoDetalle = movimiento
                         }
                     )
+                    #endif
                 }
             }
             .padding(.horizontal)
