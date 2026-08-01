@@ -18,15 +18,17 @@ protocol MovimientoViewModel: ObservableObject {
 }
  
 
-// Errores comunes para los formularios de movimientos
+// MARK: - Form Validation Errors
 enum MovimientoFormCommonError: Error, LocalizedError {
     case missingCrypto
     case missingCartera
     case invalidAmount
     case insufficientFunds
     case invalidPrice
+    case sameCartera
+    case invalidFiat
     case saveFailed(String)
-    
+
     var errorDescription: String? {
         switch self {
         case .missingCrypto:
@@ -39,26 +41,14 @@ enum MovimientoFormCommonError: Error, LocalizedError {
             return "No hay suficientes fondos en la cartera"
         case .invalidPrice:
             return "El precio debe ser mayor que cero"
+        case .sameCartera:
+            return "La cartera origen y destino no pueden ser la misma"
+        case .invalidFiat:
+            return "La moneda FIAT alterna no es válida"
         case .saveFailed(let message):
             return "Error al guardar: \(message)"
         }
     }
-}
-
-// MARK: - Shared Value Types
-struct MovimientoFormError: LocalizedError {
-    let message: String
-    
-    var errorDescription: String? {
-        message
-    }
-    
-    static let invalidAmount = MovimientoFormError(message: "La cantidad ingresada no es válida")
-    static let insufficientFunds = MovimientoFormError(message: "No hay suficientes fondos disponibles")
-    static let invalidPrice = MovimientoFormError(message: "El precio ingresado no es válido")
-    static let missingCrypto = MovimientoFormError(message: "Debe seleccionar una crypto")
-    static let missingCartera = MovimientoFormError(message: "Debe seleccionar una cartera")
-    static let sameCartera = MovimientoFormError(message: "La cartera origen y destino no pueden ser la misma")
 }
 
   

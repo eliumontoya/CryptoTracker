@@ -95,14 +95,17 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
     }
     
     func save() async throws {
-        guard let crypto = selectedCrypto,
-              let carteraOrigen = selectedCarteraOrigen,
-              let carteraDestino = selectedCarteraDestino else {
-            throw MovimientoFormError.missingCartera
+        guard let crypto = selectedCrypto else {
+            throw MovimientoFormCommonError.missingCrypto
         }
-        
+
+        guard let carteraOrigen = selectedCarteraOrigen,
+              let carteraDestino = selectedCarteraDestino else {
+            throw MovimientoFormCommonError.missingCartera
+        }
+
         if carteraOrigen.id == carteraDestino.id {
-            throw MovimientoFormError.sameCartera
+            throw MovimientoFormCommonError.sameCartera
         }
         
         isLoading = true

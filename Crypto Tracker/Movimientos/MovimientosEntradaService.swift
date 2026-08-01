@@ -8,11 +8,6 @@
 import Foundation
 import SwiftData
 
-struct ValidacionError: Error {
-    let errores: [ErrorInformacionFaltante]
-}
-
-
 // Errores específicos del servicio
 enum MovimientoServiceError: Error, LocalizedError {
     case fetchFailed(String)
@@ -78,40 +73,26 @@ class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProt
     
     
     
-    private func validateMovimiento (movimiento: MovimientoIngreso)   throws {
-        var errores: [ErrorInformacionFaltante] = []
-        
-        //obligatorio:
+    private func validateMovimiento(movimiento: MovimientoIngreso) throws {
         if movimiento.crypto == nil {
-            errores.append(ErrorInformacionFaltante.cryptoNoVacia)
-            
+            throw MovimientoFormCommonError.missingCrypto
         }
         if movimiento.cartera == nil {
-            errores.append(ErrorInformacionFaltante.carteraNoVacia)
-            
+            throw MovimientoFormCommonError.missingCartera
         }
-        if movimiento.precioUSD <= 0 || movimiento.valorTotalUSD <= 0  || movimiento.cantidadCrypto <= 0  {
-            errores.append(ErrorInformacionFaltante.infoFaltante)
-            
+        if movimiento.precioUSD <= 0 || movimiento.valorTotalUSD <= 0 || movimiento.cantidadCrypto <= 0 {
+            throw MovimientoFormCommonError.invalidAmount
         }
-        
-        
-        // Si se usa fiat, verificar obligatorios
+
         if movimiento.usaFiatAlterno {
             if let precio = movimiento.precioFiatAlterno, let valorTotal = movimiento.valorTotalFiatAlterno {
                 if precio <= 0 || valorTotal <= 0 {
-                    errores.append(ErrorInformacionFaltante.fiatNoValido)
-                    
-                } }
-            
-            
+                    throw MovimientoFormCommonError.invalidFiat
+                }
+            } else {
+                throw MovimientoFormCommonError.invalidFiat
+            }
         }
-        
-        
-        if !errores.isEmpty {
-            throw ValidacionError(errores: errores)
-        }
-        
     }
     
     func save(movimiento: MovimientoIngreso) throws{

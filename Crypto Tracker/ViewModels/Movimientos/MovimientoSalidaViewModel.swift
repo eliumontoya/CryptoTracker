@@ -118,7 +118,7 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
     func save() async throws {
         guard let crypto = selectedCrypto,
               let cartera = selectedCartera else {
-            throw MovimientoFormError.missingCartera
+            throw MovimientoFormCommonError.missingCartera
         }
         
         isLoading = true
