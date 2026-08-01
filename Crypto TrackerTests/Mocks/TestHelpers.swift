@@ -12,7 +12,12 @@ class TestSetup {
             for: Crypto.self,
             Cartera.self,
             FIAT.self,
+            MovimientoIngreso.self,
             MovimientoEgreso.self,
+            MovimientoEntreCarteras.self,
+            MovimientoSwap.self,
+            PrecioHistorico.self,
+            CryptoSyncConfig.self,
             configurations: configuration
         )
         return container.mainContext

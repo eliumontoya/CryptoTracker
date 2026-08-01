@@ -17,7 +17,8 @@ class PreviewContainer {
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,
             MovimientoSwap.self,
-            PrecioHistorico.self
+            PrecioHistorico.self,
+            CryptoSyncConfig.self
         ])
         
         let modelConfiguration = ModelConfiguration(

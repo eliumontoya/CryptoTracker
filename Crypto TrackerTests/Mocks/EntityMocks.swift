@@ -24,12 +24,6 @@ extension Cartera {
     ) -> Cartera {
         return Cartera(nombre: nombre, simbolo: simbolo)
     }
-    
-    /// Método de prueba para simular saldo de crypto
-    func getCryptoDisponible(crypto: Crypto, movimientoActual: Decimal? = nil) -> Decimal {
-        // Implementación para pruebas, puedes ajustar según necesites
-        return 100
-    }
 }
 
 extension FIAT {
