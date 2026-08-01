@@ -3,6 +3,7 @@ import SwiftData
 
 struct CarteraMovimientosView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: CarteraMovimientosViewModel
     
     init(cartera: Cartera) {
@@ -39,7 +40,7 @@ struct CarteraMovimientosView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-               // MovimientoSearchView(movimientoDetalle: movimientoDetalle)
+                MovimientoSearchView(movimientoDetalle: movimientoDetalle, modelContext: modelContext)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()

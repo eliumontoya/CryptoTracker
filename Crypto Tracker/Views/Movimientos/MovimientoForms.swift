@@ -15,21 +15,17 @@ enum EditMovementMode: Equatable {
 
 // MARK: - Vista para buscar el movimiento correcto
 struct MovimientoSearchView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-    var mode: EditMovementMode
-
-    
     @StateObject private var movimientoEntradaViewModel: MovimientoEntradaViewModel
-     let  movimientoDetalle: MovimientoDetalle
+    let movimientoDetalle: MovimientoDetalle
+    let modelContext: ModelContext
 
-        // Hacer el inicializador público
-        init(movimientoDetalle: MovimientoDetalle, mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel) {
-            self.mode = mode
-            self.movimientoDetalle = movimientoDetalle
-
-            _movimientoEntradaViewModel = StateObject(wrappedValue: movimientoEntradaViewModel)
-        }
+    init(movimientoDetalle: MovimientoDetalle, modelContext: ModelContext) {
+        self.movimientoDetalle = movimientoDetalle
+        self.modelContext = modelContext
+        let service = MovimientosEntradaService(modelContext: modelContext)
+        _movimientoEntradaViewModel = StateObject(wrappedValue:
+            MovimientoEntradaViewModel(movimiento: nil, movimientoService: service))
+    }
     
     @Query private var movimientosIngreso: [MovimientoIngreso]
     @Query private var movimientosEgreso: [MovimientoEgreso]
