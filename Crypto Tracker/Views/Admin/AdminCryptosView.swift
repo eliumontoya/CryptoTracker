@@ -123,7 +123,7 @@ struct CryptoFormView: View {
             Spacer()
         }
         .padding()
-        .frame(minWidth: 300, minHeight: 200)
+        .adaptiveSheetFrame(minWidth: 300, minHeight: 200)
         .navigationTitle(title)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {

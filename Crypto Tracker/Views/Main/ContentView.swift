@@ -26,6 +26,7 @@ enum MovimientosMenuOption {
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     // Contenedor de dependencias
     private let dependencies: AppDependencyContainer
@@ -40,6 +41,17 @@ struct ContentView: View {
     @State private var selectedMovimientosMenu: MovimientosMenuOption?
     
     var body: some View {
+        Group {
+            if horizontalSizeClass == .compact {
+                iosTabView
+            } else {
+                macSidebar
+            }
+        }
+    }
+    
+    // MARK: - macOS: NavigationSplitView con sidebar (comportamiento actual)
+    private var macSidebar: some View {
         NavigationSplitView {
             // Sidebar con menú principal
             List {
@@ -162,6 +174,110 @@ struct ContentView: View {
             .navigationTitle("Crypto Tracker")
         } detail: {
             PortfolioView()
+        }
+    }
+    
+    // MARK: - iOS (compact): TabView con Portfolio | Movimientos | Admin
+    private var iosTabView: some View {
+        TabView {
+            NavigationStack {
+                List {
+                    NavigationLink {
+                        PortfolioView()
+                    } label: {
+                        Label("Portafolio", systemImage: "chart.pie.fill")
+                    }
+                    
+                    NavigationLink {
+                        PortfolioPorCryptosView(viewModel: dependencies.portfolioPorCryptosViewModel)
+                    } label: {
+                        Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
+                    }
+                    
+                    NavigationLink {
+                        PortfolioDetalleView(modelContext: modelContext)
+                    } label: {
+                        Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
+                    }
+                }
+                .navigationTitle("Portfolio")
+            }
+            .tabItem {
+                Label("Portfolio", systemImage: "chart.pie.fill")
+            }
+            
+            NavigationStack {
+                List {
+                    NavigationLink {
+                        MovimientosEntradaView(viewModel: dependencies.movimientosEntradaListViewModel)
+                    } label: {
+                        Label("Entrada", systemImage: "arrow.down.circle")
+                    }
+                    
+                    NavigationLink {
+                        MovimientosSalidaView()
+                            .environment(\.modelContext, modelContext)
+                    } label: {
+                        Label("Salida", systemImage: "arrow.up.circle")
+                    }
+                    
+                    NavigationLink {
+                        MovimientosEntreCarterasView()
+                            .environment(\.modelContext, modelContext)
+                    } label: {
+                        Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
+                    }
+                    
+                    NavigationLink {
+                        MovimientosSwapsView()
+                            .environment(\.modelContext, modelContext)
+                    } label: {
+                        Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                }
+                .navigationTitle("Movimientos")
+            }
+            .tabItem {
+                Label("Movimientos", systemImage: "arrow.left.right")
+            }
+            
+            NavigationStack {
+                List {
+                    NavigationLink {
+                        AdminCryptosView(modelContext: modelContext)
+                    } label: {
+                        Label("Cryptos", systemImage: "bitcoinsign.circle")
+                    }
+                    
+                    NavigationLink {
+                        AdminCarterasView(modelContext: modelContext)
+                    } label: {
+                        Label("Carteras", systemImage: "folder")
+                    }
+                    
+                    NavigationLink {
+                        AdminFiatView(modelContext: modelContext)
+                    } label: {
+                        Label("FIAT", systemImage: "dollarsign.circle")
+                    }
+                    
+                    NavigationLink {
+                        CryptoSyncView(modelContext: modelContext)
+                    } label: {
+                        Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    
+                    NavigationLink {
+                        SetupInicialView()
+                    } label: {
+                        Label("Setup Inicial", systemImage: "gearshape.circle.fill")
+                    }
+                }
+                .navigationTitle("Admin")
+            }
+            .tabItem {
+                Label("Admin", systemImage: "gear")
+            }
         }
     }
 } 

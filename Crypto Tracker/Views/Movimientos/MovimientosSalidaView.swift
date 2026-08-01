@@ -36,7 +36,7 @@ struct MovimientosSalidaView: View {
                     )
                 )
             }
-            .frame(minWidth: 500, minHeight: 700)
+            .adaptiveSheetFrame()
         }
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
@@ -46,7 +46,7 @@ struct MovimientosSalidaView: View {
                     )
                 )
             }
-            .frame(minWidth: 500, minHeight: 700)
+            .adaptiveSheetFrame()
         }
     }
     

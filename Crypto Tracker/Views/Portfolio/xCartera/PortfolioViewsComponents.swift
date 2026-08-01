@@ -231,7 +231,7 @@ private extension View {
                         )
                     )
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingSalidaForm) {
@@ -243,7 +243,7 @@ private extension View {
                         )
                     )
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingEntreCarterasForm) {
@@ -255,7 +255,7 @@ private extension View {
                         )
                     )
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingSwapForm) {
@@ -267,7 +267,7 @@ private extension View {
                         )
                     )
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
     }

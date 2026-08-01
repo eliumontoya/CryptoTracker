@@ -35,8 +35,8 @@ struct MovimientoSwapFormView: View {
             .padding(.horizontal, 24)
             .padding(.vertical, 16)
         }
-        .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
-               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        .adaptiveSheetFrame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
+                            minHeight: 700, idealHeight: 800, maxHeight: .infinity)
         .navigationTitle(viewModel.movimiento == nil ? "Nuevo Swap" : "Editar Swap")
         .toolbar { toolbarContent }
         .alert("Error", isPresented: $viewModel.hasError) {
