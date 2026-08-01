@@ -1,5 +1,6 @@
 import Foundation
 
+@MainActor
 protocol CargaMovimientosDelegate {
     func didUpdateProgress(_ message: String)
     func didCompleteTask(_ type: String, total: Int)

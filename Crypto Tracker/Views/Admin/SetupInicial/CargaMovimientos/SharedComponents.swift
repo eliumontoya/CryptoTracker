@@ -57,6 +57,7 @@ struct FileSelectionRow: View {
     }
     
     private func seleccionarArchivo() {
+        #if os(macOS)
         let panel = NSOpenPanel()
         panel.allowsMultipleSelection = false
         panel.canChooseDirectories = false
@@ -65,5 +66,6 @@ struct FileSelectionRow: View {
         if panel.runModal() == .OK {
             url = panel.url
         }
+        #endif
     }
 }

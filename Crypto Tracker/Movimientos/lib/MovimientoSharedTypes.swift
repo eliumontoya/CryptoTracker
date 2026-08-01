@@ -4,6 +4,7 @@ import Foundation
  
 
 // MARK: - Shared View Models & Protocols
+@MainActor
 protocol MovimientoViewModel: ObservableObject {
     var fecha: Date { get set }
     var isLoading: Bool { get set }
