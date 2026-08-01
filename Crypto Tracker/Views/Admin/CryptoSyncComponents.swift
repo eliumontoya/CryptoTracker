@@ -48,7 +48,7 @@ struct CryptoSyncRowView: View {
                         VStack(alignment: .leading) {
                             Text("URL: \(config.syncUrl)")
                                 .font(.caption)
-                            Text("Precio Default: \(config.defaultPrice.formatted(.currency(code: "USD")))")
+                            Text("Precio Default: \(Format.usd(config.defaultPrice))")
                                 .font(.caption)
                         }
                         Spacer()

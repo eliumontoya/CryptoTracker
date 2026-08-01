@@ -133,7 +133,7 @@ struct MovimientoEntreCarterasFormView: View {
                 .font(.headline)
             
             if let crypto = viewModel.selectedCrypto {
-                Text("Disponible: \(viewModel.cryptoDisponible.formatted()) \(crypto.simbolo)")
+                Text("Disponible: \(Format.crypto(viewModel.cryptoDisponible, symbol: crypto.simbolo))")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 
@@ -198,7 +198,7 @@ struct MovimientoEntreCarterasFormView: View {
                     HStack {
                         Text("Comisión:")
                         Spacer()
-                        Text("\(viewModel.comision.formatted()) \(crypto.simbolo)")
+                        Text("\(Format.crypto(viewModel.comision, symbol: crypto.simbolo))")
                             .foregroundStyle(viewModel.comision > 0 ? .red : .green)
                     }
                     .font(.caption)

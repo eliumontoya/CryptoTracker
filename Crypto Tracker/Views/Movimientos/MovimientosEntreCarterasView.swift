@@ -87,7 +87,7 @@ struct MovimientoEntreCarterasRowView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text(movimiento.fecha.formatted(date: .abbreviated, time: .shortened))
+                Text(Format.date(movimiento.fecha))
                     .font(.subheadline)
                 Spacer()
                 if let crypto = movimiento.crypto {
@@ -98,8 +98,8 @@ struct MovimientoEntreCarterasRowView: View {
             
             HStack {
                 if let crypto = movimiento.crypto {
-                    Text("Salida: \(movimiento.cantidadCryptoSalida.formatted()) \(crypto.simbolo)")
-                    Text("Entrada: \(movimiento.cantidadCryptoEntrada.formatted()) \(crypto.simbolo)")
+                    Text("Salida: \(Format.crypto(movimiento.cantidadCryptoSalida, symbol: crypto.simbolo))")
+                    Text("Entrada: \(Format.crypto(movimiento.cantidadCryptoEntrada, symbol: crypto.simbolo))")
                 }
             }
             .font(.subheadline)
@@ -119,7 +119,7 @@ struct MovimientoEntreCarterasRowView: View {
                movimiento.cantidadCryptoComision > 0 {
                 HStack {
                     Text("Comisión:")
-                    Text("\(movimiento.cantidadCryptoComision.formatted()) \(crypto.simbolo)")
+                        Text("\(Format.crypto(movimiento.cantidadCryptoComision, symbol: crypto.simbolo))")
                         .foregroundStyle(.red)
                 }
                 .font(.caption)

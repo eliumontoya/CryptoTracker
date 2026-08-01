@@ -33,7 +33,7 @@ struct CryptoPortfolioRow: View {
         HStack(spacing: 0) {
             Text(summary.crypto.simbolo)
                 .frame(width: 80, alignment: .leading)
-            Text(viewModel.formatearCantidad(summary.totalDisponible))
+            Text(viewModel.formatearCantidad(summary.totalDisponible, symbol: summary.crypto.simbolo))
                 .frame(width: 120, alignment: .trailing)
             Text(viewModel.formatearUSD(summary.precioActual))
                 .frame(width: 120, alignment: .trailing)
