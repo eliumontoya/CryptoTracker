@@ -26,6 +26,27 @@ struct MovimientosSwapsView: View {
                 }
             }
         }
+        #if os(iOS)
+        .fullScreenCover(item: $selectedMovimiento) { movimiento in
+            NavigationStack {
+                MovimientoSwapFormView(
+                    viewModel: MovimientoSwapViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoSwapFormView(
+                    viewModel: MovimientoSwapViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+        }
+        #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
                 MovimientoSwapFormView(
@@ -47,6 +68,7 @@ struct MovimientosSwapsView: View {
             }
             .adaptiveSheetFrame()
         }
+        #endif
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

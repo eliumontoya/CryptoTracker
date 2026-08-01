@@ -48,6 +48,46 @@ struct CarteraDetailView: View {
     }
     
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            cardContent
+                .applyMovimientoSheets(
+                    viewModel: viewModel,
+                    context: modelContext,
+                    showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
+                    showingEntradaForm: $viewModel.showingEntradaForm,
+                    showingSalidaForm: $viewModel.showingSalidaForm,
+                    showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
+                    showingSwapForm: $viewModel.showingSwapForm
+                )
+        }
+        #else
+        cardContent
+            .sheet(item: Binding(
+                get: {
+                    viewModel.selectedCryptoDetail.map { crypto, cartera in
+                        IdentifiableCryptoCarteraPair(crypto: crypto, cartera: cartera)
+                    }
+                },
+                set: { pair in
+                    viewModel.selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
+                }
+            )) { pair in
+                CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
+            }
+            .applyMovimientoSheets(
+                viewModel: viewModel,
+                context: modelContext,
+                showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
+                showingEntradaForm: $viewModel.showingEntradaForm,
+                showingSalidaForm: $viewModel.showingSalidaForm,
+                showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
+                showingSwapForm: $viewModel.showingSwapForm
+            )
+        #endif
+    }
+    
+    private var cardContent: some View {
         VStack(alignment: .leading, spacing: 12) {
             headerWithMenu
             totalesCartera
@@ -57,37 +97,28 @@ struct CarteraDetailView: View {
         .background(Color.white)
         .cornerRadius(12)
         .shadow(radius: 2)
-        .sheet(item: Binding(
-            get: {
-                viewModel.selectedCryptoDetail.map { crypto, cartera in
-                    IdentifiableCryptoCarteraPair(crypto: crypto, cartera: cartera)
-                }
-            },
-            set: { pair in
-                viewModel.selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
-            }
-        )) { pair in
-            CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
-        }
-        .applyMovimientoSheets(
-            viewModel: viewModel,
-             context: modelContext,
-            showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
-            showingEntradaForm: $viewModel.showingEntradaForm,
-            showingSalidaForm: $viewModel.showingSalidaForm,
-            showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
-            showingSwapForm: $viewModel.showingSwapForm
-        )
     }
     
     private var headerWithMenu: some View {
         HStack {
+            #if os(iOS)
+            NavigationLink(destination: CarteraMovimientosView(
+                cartera: viewModel.carteraDetail.cartera,
+                modelContext: modelContext
+            )) {
+                Text(viewModel.carteraNombre)
+                    .font(.title2)
+                    .bold()
+                    .foregroundStyle(.primary)
+            }
+            #else
             Button(action: { viewModel.showingCarteraMovimientos = true }) {
                 Text(viewModel.carteraNombre)
                     .font(.title2)
                     .bold()
                     .foregroundStyle(.primary)
             }
+            #endif
             
             Spacer()
             
@@ -166,39 +197,51 @@ struct CarteraDetailView: View {
     
     private var contenidoTabla: some View {
         ForEach(viewModel.cryptoDetails) { detail in
-            Button(action: { viewModel.onCryptoSelected(detail) }) {
-                HStack(spacing: 0) {
-                    Text(detail.crypto.simbolo)
-                        .frame(width: 80, alignment: .leading)
-                    Text(detail.totalCryptoIngresado.formatted())
-                        .frame(width: 100, alignment: .trailing)
-                    Text(detail.totalCryptoVendido.formatted())
-                        .frame(width: 100, alignment: .trailing)
-                    Text(detail.totalCryptoTransferido.formatted())
-                        .frame(width: 100, alignment: .trailing)
-                        .foregroundColor(detail.totalCryptoTransferido >= 0 ? .green : .red)
-                    Text(detail.balanceActual.formatted())
-                        .frame(width: 100, alignment: .trailing)
-                    Text(detail.totalInvertidoUSD.formatted(.currency(code: "USD")))
-                        .frame(width: 100, alignment: .trailing)
-                    Text(detail.valorUSD.formatted(.currency(code: "USD")))
-                        .frame(width: 100, alignment: .trailing)
-                    Text(detail.ganancia.formatted(.currency(code: "USD")))
-                        .frame(width: 100, alignment: .trailing)
-                        .foregroundColor(detail.ganancia >= 0 ? .green : .red)
-                    Text(detail.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
-                        .frame(width: 80, alignment: .trailing)
-                        .foregroundColor(detail.porcentajeGanancia >= 0 ? .green : .red)
-                }
+            #if os(iOS)
+            NavigationLink(destination: CarteraCryptoDetailView(
+                crypto: detail.crypto,
+                cartera: viewModel.carteraDetail.cartera
+            )) {
+                cryptoRowContent(detail: detail)
             }
             .buttonStyle(.plain)
-            .font(.callout)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
+            #else
+            Button(action: { viewModel.onCryptoSelected(detail) }) {
+                cryptoRowContent(detail: detail)
+            }
+            .buttonStyle(.plain)
+            #endif
         }
     }
     
-    // ... resto del código de las vistas ...
+    private func cryptoRowContent(detail: CryptoDetail) -> some View {
+        HStack(spacing: 0) {
+            Text(detail.crypto.simbolo)
+                .frame(width: 80, alignment: .leading)
+            Text(detail.totalCryptoIngresado.formatted())
+                .frame(width: 100, alignment: .trailing)
+            Text(detail.totalCryptoVendido.formatted())
+                .frame(width: 100, alignment: .trailing)
+            Text(detail.totalCryptoTransferido.formatted())
+                .frame(width: 100, alignment: .trailing)
+                .foregroundColor(detail.totalCryptoTransferido >= 0 ? .green : .red)
+            Text(detail.balanceActual.formatted())
+                .frame(width: 100, alignment: .trailing)
+            Text(detail.totalInvertidoUSD.formatted(.currency(code: "USD")))
+                .frame(width: 100, alignment: .trailing)
+            Text(detail.valorUSD.formatted(.currency(code: "USD")))
+                .frame(width: 100, alignment: .trailing)
+            Text(detail.ganancia.formatted(.currency(code: "USD")))
+                .frame(width: 100, alignment: .trailing)
+                .foregroundColor(detail.ganancia >= 0 ? .green : .red)
+            Text(detail.porcentajeGanancia.formatted(.number.precision(.fractionLength(2))) + "%")
+                .frame(width: 80, alignment: .trailing)
+                .foregroundColor(detail.porcentajeGanancia >= 0 ? .green : .red)
+        }
+        .font(.callout)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+    }
 }
 
 // MARK: - View Modifiers
@@ -212,6 +255,53 @@ private extension View {
         showingEntreCarterasForm: Binding<Bool>,
         showingSwapForm: Binding<Bool>
     ) -> some View {
+        #if os(iOS)
+        self
+            .fullScreenCover(isPresented: showingEntradaForm) {
+                NavigationStack {
+                    MovimientoEntradaFormView(
+                        viewModel: MovimientoEntradaViewModel(
+                            movimiento: nil,
+                            movimientoService: MovimientosEntradaService(modelContext: context)
+                        )
+                    )
+                }
+                .onDisappear { viewModel.updateData() }
+            }
+            .fullScreenCover(isPresented: showingSalidaForm) {
+                NavigationStack {
+                    MovimientoSalidaFormView(
+                        viewModel: MovimientoSalidaViewModel(
+                            modelContext: context,
+                            movimiento: nil
+                        )
+                    )
+                }
+                .onDisappear { viewModel.updateData() }
+            }
+            .fullScreenCover(isPresented: showingEntreCarterasForm) {
+                NavigationStack {
+                    MovimientoEntreCarterasFormView(
+                        viewModel: MovimientoEntreCarterasViewModel(
+                            modelContext: context,
+                            movimiento: nil
+                        )
+                    )
+                }
+                .onDisappear { viewModel.updateData() }
+            }
+            .fullScreenCover(isPresented: showingSwapForm) {
+                NavigationStack {
+                    MovimientoSwapFormView(
+                        viewModel: MovimientoSwapViewModel(
+                            modelContext: context,
+                            movimiento: nil
+                        )
+                    )
+                }
+                .onDisappear { viewModel.updateData() }
+            }
+        #else
         self
             .sheet(isPresented: showingCarteraMovimientos) {
                 CarteraMovimientosView(
@@ -270,5 +360,6 @@ private extension View {
                 .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
+        #endif
     }
 }

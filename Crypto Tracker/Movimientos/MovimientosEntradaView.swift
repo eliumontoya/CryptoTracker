@@ -54,6 +54,32 @@ struct MovimientosEntradaView: View {
             }
             .disabled(viewModel.isLoading)
         }
+        #if os(iOS)
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoEntradaFormView(viewModel: viewModel.entradaViewModel)
+            }
+            .onDisappear {
+                viewModel.refreshData()
+            }
+        }
+        .fullScreenCover(isPresented: $showingEditSheet) {
+            if let movimiento = selectedMovimiento {
+                NavigationStack {
+                    MovimientoEntradaFormView(viewModel: viewModel.entradaViewModel)
+                        .onAppear {
+                            if viewModel.entradaViewModel.movimiento?.id != movimiento.id {
+                                viewModel.prepareForEdit(movimiento: movimiento)
+                            }
+                        }
+                }
+                .onDisappear {
+                    viewModel.refreshData()
+                    selectedMovimiento = nil
+                }
+            }
+        }
+        #else
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
                 MovimientoEntradaFormView(viewModel: viewModel.entradaViewModel)
@@ -78,6 +104,7 @@ struct MovimientosEntradaView: View {
                 }
             }
         }
+        #endif
         .alert("Error", isPresented: $viewModel.hasError) {
             Button("OK", role: .cancel) { }
         } message: {

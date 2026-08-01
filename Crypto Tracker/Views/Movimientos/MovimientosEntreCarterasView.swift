@@ -26,6 +26,27 @@ struct MovimientosEntreCarterasView: View {
                 }
             }
         }
+        #if os(iOS)
+        .fullScreenCover(item: $selectedMovimiento) { movimiento in
+            NavigationStack {
+                MovimientoEntreCarterasFormView(
+                    viewModel: MovimientoEntreCarterasViewModel(
+                        modelContext: modelContext,
+                        movimiento: movimiento
+                    )
+                )
+            }
+        }
+        .fullScreenCover(isPresented: $showingAddSheet) {
+            NavigationStack {
+                MovimientoEntreCarterasFormView(
+                    viewModel: MovimientoEntreCarterasViewModel(
+                        modelContext: modelContext
+                    )
+                )
+            }
+        }
+        #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
                 MovimientoEntreCarterasFormView(
@@ -47,6 +68,7 @@ struct MovimientosEntreCarterasView: View {
             }
             .adaptiveSheetFrame()
         }
+        #endif
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

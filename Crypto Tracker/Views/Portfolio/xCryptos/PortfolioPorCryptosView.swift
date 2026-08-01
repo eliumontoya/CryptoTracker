@@ -13,6 +13,36 @@ struct PortfolioPorCryptosView: View {
     }
     
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            scrollContent
+                .applyMovimientoSheets(
+                    showingEntradaForm: $viewModel.showingEntradaForm,
+                    showingSalidaForm: $viewModel.showingSalidaForm,
+                    showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
+                    showingSwapForm: $viewModel.showingSwapForm,
+                    viewModel: viewModel
+                )
+        }
+        #else
+        scrollContent
+            .sheet(item: $viewModel.selectedCrypto) { crypto in
+                CryptoDetailView(crypto: crypto)
+                    .onDisappear {
+                        viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
+                    }
+            }
+            .applyMovimientoSheets(
+                showingEntradaForm: $viewModel.showingEntradaForm,
+                showingSalidaForm: $viewModel.showingSalidaForm,
+                showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
+                showingSwapForm: $viewModel.showingSwapForm,
+                viewModel: viewModel
+            )
+        #endif
+    }
+    
+    private var scrollContent: some View {
         ScrollView {
             VStack(spacing: 20) {
                 headerWithMenuView
@@ -45,19 +75,6 @@ struct PortfolioPorCryptosView: View {
                 Text(errorMessage)
             }
         }
-        .sheet(item: $viewModel.selectedCrypto) { crypto in
-            CryptoDetailView(crypto: crypto)
-                .onDisappear {
-                    viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
-                }
-        }
-        .applyMovimientoSheets(
-            showingEntradaForm: $viewModel.showingEntradaForm,
-            showingSalidaForm: $viewModel.showingSalidaForm,
-            showingEntreCarterasForm: $viewModel.showingEntreCarterasForm,
-            showingSwapForm: $viewModel.showingSwapForm,
-            viewModel: viewModel
-        )
     }
     
     private var headerWithMenuView: some View {
@@ -96,11 +113,17 @@ struct PortfolioPorCryptosView: View {
                 CryptoPortfolioHeaderRow()
                 
                 ForEach(viewModel.cryptoSummaries) { summary in
+                    #if os(iOS)
+                    NavigationLink(destination: CryptoDetailView(crypto: summary.crypto)) {
+                        CryptoPortfolioRow(summary: summary)
+                    }
+                    #else
                     CryptoPortfolioRow(summary: summary)
                         .contentShape(Rectangle())
                         .onTapGesture {
                             viewModel.selectedCrypto = summary.crypto
                         }
+                    #endif
                 }
                 
                 if !viewModel.cryptoSummaries.isEmpty {
@@ -125,6 +148,29 @@ private extension View {
         showingSwapForm: Binding<Bool>,
         viewModel: PortfolioPorCryptosViewModel
     ) -> some View {
+        #if os(iOS)
+        self
+            .fullScreenCover(isPresented: showingEntradaForm) {
+                NavigationStack {
+                    viewModel.crearFormMovimientoEntrada()
+                }
+            }
+            .fullScreenCover(isPresented: showingSalidaForm) {
+                NavigationStack {
+                    viewModel.crearFormMovimientoSalida()
+                }
+            }
+            .fullScreenCover(isPresented: showingEntreCarterasForm) {
+                NavigationStack {
+                    viewModel.crearFormMovimientoEntreCarteras()
+                }
+            }
+            .fullScreenCover(isPresented: showingSwapForm) {
+                NavigationStack {
+                    viewModel.crearFormMovimientoSwap()
+                }
+            }
+        #else
         self
             .sheet(isPresented: showingEntradaForm) {
                 NavigationStack {
@@ -150,6 +196,7 @@ private extension View {
                 }
                 .adaptiveSheetFrame()
             }
+        #endif
     }
 }
  

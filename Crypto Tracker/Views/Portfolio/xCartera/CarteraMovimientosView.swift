@@ -14,6 +14,16 @@ struct CarteraMovimientosView: View {
     }
     
     var body: some View {
+        #if os(iOS)
+        NavigationStack {
+            movimientosContent
+        }
+        #else
+        movimientosContent
+        #endif
+    }
+    
+    private var movimientosContent: some View {
         VStack(spacing: 20) {
             headerView
             
@@ -69,6 +79,15 @@ struct CarteraMovimientosView: View {
         ScrollView {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.movimientos) { movimiento in
+                    #if os(iOS)
+                    NavigationLink(destination: MovimientoSearchView(
+                        movimientoDetalle: movimiento,
+                        modelContext: modelContext
+                    )) {
+                        MovimientoDetalleRowView(movimiento: movimiento, onTap: {})
+                    }
+                    .buttonStyle(.plain)
+                    #else
                     MovimientoDetalleRowView(
                         movimiento: movimiento,
                         onTap: {
@@ -76,6 +95,7 @@ struct CarteraMovimientosView: View {
                             viewModel.selectedMovimientoDetalle = movimiento
                         }
                     )
+                    #endif
                 }
             }
             .padding(.horizontal)
