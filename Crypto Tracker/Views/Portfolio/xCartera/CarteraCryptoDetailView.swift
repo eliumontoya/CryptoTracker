@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 struct CarteraCryptoDetailView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: CarteraCryptoDetailViewModel
     
     init(crypto: Crypto, cartera: Cartera) {
@@ -35,7 +36,7 @@ struct CarteraCryptoDetailView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-                //MovimientoSearchView(movimientoDetalle: movimientoDetalle)
+                MovimientoSearchView(movimientoDetalle: movimientoDetalle, modelContext: modelContext)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()
