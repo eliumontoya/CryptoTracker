@@ -130,25 +130,25 @@ private extension View {
                 NavigationStack {
                     viewModel.crearFormMovimientoEntrada()
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
             }
             .sheet(isPresented: showingSalidaForm) {
                 NavigationStack {
                     viewModel.crearFormMovimientoSalida()
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
             }
             .sheet(isPresented: showingEntreCarterasForm) {
                 NavigationStack {
                     viewModel.crearFormMovimientoEntreCarteras()
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
             }
             .sheet(isPresented: showingSwapForm) {
                 NavigationStack {
                     viewModel.crearFormMovimientoSwap()
                 }
-                .frame(minWidth: 500, minHeight: 700)
+                .adaptiveSheetFrame()
             }
     }
 }

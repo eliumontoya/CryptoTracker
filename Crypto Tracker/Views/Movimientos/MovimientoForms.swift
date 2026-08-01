@@ -137,7 +137,7 @@ struct EditMovimientoView: View {
                     )
                 }
             }
-            .frame(minWidth: 500, minHeight: 700)
+            .adaptiveSheetFrame()
         }
     }
 }

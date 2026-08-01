@@ -48,8 +48,8 @@ struct MovimientoEntradaFormView: View {
                 }
             }
         }
-        .frame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
-               minHeight: 700, idealHeight: 800, maxHeight: .infinity)
+        .adaptiveSheetFrame(minWidth: 500, idealWidth: 600, maxWidth: .infinity,
+                            minHeight: 700, idealHeight: 800, maxHeight: .infinity)
         .navigationTitle(viewModel.movimiento == nil ? "Nueva Entrada" : "Editar Entrada")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
