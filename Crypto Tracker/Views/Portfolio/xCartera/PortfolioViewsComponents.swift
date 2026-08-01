@@ -214,7 +214,10 @@ private extension View {
     ) -> some View {
         self
             .sheet(isPresented: showingCarteraMovimientos) {
-                CarteraMovimientosView(cartera: viewModel.carteraDetail.cartera)
+                CarteraMovimientosView(
+                    cartera: viewModel.carteraDetail.cartera,
+                    modelContext: context
+                )
                     .onDisappear {
                         viewModel.updateData()
                     }

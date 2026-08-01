@@ -6,10 +6,10 @@ struct CarteraMovimientosView: View {
     @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: CarteraMovimientosViewModel
     
-    init(cartera: Cartera) {
+    init(cartera: Cartera, modelContext: ModelContext) {
         _viewModel = StateObject(wrappedValue: CarteraMovimientosViewModel(
             cartera: cartera,
-            modelContext: ModelContext(try! ModelContainer(for: Cartera.self))
+            modelContext: modelContext
         ))
     }
     

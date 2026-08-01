@@ -2,14 +2,10 @@ import SwiftData
 import SwiftUI
 
 struct CryptoSyncView: View {
-    @Environment(\.modelContext) private var modelContext
     @StateObject private var viewModel: CryptoSyncViewModel
     
-    init() {
-        // Initialize using the default model container
-        let container = try! ModelContainer(for: Crypto.self)
-        let context = ModelContext(container)
-        _viewModel = StateObject(wrappedValue: CryptoSyncViewModel(modelContext: context))
+    init(modelContext: ModelContext) {
+        _viewModel = StateObject(wrappedValue: CryptoSyncViewModel(modelContext: modelContext))
     }
     
     var body: some View {
