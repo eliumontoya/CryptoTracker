@@ -114,6 +114,7 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
                 existingMovimiento.fecha = fecha
                 existingMovimiento.cantidadCryptoSalida = cantidadCryptoSalida
                 existingMovimiento.cantidadCryptoEntrada = cantidadCryptoEntrada
+                existingMovimiento.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
                 existingMovimiento.carteraOrigen = carteraOrigen
                 existingMovimiento.carteraDestino = carteraDestino
                 existingMovimiento.crypto = crypto
