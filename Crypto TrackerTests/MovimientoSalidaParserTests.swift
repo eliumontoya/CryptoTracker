@@ -19,7 +19,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
         fiat = FIAT(nombre: "Euro", simbolo: "EUR", precioUSD: 1.1)
         
         // Simular un balance en la cartera
-        let movimientoInicial = MovimientoIngreso(
+        let movimientoInicial = Movimiento.entrada(
             fecha: Date(),
             cantidadCrypto: 2.0,
             precioUSD: 45000,

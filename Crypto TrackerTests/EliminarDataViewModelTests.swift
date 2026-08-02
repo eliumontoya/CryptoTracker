@@ -14,7 +14,8 @@ final class EliminarDataViewModelTests: XCTestCase {
             Crypto.self,
             Cartera.self,
             FIAT.self,
-            MovimientoIngreso.self,
+            Movimiento.self,
+        MovimientoIngreso.self,
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,
             MovimientoSwap.self,
@@ -61,7 +62,7 @@ final class EliminarDataViewModelTests: XCTestCase {
         
         // Crear movimientos de ingreso
        
-        let movIngreso1 = MovimientoIngreso(
+        let movIngreso1 = Movimiento.entrada(
                 fecha: Date(),
                 cantidadCrypto: Decimal(0.5),
                 precioUSD: Decimal(50000),
@@ -71,7 +72,7 @@ final class EliminarDataViewModelTests: XCTestCase {
             )
 
         
-          let movIngreso2 = MovimientoIngreso(
+          let movIngreso2 = Movimiento.entrada(
               fecha: Date(),
               cantidadCrypto: Decimal(2),
               precioUSD: Decimal(3000),
@@ -81,7 +82,7 @@ final class EliminarDataViewModelTests: XCTestCase {
           )
           
           // Crear movimientos de egreso
-          let movEgreso1 = MovimientoEgreso(
+          let movEgreso1 = Movimiento.salida(
               fecha: Date(),
               cantidadCrypto: Decimal(0.1),
               precioUSD: Decimal(50000),
@@ -90,7 +91,7 @@ final class EliminarDataViewModelTests: XCTestCase {
               crypto: bitcoin
           )
           
-          let movEgreso2 = MovimientoEgreso(
+          let movEgreso2 = Movimiento.salida(
               fecha: Date(),
               cantidadCrypto: Decimal(0.5),
               precioUSD: Decimal(3000),
@@ -115,8 +116,8 @@ final class EliminarDataViewModelTests: XCTestCase {
         let cryptosAntes = try modelContext.fetch(FetchDescriptor<Crypto>())
         let carterasAntes = try modelContext.fetch(FetchDescriptor<Cartera>())
         let fiatsAntes = try modelContext.fetch(FetchDescriptor<FIAT>())
-        let movIngresosAntes = try modelContext.fetch(FetchDescriptor<MovimientoIngreso>())
-        let movEgresosAntes = try modelContext.fetch(FetchDescriptor<MovimientoEgreso>())
+        let movIngresosAntes = try modelContext.fetch(FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "entrada" }))
+        let movEgresosAntes = try modelContext.fetch(FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "salida" }))
         
         XCTAssertFalse(cryptosAntes.isEmpty, "Debe haber cryptos antes del borrado")
         XCTAssertFalse(carterasAntes.isEmpty, "Debe haber carteras antes del borrado")
@@ -131,8 +132,8 @@ final class EliminarDataViewModelTests: XCTestCase {
         let cryptosDespues = try modelContext.fetch(FetchDescriptor<Crypto>())
         let carterasDespues = try modelContext.fetch(FetchDescriptor<Cartera>())
         let fiatsDespues = try modelContext.fetch(FetchDescriptor<FIAT>())
-        let movIngresosDespues = try modelContext.fetch(FetchDescriptor<MovimientoIngreso>())
-        let movEgresosDespues = try modelContext.fetch(FetchDescriptor<MovimientoEgreso>())
+        let movIngresosDespues = try modelContext.fetch(FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "entrada" }))
+        let movEgresosDespues = try modelContext.fetch(FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "salida" }))
         
         XCTAssertTrue(cryptosDespues.isEmpty, "No deben quedar cryptos después del borrado")
         XCTAssertTrue(carterasDespues.isEmpty, "No deben quedar carteras después del borrado")

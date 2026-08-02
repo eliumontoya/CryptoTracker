@@ -76,7 +76,7 @@ final class AppDependencyContainerTests: XCTestCase {
 
     func testEntradaFormViewModelFactory() {
         // Fresh ViewModel when editing an existing movement
-        let movimiento = MovimientoIngreso(
+        let movimiento = Movimiento.entrada(
             fecha: Date(),
             cantidadCrypto: 1,
             precioUSD: 100,

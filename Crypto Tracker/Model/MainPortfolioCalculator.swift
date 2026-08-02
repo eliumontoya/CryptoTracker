@@ -4,23 +4,25 @@ class MainPortfolioCalculator {
     static func calcularResumen(portfolioDetails: [CarteraDetail], carteras: [Cartera]) -> MainPortfolioSummary {
         let totalInvertidoUSD = portfolioDetails.reduce(0) { $0 + $1.totalInvertidoUSD }
         let valorActualUSD = portfolioDetails.reduce(0) { $0 + $1.valorTotalUSD }
-        
+
         // Calcular total de ventas incluyendo swaps
         let totalVentasUSD = carteras.reduce(Decimal(0)) { carteraSum, cartera in
-            let ventasDirectas = cartera.movimientosEgreso.reduce(Decimal(0)) { movSum, movimiento in
-                movSum + movimiento.valorTotalUSD
+            let ventasDirectas = cartera.movimientos.reduce(Decimal(0)) { movSum, movimiento in
+                movimiento.tipo == .salida ? movSum + movimiento.valorTotalUSD : movSum
             }
-            
-            let ventasSwaps = cartera.swaps.reduce(Decimal(0)) { swapSum, movimiento in
-                swapSum + (movimiento.cantidadOrigen * movimiento.precioUSDOrigen)
+
+            let ventasSwaps = cartera.movimientos.reduce(Decimal(0)) { swapSum, movimiento in
+                movimiento.tipo == .swapSalida
+                    ? swapSum + (movimiento.cantidadOrigen * movimiento.precioUSDOrigen)
+                    : swapSum
             }
-            
+
             return carteraSum + ventasDirectas + ventasSwaps
         }
-        
+
         let gananciaTotal = valorActualUSD - totalInvertidoUSD
         let rendimientoTotal = totalInvertidoUSD > 0 ? ((valorActualUSD - totalInvertidoUSD) / totalInvertidoUSD) * 100 : 0
-        
+
         return MainPortfolioSummary(
             totalInvertidoUSD: totalInvertidoUSD,
             valorActualUSD: valorActualUSD,
@@ -29,11 +31,11 @@ class MainPortfolioCalculator {
             rendimientoTotal: rendimientoTotal
         )
     }
-    
+
     static func calcularDistribucionGanancias(portfolioDetails: [CarteraDetail]) -> [MainCryptoDistribution] {
         // Agrupar todas las cryptos del portfolio
         var cryptoGanancias: [UUID: (nombre: String, ganancia: Decimal, valorTotal: Decimal)] = [:]
-        
+
         for carteraDetail in portfolioDetails {
             for cryptoDetail in carteraDetail.cryptoDetails {
                 if let existingData = cryptoGanancias[cryptoDetail.crypto.id] {
@@ -51,14 +53,14 @@ class MainPortfolioCalculator {
                 }
             }
         }
-        
+
         // Calcular el total absoluto para los porcentajes
         let totalAbsoluto = cryptoGanancias.values.reduce(Decimal(0)) { $0 + abs($1.ganancia) }
-        
+
         // Convertir a array y ordenar por ganancia
         return cryptoGanancias.map { (id, data) in
             let porcentaje = totalAbsoluto != 0 ? (data.ganancia / totalAbsoluto) * 100 : 0
-            
+
             return MainCryptoDistribution(
                 cryptoId: id,
                 nombre: data.nombre,

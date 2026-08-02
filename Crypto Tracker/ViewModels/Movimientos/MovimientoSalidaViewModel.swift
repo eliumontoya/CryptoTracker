@@ -19,7 +19,7 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
     @Published var uiState: MovimientoUIState = .idle
     
     private let modelContext: ModelContext
-    let movimiento: MovimientoEgreso?
+    let movimiento: Movimiento?
     private var cancellables = Set<AnyCancellable>()
     
     private var cryptoDisponible: Decimal {
@@ -43,7 +43,7 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
                (!usaFiatAlterno || (selectedFiatAlterno != nil && valorTotalFiatAlterno > 0))
     }
     
-    init(modelContext: ModelContext, movimiento: MovimientoEgreso? = nil) {
+    init(modelContext: ModelContext, movimiento: Movimiento? = nil) {
         self.modelContext = modelContext
         self.movimiento = movimiento
         
@@ -83,7 +83,7 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
             .store(in: &cancellables)
     }
     
-    private func loadMovimiento(_ movimiento: MovimientoEgreso) {
+    private func loadMovimiento(_ movimiento: Movimiento) {
         selectedCrypto = movimiento.crypto
         selectedCartera = movimiento.cartera
         fecha = movimiento.fecha
@@ -139,7 +139,7 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
                 existingMovimiento.fiatAlterno = usaFiatAlterno ? selectedFiatAlterno : nil
             } else {
                 // Crear nuevo movimiento
-                let nuevoMovimiento = MovimientoEgreso(
+                let nuevoMovimiento = Movimiento.salida(
                     fecha: fecha,
                     cantidadCrypto: cantidadCrypto,
                     precioUSD: precioUSD,

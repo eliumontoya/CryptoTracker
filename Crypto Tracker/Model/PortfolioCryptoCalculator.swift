@@ -10,42 +10,42 @@ class PortfolioCryptoCalculator {
             let totalDisponible = carteras.reduce(Decimal(0)) { total, cartera in
                 total + cartera.getCryptoDisponible(crypto: crypto)
             }
-            
+
             // Si no hay movimientos para esta crypto, no la incluimos
             guard totalDisponible > 0 else { return nil }
-            
+
             // Calcular total USD de ingresos (incluyendo swaps destino)
             let totalUSDIngresos = carteras.reduce(Decimal(0)) { total, cartera in
-                let ingresosDirectos = cartera.movimientosIngreso
-                    .filter { $0.crypto?.id == crypto.id }
+                let ingresosDirectos = cartera.movimientos
+                    .filter { $0.tipo == .entrada && $0.crypto?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
-                
-                let ingresosSwaps = cartera.swaps
-                    .filter { $0.cryptoDestino?.id == crypto.id }
+
+                let ingresosSwaps = cartera.movimientos
+                    .filter { $0.tipo == .swapEntrada && $0.cryptoDestino?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + ($1.cantidadDestino * $1.precioUSDDestino) }
-                
+
                 return total + ingresosDirectos + ingresosSwaps
             }
-            
+
             // Calcular total USD de ventas (incluyendo swaps origen)
             let totalUSDVentas = carteras.reduce(Decimal(0)) { total, cartera in
-                let ventasDirectas = cartera.movimientosEgreso
-                    .filter { $0.crypto?.id == crypto.id }
+                let ventasDirectas = cartera.movimientos
+                    .filter { $0.tipo == .salida && $0.crypto?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
-                
-                let ventasSwaps = cartera.swaps
-                    .filter { $0.cryptoOrigen?.id == crypto.id }
+
+                let ventasSwaps = cartera.movimientos
+                    .filter { $0.tipo == .swapSalida && $0.cryptoOrigen?.id == crypto.id }
                     .reduce(Decimal(0)) { $0 + ($1.cantidadOrigen * $1.precioUSDOrigen) }
-                
+
                 return total + ventasDirectas + ventasSwaps
             }
-            
+
             // Calcular valor actual
             let valorActual = totalDisponible * crypto.precio
-            
+
             // Calcular ganancia
             let ganancia = valorActual - totalUSDIngresos + totalUSDVentas
-            
+
             return CryptoPortfolioSummary(
                 crypto: crypto,
                 totalDisponible: totalDisponible,

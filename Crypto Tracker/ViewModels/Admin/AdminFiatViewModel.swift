@@ -82,7 +82,7 @@ class AdminFiatViewModel: ObservableObject {
     
     // MARK: - Validaciones
     func canDeleteFiat(_ fiat: FIAT) -> Bool {
-        fiat.movimientosIngreso.isEmpty && fiat.movimientosEgreso.isEmpty
+        fiat.movimientos.isEmpty
     }
     
     // MARK: - Cache y Optimización

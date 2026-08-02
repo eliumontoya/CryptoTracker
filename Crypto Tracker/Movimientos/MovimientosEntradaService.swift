@@ -14,7 +14,7 @@ enum MovimientoServiceError: Error, LocalizedError {
     case saveFailed(String)
     case deleteFailed(String)
     case invalidMovimiento
-    
+
     var errorDescription: String? {
         switch self {
         case .fetchFailed(let message):
@@ -31,38 +31,38 @@ enum MovimientoServiceError: Error, LocalizedError {
 
 
 protocol MovimientosEntradaServiceProtocol {
-    func save(movimiento: MovimientoIngreso) throws
-    func insert(movimiento: MovimientoIngreso) throws
-    func delete(movimiento: MovimientoIngreso) throws
-    
-    func fetch() throws -> [MovimientoIngreso]
-    func fetchSorted() throws -> [MovimientoIngreso]
-    
+    func save(movimiento: Movimiento) throws
+    func insert(movimiento: Movimiento) throws
+    func delete(movimiento: Movimiento) throws
+
+    func fetch() throws -> [Movimiento]
+    func fetchSorted() throws -> [Movimiento]
+
     func checkCryptoDisponible(crypto: Crypto, cartera: Cartera) -> Decimal
-    
+
 }
 
 class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProtocol{
-    
+
     private let modelContext: ModelContext
-    
+
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
-        
+
     }
-    
-    func fetch() throws -> [MovimientoIngreso] {
+
+    func fetch() throws -> [Movimiento] {
         do {
-            let descriptor = FetchDescriptor<MovimientoIngreso>()
+            let descriptor = FetchDescriptor<Movimiento>()
             return try modelContext.fetch(descriptor)
         } catch {
             throw MovimientoServiceError.fetchFailed(error.localizedDescription)
         }
     }
-    
-    func fetchSorted() throws -> [MovimientoIngreso] {
+
+    func fetchSorted() throws -> [Movimiento] {
         do {
-            let descriptor = FetchDescriptor<MovimientoIngreso>(
+            let descriptor = FetchDescriptor<Movimiento>(
                 sortBy: [SortDescriptor(\.fecha, order: .reverse)]
             )
             return try modelContext.fetch(descriptor)
@@ -70,11 +70,11 @@ class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProt
             throw MovimientoServiceError.fetchFailed(error.localizedDescription)
         }
     }
-    
-    
-    
-    private func validateMovimiento(movimiento: MovimientoIngreso) throws {
-        if movimiento.crypto == nil {
+
+
+
+    private func validateMovimiento(movimiento: Movimiento) throws {
+        if movimiento.crypto == nil && movimiento.cryptoOrigen == nil {
             throw MovimientoFormCommonError.missingCrypto
         }
         if movimiento.cartera == nil {
@@ -94,19 +94,19 @@ class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProt
             }
         }
     }
-    
-    func save(movimiento: MovimientoIngreso) throws{
+
+    func save(movimiento: Movimiento) throws{
         try validateMovimiento(movimiento: movimiento)
-        
+
         do {
             try modelContext.save()
         } catch {
             throw MovimientoServiceError.saveFailed(error.localizedDescription)
         }
     }
-    
-    
-    func insert(movimiento: MovimientoIngreso) throws{
+
+
+    func insert(movimiento: Movimiento) throws{
         try validateMovimiento(movimiento: movimiento)
         do {
             modelContext.insert(movimiento)
@@ -114,8 +114,8 @@ class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProt
         } catch {
             throw MovimientoServiceError.saveFailed(error.localizedDescription)
         }    }
-    
-    func delete(movimiento: MovimientoIngreso) throws {
+
+    func delete(movimiento: Movimiento) throws {
         do {
             modelContext.delete(movimiento)
             try modelContext.save()
@@ -123,11 +123,10 @@ class MovimientosEntradaService : ObservableObject,MovimientosEntradaServiceProt
             throw MovimientoServiceError.deleteFailed(error.localizedDescription)
         }
     }
-    
+
     // Esta función es útil para validaciones al crear/editar movimientos
         func checkCryptoDisponible(crypto: Crypto, cartera: Cartera) -> Decimal {
             return cartera.getCryptoDisponible(crypto: crypto)
         }
-    
-}
 
+}

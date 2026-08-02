@@ -156,7 +156,7 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
             XCTAssertFalse(viewModel.isLoading)
             
             // Verificar que el movimiento se guardó correctamente
-            let fetchRequest = FetchDescriptor<MovimientoEgreso>()
+            let fetchRequest = FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "salida" })
             let movimientos = try modelContext.fetch(fetchRequest)
             
             XCTAssertEqual(movimientos.count, 1)
@@ -189,7 +189,7 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
             XCTAssertFalse(viewModel.isLoading)
             
             // Verificar que el movimiento se guardó correctamente
-            let fetchRequest = FetchDescriptor<MovimientoEgreso>()
+            let fetchRequest = FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "salida" })
             let movimientos = try modelContext.fetch(fetchRequest)
             
             XCTAssertEqual(movimientos.count, 1)
@@ -209,7 +209,7 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
     // MARK: - Pruebas de Eliminación
     func testDelete_Success() async throws {
         // Primero crear un movimiento para eliminar
-        let movimiento = MovimientoEgreso(
+        let movimiento = Movimiento.salida(
             fecha: Date(),
             cantidadCrypto: 50,
             precioUSD: 1000,
@@ -228,7 +228,7 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
             XCTAssertFalse(viewModel.isLoading)
             
             // Verificar que el movimiento se eliminó
-            let fetchRequest = FetchDescriptor<MovimientoEgreso>()
+            let fetchRequest = FetchDescriptor<Movimiento>(predicate: #Predicate { $0.tipoRaw == "salida" })
             let movimientos = try modelContext.fetch(fetchRequest)
             
             XCTAssertEqual(movimientos.count, 0)

@@ -64,7 +64,7 @@ class AppDependencyContainer {
     
     // MARK: - ViewModel Factories
     
-    func makeMovimientoEntradaViewModel(movimiento: MovimientoIngreso? = nil) -> MovimientoEntradaViewModel {
+    func makeMovimientoEntradaViewModel(movimiento: Movimiento? = nil) -> MovimientoEntradaViewModel {
         if let movimiento = movimiento {
             return MovimientoEntradaViewModel(
                 movimiento: movimiento,
@@ -74,15 +74,15 @@ class AppDependencyContainer {
         return MovimientoEntradaViewModel(movimientoService: movimientosEntradaService)
     }
     
-    func makeMovimientoSalidaViewModel(movimiento: MovimientoEgreso? = nil) -> MovimientoSalidaViewModel {
+    func makeMovimientoSalidaViewModel(movimiento: Movimiento? = nil) -> MovimientoSalidaViewModel {
         MovimientoSalidaViewModel(modelContext: modelContext, movimiento: movimiento)
     }
     
-    func makeMovimientoEntreCarterasViewModel(movimiento: MovimientoEntreCarteras? = nil) -> MovimientoEntreCarterasViewModel {
+    func makeMovimientoEntreCarterasViewModel(movimiento: Movimiento? = nil) -> MovimientoEntreCarterasViewModel {
         MovimientoEntreCarterasViewModel(modelContext: modelContext, movimiento: movimiento)
     }
     
-    func makeMovimientoSwapViewModel(movimiento: MovimientoSwap? = nil) -> MovimientoSwapViewModel {
+    func makeMovimientoSwapViewModel(movimiento: Movimiento? = nil) -> MovimientoSwapViewModel {
         MovimientoSwapViewModel(modelContext: modelContext, movimiento: movimiento)
     }
     
@@ -137,7 +137,7 @@ class AppDependencyContainer {
         MovimientosEntradaView(viewModel: movimientosEntradaListViewModel)
     }
     
-    func makeMovimientoEntradaFormView(movimiento: MovimientoIngreso? = nil) -> MovimientoEntradaFormView {
+    func makeMovimientoEntradaFormView(movimiento: Movimiento? = nil) -> MovimientoEntradaFormView {
         // Si se proporciona un movimiento, creamos un ViewModel específico para él
         if let movimiento = movimiento {
             let viewModel = makeMovimientoEntradaViewModel(movimiento: movimiento)
@@ -150,15 +150,15 @@ class AppDependencyContainer {
         }
     }
     
-    func makeMovimientoSalidaFormView(movimiento: MovimientoEgreso? = nil) -> MovimientoSalidaFormView {
+    func makeMovimientoSalidaFormView(movimiento: Movimiento? = nil) -> MovimientoSalidaFormView {
         MovimientoSalidaFormView(viewModel: self.makeMovimientoSalidaViewModel(movimiento: movimiento))
     }
     
-    func makeMovimientoEntreCarterasFormView(movimiento: MovimientoEntreCarteras? = nil) -> MovimientoEntreCarterasFormView {
+    func makeMovimientoEntreCarterasFormView(movimiento: Movimiento? = nil) -> MovimientoEntreCarterasFormView {
         MovimientoEntreCarterasFormView(viewModel: self.makeMovimientoEntreCarterasViewModel(movimiento: movimiento))
     }
     
-    func makeMovimientoSwapFormView(movimiento: MovimientoSwap? = nil) -> MovimientoSwapFormView {
+    func makeMovimientoSwapFormView(movimiento: Movimiento? = nil) -> MovimientoSwapFormView {
         MovimientoSwapFormView(viewModel: self.makeMovimientoSwapViewModel(movimiento: movimiento))
     }
     

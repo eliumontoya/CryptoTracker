@@ -89,7 +89,7 @@ final class AdminCarterasViewModelTests: XCTestCase {
         
         // Agregar un movimiento de ingreso
         let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
-        let movimiento = MovimientoIngreso(
+        let movimiento = Movimiento.entrada(
             fecha: Date(),
             cantidadCrypto: 1,
             precioUSD: 50000,

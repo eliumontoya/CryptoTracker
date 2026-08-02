@@ -16,30 +16,32 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
     @Published var hasError = false
     @Published var errorMessage = ""
     @Published var uiState: MovimientoUIState = .idle
-    
+
     private let modelContext: ModelContext
-    let movimiento: MovimientoSwap?
+    /// Pierna de salida del swap (`.swapSalida`). La pierna de entrada se
+    /// localiza por `groupId`.
+    let movimiento: Movimiento?
     private var cancellables = Set<AnyCancellable>()
-    
+
     var valorTotalOrigen: Decimal {
         cantidadOrigen * precioUSDOrigen
     }
-    
+
     var valorTotalDestino: Decimal {
         cantidadDestino * precioUSDDestino
     }
-    
+
      var cryptoDisponible: Decimal {
         guard let cartera = selectedCartera,
               let cryptoOrigen = selectedCryptoOrigen else { return 0 }
-        
+
         if let movimiento = movimiento {
             return cartera.getCryptoDisponible(crypto: cryptoOrigen, movimientoActual: movimiento.cantidadOrigen)
         } else {
             return cartera.getCryptoDisponible(crypto: cryptoOrigen)
         }
     }
-    
+
     var formIsValid: Bool {
         selectedCryptoDestino != nil &&
         selectedCryptoOrigen != nil &&
@@ -51,17 +53,17 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         precioUSDDestino > 0 &&
         selectedCryptoOrigen != selectedCryptoDestino
     }
-    
-    init(modelContext: ModelContext, movimiento: MovimientoSwap? = nil) {
+
+    init(modelContext: ModelContext, movimiento: Movimiento? = nil) {
         self.modelContext = modelContext
         self.movimiento = movimiento
-        
+
         if let movimiento = movimiento {
             loadMovimiento(movimiento)
         }
         setupBindings()
     }
-    
+
     private func setupBindings() {
         // Actualizar precio origen cuando cambia crypto
         $selectedCryptoOrigen
@@ -70,7 +72,7 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
                 self?.precioUSDOrigen = crypto.precio
             }
             .store(in: &cancellables)
-        
+
         // Actualizar precio destino cuando cambia crypto
         $selectedCryptoDestino
             .compactMap { $0 }
@@ -79,8 +81,8 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
             }
             .store(in: &cancellables)
     }
-    
-    private func loadMovimiento(_ movimiento: MovimientoSwap) {
+
+    private func loadMovimiento(_ movimiento: Movimiento) {
         selectedCartera = movimiento.cartera
         selectedCryptoOrigen = movimiento.cryptoOrigen
         selectedCryptoDestino = movimiento.cryptoDestino
@@ -90,17 +92,27 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         precioUSDOrigen = movimiento.precioUSDOrigen
         precioUSDDestino = movimiento.precioUSDDestino
     }
-    
+
+    /// Pierna de entrada del swap actual (si existe), localizada por `groupId`.
+    private func piernaEntrada(_ movimiento: Movimiento) -> Movimiento? {
+        guard let groupId = movimiento.groupId else { return nil }
+        return (try? modelContext.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == "swapEntrada" }
+            )
+        ))?.first
+    }
+
     func adjustCantidadOrigen() {
         if cantidadOrigen > cryptoDisponible {
             cantidadOrigen = cryptoDisponible
         }
     }
-    
+
     func setMaxCantidadOrigen() {
         cantidadOrigen = cryptoDisponible
     }
-    
+
     func save() async throws {
         guard let cryptoOrigen = selectedCryptoOrigen,
               let cryptoDestino = selectedCryptoDestino else {
@@ -114,13 +126,15 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         guard let cartera = selectedCartera else {
             throw MovimientoFormCommonError.missingCartera
         }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
             if let existingMovimiento = movimiento {
-                // Actualizar movimiento existente
+                // Actualizar el par de movimientos existente
+                let entrada = piernaEntrada(existingMovimiento)
+
                 existingMovimiento.fecha = fecha
                 existingMovimiento.cantidadOrigen = cantidadOrigen
                 existingMovimiento.cantidadDestino = cantidadDestino
@@ -129,9 +143,20 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
                 existingMovimiento.cartera = cartera
                 existingMovimiento.cryptoOrigen = cryptoOrigen
                 existingMovimiento.cryptoDestino = cryptoDestino
+
+                if let entrada = entrada {
+                    entrada.fecha = fecha
+                    entrada.cantidadOrigen = cantidadOrigen
+                    entrada.cantidadDestino = cantidadDestino
+                    entrada.precioUSDOrigen = precioUSDOrigen
+                    entrada.precioUSDDestino = precioUSDDestino
+                    entrada.cartera = cartera
+                    entrada.cryptoOrigen = cryptoOrigen
+                    entrada.cryptoDestino = cryptoDestino
+                }
             } else {
-                // Crear nuevo movimiento
-                let nuevoMovimiento = MovimientoSwap(
+                // Crear el par de movimientos (swapSalida + swapEntrada) con groupId compartido
+                let par = Movimiento.swap(
                     fecha: fecha,
                     cantidadOrigen: cantidadOrigen,
                     cantidadDestino: cantidadDestino,
@@ -141,12 +166,13 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
                     cryptoOrigen: cryptoOrigen,
                     cryptoDestino: cryptoDestino
                 )
-                modelContext.insert(nuevoMovimiento)
+                modelContext.insert(par.salida)
+                modelContext.insert(par.entrada)
             }
-            
+
             try modelContext.save()
             uiState = .success
-            
+
         } catch {
             uiState = .error(error.localizedDescription)
             isLoading = false
@@ -154,14 +180,18 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         }
         isLoading = false
     }
-    
+
     func delete() async throws {
         guard let movimiento = movimiento else { return }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
+            // Eliminar ambas piernas del par
+            if let entrada = piernaEntrada(movimiento) {
+                modelContext.delete(entrada)
+            }
             modelContext.delete(movimiento)
             try modelContext.save()
             uiState = .success

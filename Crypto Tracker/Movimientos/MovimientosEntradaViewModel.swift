@@ -22,13 +22,13 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
     @Published var uiState: MovimientoUIState = .idle
     
     // Modelo
-    private(set) var movimiento: MovimientoIngreso?
+    private(set) var movimiento: Movimiento?
     
     // Dependencias
     private let movimientoService: MovimientosEntradaServiceProtocol
     private var cancellables = Set<AnyCancellable>()
     
-    init(movimiento: MovimientoIngreso? = nil, movimientoService: MovimientosEntradaServiceProtocol) {
+    init(movimiento: Movimiento? = nil, movimientoService: MovimientosEntradaServiceProtocol) {
         self.movimiento = movimiento
         self.movimientoService = movimientoService
         
@@ -53,7 +53,7 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
         return valorTotalFiatAlterno / cantidadCrypto
     }
     
-    func loadMovimiento(_ movimiento: MovimientoIngreso) {
+    func loadMovimiento(_ movimiento: Movimiento) {
         print("Cargando movimiento: \(movimiento.id)")
         self.movimiento = movimiento
         
@@ -147,7 +147,7 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
                 try movimientoService.save(movimiento: existingMovimiento)
             } else {
                 // Crear nuevo movimiento
-                let nuevoMovimiento = MovimientoIngreso(
+                let nuevoMovimiento = Movimiento.entrada(
                     fecha: fecha,
                     cantidadCrypto: cantidadCrypto,
                     precioUSD: precioUSD,

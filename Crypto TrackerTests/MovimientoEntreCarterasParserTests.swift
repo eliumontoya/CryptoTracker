@@ -19,7 +19,7 @@ final class MovimientoEntreCarterasParserTests: XCTestCase {
         carteraDestino = Cartera(nombre: "MetaMask", simbolo: "MM")
         
         // Simular un balance en la cartera origen
-        let movimientoInicial = MovimientoIngreso(
+        let movimientoInicial = Movimiento.entrada(
             fecha: Date(),
             cantidadCrypto: 2.0,
             precioUSD: 45000,
@@ -82,7 +82,7 @@ final class MovimientoEntreCarterasParserTests: XCTestCase {
         )
         
         // Then
-        XCTAssertEqual(movimientos.count, 1)
+        XCTAssertEqual(movimientos.count, 2) // 1 par = 2 piernas
         let movimiento = movimientos[0]
         XCTAssertEqual(movimiento.cantidadCryptoSalida, Decimal(string: "1.5"))
         XCTAssertEqual(movimiento.cantidadCryptoEntrada, Decimal(string: "1.5"))
@@ -113,7 +113,7 @@ final class MovimientoEntreCarterasParserTests: XCTestCase {
         )
         
         // Then
-        XCTAssertEqual(movimientos.count, 1)
+        XCTAssertEqual(movimientos.count, 2) // 1 par = 2 piernas
         let movimiento = movimientos[0]
         XCTAssertEqual(movimiento.cantidadCryptoSalida, Decimal(string: "1.5"))
         XCTAssertEqual(movimiento.cantidadCryptoEntrada, Decimal(string: "1.45"))

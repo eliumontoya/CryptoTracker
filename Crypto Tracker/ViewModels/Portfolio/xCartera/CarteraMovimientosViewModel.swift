@@ -8,27 +8,28 @@ final class CarteraMovimientosViewModel: ObservableObject {
     @Published var selectedMovimientoDetalle: MovimientoDetalle?
     @Published var isLoading = false
     @Published var errorMessage: String?
-    
+
     private let cartera: Cartera
     private let modelContext: ModelContext
-    
+
     init(cartera: Cartera, modelContext: ModelContext) {
         self.cartera = cartera
         self.modelContext = modelContext
     }
-    
+
     var carteraNombre: String {
         cartera.nombre
     }
-    
+
     func cargarMovimientos() {
         isLoading = true
-        
-        do {
-            var movimientosTemp: [MovimientoDetalle] = []
-            
-            // Procesar movimientos de entrada
-            cartera.movimientosIngreso.forEach { movimiento in
+
+        var movimientosTemp: [MovimientoDetalle] = []
+
+        // Procesar movimientos unificados de la cartera
+        cartera.movimientos.forEach { movimiento in
+            switch movimiento.tipo {
+            case .entrada:
                 if let crypto = movimiento.crypto {
                     movimientosTemp.append(crearMovimientoDetalle(
                         id: movimiento.id,
@@ -41,10 +42,8 @@ final class CarteraMovimientosViewModel: ObservableObject {
                         carteraDestino: cartera.nombre
                     ))
                 }
-            }
-            
-            // Procesar movimientos de salida
-            cartera.movimientosEgreso.forEach { movimiento in
+
+            case .salida:
                 if let crypto = movimiento.crypto {
                     movimientosTemp.append(crearMovimientoDetalle(
                         id: movimiento.id,
@@ -57,78 +56,65 @@ final class CarteraMovimientosViewModel: ObservableObject {
                         carteraOrigen: cartera.nombre
                     ))
                 }
+
+            case .transferenciaSalida:
+                if let crypto = movimiento.crypto {
+                    movimientosTemp.append(crearMovimientoDetalle(
+                        id: movimiento.id,
+                        fecha: movimiento.fecha,
+                        tipo: .transferencia,
+                        crypto: crypto,
+                        cantidadOrigen: movimiento.cantidadCryptoSalida,
+                        cantidadDestino: movimiento.cantidadCryptoEntrada,
+                        carteraOrigen: cartera.nombre,
+                        carteraDestino: movimiento.carteraDestino?.nombre ?? "Desconocida"
+                    ))
+                }
+
+            case .transferenciaEntrada:
+                if let crypto = movimiento.crypto {
+                    movimientosTemp.append(crearMovimientoDetalle(
+                        id: movimiento.id,
+                        fecha: movimiento.fecha,
+                        tipo: .transferencia,
+                        crypto: crypto,
+                        cantidadOrigen: movimiento.cantidadCryptoSalida,
+                        cantidadDestino: movimiento.cantidadCryptoEntrada,
+                        carteraOrigen: movimiento.carteraOrigen?.nombre ?? "Desconocida",
+                        carteraDestino: cartera.nombre
+                    ))
+                }
+
+            case .swapSalida:
+                if let cryptoOrigen = movimiento.cryptoOrigen,
+                   let cryptoDestino = movimiento.cryptoDestino {
+                    movimientosTemp.append(MovimientoDetalle(
+                        id: movimiento.id,
+                        fecha: movimiento.fecha,
+                        tipo: .swap,
+                        carteraOrigen: cartera.nombre,
+                        carteraDestino: cartera.nombre,
+                        cantidadOrigen: movimiento.cantidadOrigen,
+                        cantidadDestino: movimiento.cantidadDestino,
+                        cryptoOrigen: cryptoOrigen.simbolo,
+                        cryptoDestino: cryptoDestino.simbolo,
+                        valorUSD: movimiento.cantidadOrigen * movimiento.precioUSDOrigen
+                    ))
+                }
+
+            case .swapEntrada, .ajuste, .comision:
+                // La pierna .swapSalida ya representa el swap completo; ajustes y
+                // comisiones no se renderizan como filas en esta vista.
+                break
             }
-            
-            // Procesar transferencias
-            procesarTransferencias(movimientosTemp: &movimientosTemp)
-            
-            // Procesar swaps
-            procesarSwaps(movimientosTemp: &movimientosTemp)
-            
-            // Ordenar movimientos por fecha (más reciente primero)
-            movimientos = movimientosTemp.sorted { $0.fecha > $1.fecha }
-            
-        } catch {
-            errorMessage = error.localizedDescription
         }
-        
+
+        // Ordenar movimientos por fecha (más reciente primero)
+        movimientos = movimientosTemp.sorted { $0.fecha > $1.fecha }
+
         isLoading = false
     }
-    
-    private func procesarTransferencias(movimientosTemp: inout [MovimientoDetalle]) {
-        // Salida
-        cartera.movimientosSalida.forEach { movimiento in
-            if let crypto = movimiento.crypto {
-                movimientosTemp.append(crearMovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .transferencia,
-                    crypto: crypto,
-                    cantidadOrigen: movimiento.cantidadCryptoSalida,
-                    cantidadDestino: movimiento.cantidadCryptoEntrada,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: movimiento.carteraDestino?.nombre ?? "Desconocida"
-                ))
-            }
-        }
-        
-        // Entrada
-        cartera.movimientosEntrada.forEach { movimiento in
-            if let crypto = movimiento.crypto {
-                movimientosTemp.append(crearMovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .transferencia,
-                    crypto: crypto,
-                    cantidadOrigen: movimiento.cantidadCryptoSalida,
-                    cantidadDestino: movimiento.cantidadCryptoEntrada,
-                    carteraOrigen: movimiento.carteraOrigen?.nombre ?? "Desconocida",
-                    carteraDestino: cartera.nombre
-                ))
-            }
-        }
-    }
-    
-    private func procesarSwaps(movimientosTemp: inout [MovimientoDetalle]) {
-        cartera.swaps.forEach { movimiento in
-            if let cryptoOrigen = movimiento.cryptoOrigen,
-               let cryptoDestino = movimiento.cryptoDestino {
-                movimientosTemp.append(MovimientoDetalle(
-                    id: movimiento.id,
-                    fecha: movimiento.fecha,
-                    tipo: .swap,
-                    carteraOrigen: cartera.nombre,
-                    carteraDestino: cartera.nombre,
-                    cantidadOrigen: movimiento.cantidadOrigen,
-                    cantidadDestino: movimiento.cantidadDestino,
-                    cryptoOrigen: cryptoOrigen.simbolo,
-                    cryptoDestino: cryptoDestino.simbolo,
-                    valorUSD: movimiento.cantidadOrigen * movimiento.precioUSDOrigen
-                ))
-            }
-        }
-    }
-    
+
     private func crearMovimientoDetalle(
         id: UUID,
         fecha: Date,

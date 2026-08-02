@@ -19,6 +19,8 @@ final class CargaMovimientosTests: XCTestCase {
                 Portfolio.self,
                 Holding.self,
                 MovimientoIngreso.self,
+                Movimiento.self,
+        MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
                 MovimientoSwap.self,
@@ -69,7 +71,9 @@ final class CargaMovimientosTests: XCTestCase {
         XCTAssertEqual(mockDelegate.completedTasks["Movimientos de Entrada"], testData.movimientosEsperados)
         
         // Verificar que los movimientos se guardaron correctamente
-        let descriptor = FetchDescriptor<MovimientoIngreso>()
+        let descriptor = FetchDescriptor<Movimiento>(
+            predicate: #Predicate { $0.tipoRaw == "entrada" }
+        )
         let movimientosCargados = try modelContext.fetch(descriptor)
         XCTAssertEqual(movimientosCargados.count, testData.movimientosEsperados)
         // Aquí podrías agregar más validaciones específicas sobre los datos
@@ -97,7 +101,9 @@ final class CargaMovimientosTests: XCTestCase {
             XCTFail("Se esperaba un error por datos inválidos")
         } catch {
             // Verificar que no se guardaron movimientos
-            let descriptor = FetchDescriptor<MovimientoIngreso>()
+            let descriptor = FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.tipoRaw == "entrada" }
+            )
             let movimientosCargados = try? modelContext.fetch(descriptor)
             XCTAssertEqual(movimientosCargados?.count ?? 0, 0)
             XCTAssertFalse(mockDelegate.didReceiveError)
@@ -157,7 +163,11 @@ final class CargaMovimientosTests: XCTestCase {
         // Assert
         XCTAssertEqual(totalCargados, testData.movimientosEsperados)
         // Verificar consistencia de balances entre carteras
-        let movimientos = try modelContext.fetch(FetchDescriptor<MovimientoEntreCarteras>())
+        let movimientos = try modelContext.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.tipoRaw == "transferenciaSalida" }
+            )
+        )
         for movimiento in movimientos {
             XCTAssertTrue(verificarConsistenciaTransferencia(movimiento))
         }
@@ -186,7 +196,11 @@ final class CargaMovimientosTests: XCTestCase {
         // Assert
         XCTAssertEqual(totalCargados, testData.movimientosEsperados)
         // Verificar consistencia de los swaps
-        let movimientos = try modelContext.fetch(FetchDescriptor<MovimientoSwap>())
+        let movimientos = try modelContext.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.tipoRaw == "swapSalida" }
+            )
+        )
         for movimiento in movimientos {
             XCTAssertTrue(verificarConsistenciaSwap(movimiento))
         }
@@ -224,14 +238,14 @@ final class CargaMovimientosTests: XCTestCase {
         true
     }
     
-    private func verificarConsistenciaTransferencia(_ movimiento: MovimientoEntreCarteras) -> Bool {
+    private func verificarConsistenciaTransferencia(_ movimiento: Movimiento) -> Bool {
         // Implementar verificación de consistencia de transferencia
-        true
+        movimiento.cantidadCryptoSalida >= movimiento.cantidadCryptoEntrada
     }
     
-    private func verificarConsistenciaSwap(_ movimiento: MovimientoSwap) -> Bool {
+    private func verificarConsistenciaSwap(_ movimiento: Movimiento) -> Bool {
         // Implementar verificación de consistencia de swap
-        true
+        movimiento.cantidadOrigen > 0 && movimiento.cantidadDestino > 0
     }
 }
 
