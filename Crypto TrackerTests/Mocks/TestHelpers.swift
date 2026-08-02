@@ -11,6 +11,7 @@ class TestSetup {
         let container = try! ModelContainer(
             for: Crypto.self,
             Cartera.self,
+            Portfolio.self,
             FIAT.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,

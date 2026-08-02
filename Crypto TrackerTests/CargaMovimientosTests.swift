@@ -3,6 +3,7 @@ import SwiftData
 @testable import Crypto_Tracker
 
 // MARK: - Test Suite para Servicios de Carga de Movimientos
+@MainActor
 final class CargaMovimientosTests: XCTestCase {
     var modelContext: ModelContext!
     var mockDelegate: MockCargaMovimientosDelegate!
@@ -16,6 +17,7 @@ final class CargaMovimientosTests: XCTestCase {
                 FIAT.self,
                 Crypto.self,
                 Cartera.self,
+                Portfolio.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
