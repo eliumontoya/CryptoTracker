@@ -362,4 +362,133 @@ struct DeleteMovementUseCaseTests {
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
         #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc)?.cantidad == 1)
     }
+
+    // MARK: - Swap delete
+
+    private func registerSwap(
+        originAmount: Decimal,
+        destinationAmount: Decimal,
+        wallet: Cartera,
+        cryptoOrigen: Crypto,
+        cryptoDestino: Crypto,
+        via runner: TransactionRunner
+    ) async throws -> Movimiento {
+        let swapUseCase = SwapMovementUseCase(
+            transactionRunner: runner,
+            holdingService: holdingService
+        )
+        let result = try await swapUseCase.execute(
+            SwapMovementInput(
+                fecha: Date(),
+                cantidadOrigen: originAmount,
+                cantidadDestino: destinationAmount,
+                precioUSDOrigen: 50_000,
+                precioUSDDestino: 3_000,
+                cartera: wallet,
+                cryptoOrigen: cryptoOrigen,
+                cryptoDestino: cryptoDestino
+            )
+        )
+        return result.salida
+    }
+
+    @Test func deleteSwapRemovesBothLegsAndRevertsHoldings() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 3_000)
+        context.insert(eth)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let swap = try await registerSwap(
+            originAmount: 3,
+            destinationAmount: 30,
+            wallet: cartera,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            via: runner
+        )
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: eth)?.cantidad == 30)
+
+        try await useCase.delete(swap)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1) // seeded entry only
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: eth) == nil)
+    }
+
+    @Test func deleteSwapFromEntradaLegRemovesBothLegs() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 3_000)
+        context.insert(eth)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let swap = try await registerSwap(
+            originAmount: 3,
+            destinationAmount: 30,
+            wallet: cartera,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            via: runner
+        )
+
+        try await useCase.delete(swap)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: eth) == nil)
+    }
+
+    @Test func deleteSwapRejectionWhenDestinationSpentTooMuch() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 3_000)
+        context.insert(eth)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let swap = try await registerSwap(
+            originAmount: 3,
+            destinationAmount: 30,
+            wallet: cartera,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            via: runner
+        )
+        // ETH receives 30, then sell 20. ETH now has 10.
+        let salidaDesdeEth = Movimiento.salida(
+            fecha: Date(),
+            cantidadCrypto: 20,
+            precioUSD: 3_000,
+            cartera: cartera,
+            crypto: eth
+        )
+        try await runner.run { ctx in
+            ctx.insert(salidaDesdeEth)
+            try holdingService.updateHoldingForMovement(salidaDesdeEth, in: ctx)
+        }
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: eth)?.cantidad == 10)
+
+        // Reverting the swap entrada (-30) would leave cartera at -20.
+        await #expect(throws: DeleteMovementError.insufficientHoldings) {
+            try await useCase.delete(swap)
+        }
+
+        // All movements remain: seeded entry, swap pair, and eth sale.
+        let groupId = swap.groupId
+        let swapMovements = try context.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { movement in
+                    if let groupId {
+                        movement.groupId == groupId
+                    } else {
+                        false
+                    }
+                }
+            )
+        )
+        #expect(swapMovements.count == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: eth)?.cantidad == 10)
+    }
 }

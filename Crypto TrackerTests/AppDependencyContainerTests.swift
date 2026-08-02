@@ -64,8 +64,17 @@ final class AppDependencyContainerTests: XCTestCase {
         XCTAssertNotNil(dependencies.moveBetweenWalletsUseCase)
     }
 
+    func testSwapMovementUseCaseIsWired() {
+        XCTAssertNotNil(dependencies.swapMovementUseCase)
+    }
+
     func testTransferViewModelFactoryReceivesInjectedUseCases() {
         let viewModel = dependencies.makeMovimientoEntreCarterasViewModel()
+        XCTAssertNotNil(viewModel)
+    }
+
+    func testSwapViewModelFactoryReceivesInjectedUseCases() {
+        let viewModel = dependencies.makeMovimientoSwapViewModel()
         XCTAssertNotNil(viewModel)
     }
 
