@@ -22,6 +22,9 @@ class AppDependencyContainer {
     // Use cases
     let moveBetweenWalletsUseCase: MoveBetweenWalletsUseCaseProtocol
     
+    // Use cases
+    let swapMovementUseCase: SwapMovementUseCaseProtocol
+    
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
@@ -61,6 +64,12 @@ class AppDependencyContainer {
         
         // Inicializar use cases
         self.moveBetweenWalletsUseCase = MoveBetweenWalletsUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        
+        // Inicializar use cases
+        self.swapMovementUseCase = SwapMovementUseCase(
             transactionRunner: transactionRunner,
             holdingService: holdingService
         )
@@ -137,8 +146,9 @@ class AppDependencyContainer {
         MovimientoSwapViewModel(
             modelContext: modelContext,
             movimiento: movimiento,
-            transactionRunner: transactionRunner,
-            holdingService: holdingService
+            swapUseCase: swapMovementUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
     }
     

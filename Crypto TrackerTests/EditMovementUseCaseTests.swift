@@ -696,4 +696,205 @@ struct EditMovementUseCaseTests {
         #expect(try holding(in: context, portfolio: portfolio, wallet: walletA, crypto: btc)?.cantidad == 5)
         #expect(try holding(in: context, portfolio: portfolio, wallet: walletB, crypto: btc)?.cantidad == 2)
     }
+
+    // MARK: - Swap editing
+
+    private func seedSwap(
+        in context: ModelContext,
+        cantidadOrigen: Decimal,
+        cantidadDestino: Decimal,
+        wallet: Cartera,
+        cryptoOrigen: Crypto,
+        cryptoDestino: Crypto,
+        seedAmount: Decimal
+    ) async throws -> Movimiento {
+        let useCase = SwapMovementUseCase(
+            transactionRunner: ModelContextTransactionRunner(modelContext: context),
+            holdingService: HoldingService()
+        )
+        try await seedEntrada(in: context, cantidad: seedAmount, wallet: wallet, crypto: cryptoOrigen)
+        let result = try await useCase.execute(
+            SwapMovementInput(
+                fecha: Date(),
+                cantidadOrigen: cantidadOrigen,
+                cantidadDestino: cantidadDestino,
+                precioUSDOrigen: 50_000,
+                precioUSDDestino: 3_000,
+                cartera: wallet,
+                cryptoOrigen: cryptoOrigen,
+                cryptoDestino: cryptoDestino
+            )
+        )
+        return result.salida
+    }
+
+    private func swapValues(
+        fecha: Date = Date(),
+        cantidadOrigen: Decimal,
+        cantidadDestino: Decimal,
+        precioUSDOrigen: Decimal = 50_000,
+        precioUSDDestino: Decimal = 3_000,
+        cartera: Cartera,
+        cryptoOrigen: Crypto,
+        cryptoDestino: Crypto
+    ) -> EditSwapMovementValues {
+        EditSwapMovementValues(
+            fecha: fecha,
+            cantidadOrigen: cantidadOrigen,
+            cantidadDestino: cantidadDestino,
+            precioUSDOrigen: precioUSDOrigen,
+            precioUSDDestino: precioUSDDestino,
+            cartera: cartera,
+            cryptoOrigen: cryptoOrigen,
+            cryptoDestino: cryptoDestino
+        )
+    }
+
+    @Test func editSwapQuantityAdjustsBothHoldings() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let salida = try await seedSwap(
+            in: context,
+            cantidadOrigen: 2,
+            cantidadDestino: 20,
+            wallet: wallet,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            seedAmount: 10
+        )
+        // BTC: 10 - 2 = 8, ETH: 20
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 8)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 20)
+
+        try await useCase.execute(EditSwapMovementInput(
+            salida: salida,
+            updated: swapValues(
+                cantidadOrigen: 1,
+                cantidadDestino: 15,
+                cartera: wallet,
+                cryptoOrigen: btc,
+                cryptoDestino: eth
+            )
+        ))
+
+        // BTC: 8 + 2 - 1 = 9, ETH: 20 - 20 + 15 = 15
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 9)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 15)
+        #expect(salida.cantidadOrigen == 1)
+        #expect(salida.cantidadDestino == 15)
+    }
+
+    @Test func editSwapChangeDestinationCrypto() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let third = Crypto(nombre: "Solana", simbolo: "SOL", precio: 200)
+        context.insert(third)
+        try context.save()
+        let useCase = makeUseCase(context: context)
+
+        let salida = try await seedSwap(
+            in: context,
+            cantidadOrigen: 2,
+            cantidadDestino: 20,
+            wallet: wallet,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            seedAmount: 10
+        )
+        // BTC: 8, ETH: 20
+
+        try await useCase.execute(EditSwapMovementInput(
+            salida: salida,
+            updated: swapValues(
+                cantidadOrigen: 1,
+                cantidadDestino: 100,
+                precioUSDDestino: 200,
+                cartera: wallet,
+                cryptoOrigen: btc,
+                cryptoDestino: third
+            )
+        ))
+
+        // BTC: 8 + 2 - 1 = 9, ETH: 20 - 20 = 0 (deleted), SOL: 100
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 9)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth) == nil)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: third)?.cantidad == 100)
+        #expect(salida.cryptoDestino?.id == third.id)
+    }
+
+    @Test func editSwapInsufficientOriginFundsIsRejected() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let salida = try await seedSwap(
+            in: context,
+            cantidadOrigen: 2,
+            cantidadDestino: 20,
+            wallet: wallet,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            seedAmount: 10
+        )
+        // BTC: 8, ETH: 20
+
+        // Editing to swap 11 BTC: current 8 + old 2 - new 11 = -1 < 0.
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditSwapMovementInput(
+                salida: salida,
+                updated: swapValues(
+                    cantidadOrigen: 11,
+                    cantidadDestino: 100,
+                    cartera: wallet,
+                    cryptoOrigen: btc,
+                    cryptoDestino: eth
+                )
+            ))
+        }
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 8)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 20)
+    }
+
+    @Test func editSwapDestinationSpentTooMuchIsRejected() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let salida = try await seedSwap(
+            in: context,
+            cantidadOrigen: 5,
+            cantidadDestino: 50,
+            wallet: wallet,
+            cryptoOrigen: btc,
+            cryptoDestino: eth,
+            seedAmount: 10
+        )
+        // BTC: 5, ETH: 50
+        // ETH: 50 - 20 = 30
+        let salidaEth = Movimiento.salida(
+            fecha: Date(),
+            cantidadCrypto: 20,
+            precioUSD: 3_000,
+            cartera: wallet,
+            crypto: eth
+        )
+        try await ModelContextTransactionRunner(modelContext: context).run { ctx in
+            ctx.insert(salidaEth)
+            try HoldingService().updateHoldingForMovement(salidaEth, in: ctx)
+        }
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 30)
+
+        // Edit swap to receive only 10 ETH: ETH would revert +50 then receive +10 = -10.
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditSwapMovementInput(
+                salida: salida,
+                updated: swapValues(
+                    cantidadOrigen: 5,
+                    cantidadDestino: 10,
+                    cartera: wallet,
+                    cryptoOrigen: btc,
+                    cryptoDestino: eth
+                )
+            ))
+        }
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 30)
+    }
 }

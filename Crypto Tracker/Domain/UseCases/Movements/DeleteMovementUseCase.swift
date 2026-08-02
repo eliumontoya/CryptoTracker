@@ -4,7 +4,7 @@ import SwiftData
 // MARK: - Errors
 
 /// Errors thrown by `DeleteMovementUseCase`. The use case supports entry, exit,
-/// and wallet-transfer movements; the revert formula for other types differs.
+/// wallet-transfer, and swap movements; the revert formula for other types differs.
 enum DeleteMovementError: LocalizedError, Equatable {
     case unsupportedMovementType(TipoMovimiento)
     case insufficientHoldings
@@ -13,19 +13,19 @@ enum DeleteMovementError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unsupportedMovementType(let tipo):
-            return "Only entry, exit, and transfer movements can be deleted. Received type: \(tipo.title)."
+            return "Only entry, exit, transfer, and swap movements can be deleted. Received type: \(tipo.title)."
         case .insufficientHoldings:
             return "Cannot delete the movement: reverting it would leave the wallet balance negative."
         case .missingPairedMovement:
-            return "Cannot delete the transfer: the paired movement could not be found."
+            return "Cannot delete the paired movement: the paired leg could not be found."
         }
     }
 }
 
 // MARK: - Protocol
 
-/// Physically deletes an entry, exit, or wallet-transfer movement and reverts its
-/// holding effect atomically. For transfers, both legs are deleted together.
+/// Physically deletes an entry, exit, wallet-transfer, or swap movement and reverts
+/// its holding effect atomically. For paired movements, both legs are deleted together.
 protocol DeleteMovementUseCaseProtocol {
     func delete(_ movement: Movimiento) async throws
 }
@@ -57,6 +57,8 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
             try await deleteSingle(movement)
         case .transferenciaSalida, .transferenciaEntrada:
             try await deleteTransfer(movement)
+        case .swapSalida, .swapEntrada:
+            try await deleteSwap(movement)
         default:
             throw DeleteMovementError.unsupportedMovementType(movement.tipo)
         }
@@ -76,13 +78,31 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
 
     private func deleteTransfer(_ movement: Movimiento) async throws {
         try await transactionRunner.run { context in
-            guard let paired = try pairedMovement(for: movement, in: context) else {
+            guard let paired = try pairedTransferMovement(for: movement, in: context) else {
                 throw DeleteMovementError.missingPairedMovement
             }
             let entrada = movement.tipo == .transferenciaEntrada ? movement : paired
             let salida = movement.tipo == .transferenciaSalida ? movement : paired
 
             try validateTransferRevert(salida: salida, entrada: entrada, in: context)
+            try holdingService.deleteHoldingForMovement(salida, in: context)
+            try holdingService.deleteHoldingForMovement(entrada, in: context)
+            context.delete(salida)
+            context.delete(entrada)
+        }
+    }
+
+    // MARK: - Swap delete
+
+    private func deleteSwap(_ movement: Movimiento) async throws {
+        try await transactionRunner.run { context in
+            guard let paired = try pairedSwapMovement(for: movement, in: context) else {
+                throw DeleteMovementError.missingPairedMovement
+            }
+            let entrada = movement.tipo == .swapEntrada ? movement : paired
+            let salida = movement.tipo == .swapSalida ? movement : paired
+
+            try validateSwapRevert(salida: salida, entrada: entrada, in: context)
             try holdingService.deleteHoldingForMovement(salida, in: context)
             try holdingService.deleteHoldingForMovement(entrada, in: context)
             context.delete(salida)
@@ -131,10 +151,33 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
         }
     }
 
+    /// For a swap, the only revert that can drive a holding negative is the
+    /// entrada leg: it subtracts `cantidadDestino` of the destination crypto from
+    /// the wallet. The salida revert always adds funds back to the origin crypto.
+    private func validateSwapRevert(
+        salida: Movimiento,
+        entrada: Movimiento,
+        in context: ModelContext
+    ) throws {
+        guard let cartera = entrada.cartera,
+              let crypto = entrada.cryptoDestino,
+              cartera.portfolio != nil || PortfolioQueries.defaultPortfolio(in: context) != nil else {
+            return
+        }
+        let current = try holdingRow(cartera: cartera, crypto: crypto, in: context)?.cantidad ?? 0
+        guard current - entrada.cantidadDestino >= 0 else {
+            throw DeleteMovementError.insufficientHoldings
+        }
+    }
+
     // MARK: - Lookups
 
     private func holdingRow(for movement: Movimiento, in context: ModelContext) throws -> Holding? {
         guard let cartera = movement.cartera, let crypto = movement.crypto else { return nil }
+        return try holdingRow(cartera: cartera, crypto: crypto, in: context)
+    }
+
+    private func holdingRow(cartera: Cartera, crypto: Crypto, in context: ModelContext) throws -> Holding? {
         guard let portfolio = cartera.portfolio ?? PortfolioQueries.defaultPortfolio(in: context) else { return nil }
         let key = Holding.makeId(portfolio: portfolio, cartera: cartera, crypto: crypto)
         return try context.fetch(
@@ -142,9 +185,19 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
         ).first
     }
 
-    private func pairedMovement(for movement: Movimiento, in context: ModelContext) throws -> Movimiento? {
+    private func pairedTransferMovement(for movement: Movimiento, in context: ModelContext) throws -> Movimiento? {
         guard let groupId = movement.groupId else { return nil }
         let expectedTipo = movement.tipo == .transferenciaSalida ? "transferenciaEntrada" : "transferenciaSalida"
+        return try context.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == expectedTipo }
+            )
+        ).first
+    }
+
+    private func pairedSwapMovement(for movement: Movimiento, in context: ModelContext) throws -> Movimiento? {
+        guard let groupId = movement.groupId else { return nil }
+        let expectedTipo = movement.tipo == .swapSalida ? "swapEntrada" : "swapSalida"
         return try context.fetch(
             FetchDescriptor<Movimiento>(
                 predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == expectedTipo }
