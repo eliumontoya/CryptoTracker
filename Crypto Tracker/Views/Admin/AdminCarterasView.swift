@@ -18,7 +18,8 @@ struct AdminCarterasView: View {
                         cartera: cartera,
                         valorTotalUSD: calculos.valorTotal,
                         resumenCryptos: calculos.resumen,
-                        gananciaPerdida: calculos.ganancia
+                        gananciaPerdida: calculos.ganancia,
+                        onToggleMain: { viewModel.toggleIsMain(cartera) }
                     )
                     .contentShape(Rectangle())
                     .onTapGesture {
@@ -47,12 +48,15 @@ struct AdminCarterasView: View {
             }
             .sheet(item: $viewModel.formState) { formState in
                 NavigationStack {
-                    CarteraFormView(formState: formState) { nombre, simbolo in
+                    CarteraFormView(
+                        formState: formState,
+                        portfolios: viewModel.portfolios
+                    ) { nombre, simbolo, portfolio in
                         switch formState {
                         case .add:
-                            viewModel.addCartera(nombre: nombre, simbolo: simbolo)
+                            viewModel.addCartera(nombre: nombre, simbolo: simbolo, portfolio: portfolio)
                         case .edit(let cartera):
-                            viewModel.updateCartera(cartera, nombre: nombre, simbolo: simbolo)
+                            viewModel.updateCartera(cartera, nombre: nombre, simbolo: simbolo, portfolio: portfolio)
                         }
                         viewModel.closeForm()
                     }
@@ -83,6 +87,7 @@ struct CarteraRowView: View {
     let valorTotalUSD: Decimal
     let resumenCryptos: String
     let gananciaPerdida: (ganancia: Decimal, esGanancia: Bool)
+    let onToggleMain: () -> Void
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -91,10 +96,21 @@ struct CarteraRowView: View {
                     .font(.headline)
                 Text("(\(cartera.simbolo))")
                     .foregroundColor(.secondary)
+                if cartera.isMain {
+                    Image(systemName: "star.fill")
+                        .foregroundColor(.yellow)
+                        .font(.caption)
+                }
                 Spacer()
                 Text(Format.usd(valorTotalUSD))
                     .font(.subheadline)
                     .foregroundColor(.blue)
+            }
+            
+            if let portfolioName = cartera.portfolio?.nombre {
+                Text("Portfolio: \(portfolioName)")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
             }
             
             if !resumenCryptos.isEmpty {
@@ -109,6 +125,16 @@ struct CarteraRowView: View {
                 Text(Format.usd(gananciaPerdida.ganancia))
                     .font(.caption)
                     .foregroundColor(gananciaPerdida.esGanancia ? .green : .red)
+                
+                Spacer()
+                
+                Button(action: onToggleMain) {
+                    Image(systemName: cartera.isMain ? "star.fill" : "star")
+                        .foregroundColor(cartera.portfolio == nil ? .secondary : (cartera.isMain ? .yellow : .primary))
+                }
+                .buttonStyle(.plain)
+                .disabled(cartera.portfolio == nil)
+                .help(cartera.isMain ? "Unset main wallet" : "Set as main wallet")
             }
         }
         .padding(.vertical, 4)
@@ -118,10 +144,16 @@ struct CarteraRowView: View {
 struct CarteraFormView: View {
     @Environment(\.dismiss) private var dismiss
     let formState: CarteraFormState
-    let onSave: (String, String) -> Void
+    let portfolios: [Portfolio]
+    let onSave: (String, String, Portfolio?) -> Void
     
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
+    @State private var selectedPortfolioID: UUID?
+    
+    private var selectedPortfolio: Portfolio? {
+        portfolios.first { $0.id == selectedPortfolioID }
+    }
     
     var title: String {
         switch formState {
@@ -139,10 +171,20 @@ struct CarteraFormView: View {
             TextField("Símbolo", text: $simbolo)
                 .textFieldStyle(.roundedBorder)
             
+            Picker("Portfolio", selection: $selectedPortfolioID) {
+                Text("None")
+                    .tag(UUID?.none)
+                ForEach(portfolios) { portfolio in
+                    Text(portfolio.nombre)
+                        .tag(UUID?.some(portfolio.id))
+                }
+            }
+            .pickerStyle(.menu)
+            
             Spacer()
         }
         .padding()
-        .adaptiveSheetFrame(minWidth: 300, minHeight: 200)
+        .adaptiveSheetFrame(minWidth: 300, minHeight: 240)
         .navigationTitle(title)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -152,7 +194,7 @@ struct CarteraFormView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
-                    onSave(nombre, simbolo)
+                    onSave(nombre, simbolo, selectedPortfolio)
                     dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
@@ -162,6 +204,7 @@ struct CarteraFormView: View {
             if case .edit(let cartera) = formState {
                 nombre = cartera.nombre
                 simbolo = cartera.simbolo
+                selectedPortfolioID = cartera.portfolio?.id
             }
         }
     }

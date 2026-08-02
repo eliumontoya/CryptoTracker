@@ -36,3 +36,14 @@ extension FIAT {
         return FIAT(nombre: nombre, simbolo: simbolo, precioUSD: precioUSD)
     }
 }
+
+extension Portfolio {
+    /// Mock para crear una instancia de Portfolio para pruebas
+    static func mock(
+        nombre: String = "TEST_Portfolio",
+        descripcion: String = "TEST_Descripcion",
+        isDefault: Bool = false
+    ) -> Portfolio {
+        return Portfolio(nombre: nombre, descripcion: descripcion, isDefault: isDefault)
+    }
+}

@@ -13,6 +13,7 @@ enum AdminMenuOption {
     case cryptos
     case carteras
     case fiat
+    case portfolios
     case sync
     case setup  //  caso para Setup Inicial
 }
@@ -146,6 +147,13 @@ struct ContentView: View {
                             Label("FIAT", systemImage: "dollarsign.circle")
                         }
                         NavigationLink(
+                            destination: dependencies.makeAdminPortfoliosView(),
+                            tag: .portfolios,
+                            selection: $selectedAdminMenu
+                        ) {
+                            Label("Portfolios", systemImage: "briefcase")
+                        }
+                        NavigationLink(
                             destination: dependencies.makeCryptoSyncView(),
                             tag: .sync,
                             selection: $selectedAdminMenu
@@ -252,6 +260,12 @@ struct ContentView: View {
                         dependencies.makeAdminFiatView()
                     } label: {
                         Label("FIAT", systemImage: "dollarsign.circle")
+                    }
+                    
+                    NavigationLink {
+                        dependencies.makeAdminPortfoliosView()
+                    } label: {
+                        Label("Portfolios", systemImage: "briefcase")
                     }
                     
                     NavigationLink {

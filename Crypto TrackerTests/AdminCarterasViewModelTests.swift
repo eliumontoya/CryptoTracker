@@ -10,7 +10,7 @@ final class AdminCarterasViewModelTests: XCTestCase {
     
     override func setUpWithError() throws {
         // Configurar el contenedor de prueba en memoria
-        let schema = Schema([Cartera.self, Crypto.self, FIAT.self])
+        let schema = Schema([Cartera.self, Crypto.self, FIAT.self, Portfolio.self])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
         modelContext = ModelContext(modelContainer)
@@ -155,5 +155,65 @@ final class AdminCarterasViewModelTests: XCTestCase {
         } else {
             XCTFail("Estado del formulario debería ser .edit")
         }
+    }
+    
+    // MARK: - Portfolio Assignment Tests
+    
+    func testAddCarteraWithPortfolio() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: false)
+        modelContext.insert(portfolio)
+        
+        viewModel.addCartera(nombre: "Wallet", simbolo: "WAL", portfolio: portfolio)
+        
+        XCTAssertEqual(viewModel.carteras.first?.portfolio?.id, portfolio.id)
+    }
+    
+    func testUpdateCarteraWithPortfolio() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: false)
+        modelContext.insert(portfolio)
+        viewModel.addCartera(nombre: "Wallet", simbolo: "WAL")
+        let cartera = viewModel.carteras.first!
+        
+        viewModel.updateCartera(cartera, nombre: "Updated", simbolo: "UPD", portfolio: portfolio)
+        
+        XCTAssertEqual(cartera.portfolio?.id, portfolio.id)
+        XCTAssertEqual(cartera.nombre, "Updated")
+    }
+    
+    // MARK: - Main Wallet Tests
+    
+    func testToggleIsMainSetsMainWallet() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: true)
+        modelContext.insert(portfolio)
+        viewModel.addCartera(nombre: "Wallet", simbolo: "WAL", portfolio: portfolio)
+        let cartera = viewModel.carteras.first!
+        
+        viewModel.toggleIsMain(cartera)
+        
+        XCTAssertTrue(cartera.isMain)
+    }
+    
+    func testToggleIsMainUnsetsOtherMainWallet() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: true)
+        modelContext.insert(portfolio)
+        viewModel.addCartera(nombre: "First", simbolo: "FST", portfolio: portfolio)
+        viewModel.addCartera(nombre: "Second", simbolo: "SND", portfolio: portfolio)
+        let first = viewModel.carteras.first { $0.nombre == "First" }!
+        let second = viewModel.carteras.first { $0.nombre == "Second" }!
+        
+        viewModel.toggleIsMain(first)
+        viewModel.toggleIsMain(second)
+        
+        XCTAssertFalse(first.isMain)
+        XCTAssertTrue(second.isMain)
+    }
+    
+    func testToggleIsMainWithoutPortfolioDoesNothing() throws {
+        viewModel.addCartera(nombre: "Orphan", simbolo: "ORP")
+        let cartera = viewModel.carteras.first!
+        
+        viewModel.toggleIsMain(cartera)
+        
+        XCTAssertFalse(cartera.isMain)
     }
 }
