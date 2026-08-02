@@ -158,6 +158,40 @@ class Cartera {
     }
 }
 
+// MARK: - Entidad Holding
+@Model
+class Holding {
+    @Attribute(.unique) var id: String
+    var portfolio: Portfolio
+    var cartera: Cartera
+    var crypto: Crypto
+    var cantidad: Decimal {
+        didSet {
+            if cantidad < 0 {
+                cantidad = 0
+            }
+        }
+    }
+    var updatedAt: Date
+    
+    /// Compone el id único por tripleta portfolio/cartera/crypto.
+    static func makeId(portfolio: Portfolio, cartera: Cartera, crypto: Crypto) -> String {
+        "\(portfolio.id.uuidString)|\(cartera.id.uuidString)|\(crypto.id.uuidString)"
+    }
+    
+    init(portfolio: Portfolio,
+         cartera: Cartera,
+         crypto: Crypto,
+         cantidad: Decimal) {
+        self.id = Holding.makeId(portfolio: portfolio, cartera: cartera, crypto: crypto)
+        self.portfolio = portfolio
+        self.cartera = cartera
+        self.crypto = crypto
+        self.cantidad = max(cantidad, 0)
+        self.updatedAt = Date()
+    }
+}
+
 // MARK: - Entidad MovimientoIngreso
 @Model
 class MovimientoIngreso {

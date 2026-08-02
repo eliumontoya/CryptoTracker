@@ -15,13 +15,14 @@ struct CryptoTrackerApp: App {
                 Crypto.self,
                 Cartera.self,
                 Portfolio.self,
+                Holding.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
                 MovimientoSwap.self,
                 PrecioHistorico.self,
                 CryptoSyncConfig.self
-            ], version: .init(3, 0, 0))
+            ], version: .init(4, 0, 0))
             
             // Configuración del modelo
             let modelConfiguration = ModelConfiguration(
