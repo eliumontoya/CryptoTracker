@@ -55,6 +55,10 @@ final class AppDependencyContainerTests: XCTestCase {
         XCTAssertNotNil(dependencies.movimientosEntradaListViewModel.entradaViewModel)
     }
 
+    func testEditMovementUseCaseIsWired() {
+        XCTAssertNotNil(dependencies.editMovementUseCase)
+    }
+
     // MARK: - ViewModel Factories
 
     func testMovementFormViewModelsGetInjectedContext() {
