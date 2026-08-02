@@ -3,8 +3,8 @@ import SwiftData
 
 // MARK: - Errors
 
-/// Errors thrown by `DeleteMovementUseCase`. The use case is scoped to entry
-/// movements (issue #39): the revert formula for other types differs.
+/// Errors thrown by `DeleteMovementUseCase`. The use case supports entry and exit
+/// movements (issues #39 and #44); the revert formula for other types differs.
 enum DeleteMovementError: LocalizedError, Equatable {
     case unsupportedMovementType(TipoMovimiento)
     case insufficientHoldings
@@ -12,16 +12,16 @@ enum DeleteMovementError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .unsupportedMovementType(let tipo):
-            return "Solo se puede eliminar un movimiento de entrada. Tipo recibido: \(tipo.title)."
+            return "Only entry and exit movements can be deleted. Received type: \(tipo.title)."
         case .insufficientHoldings:
-            return "No se puede eliminar el movimiento: revertirlo dejaría el saldo de la cartera en negativo."
+            return "Cannot delete the movement: reverting it would leave the wallet balance negative."
         }
     }
 }
 
 // MARK: - Protocol
 
-/// Physically deletes an entry movement and reverts its holding atomically.
+/// Physically deletes an entry or exit movement and reverts its holding atomically.
 protocol DeleteMovementUseCaseProtocol {
     func delete(_ movement: Movimiento) async throws
 }
@@ -60,8 +60,14 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
     /// holding, so the current row must cover it. `Holding.cantidad` clamps at 0
     /// via `didSet`, hence the guard must run BEFORE the revert to surface the
     /// violation as an error instead of silently erasing the row.
+    ///
+    /// For a `.salida` the revert adds `cantidadCrypto` back to the holding,
+    /// which can never make the balance negative.
     private func validateRevert(of movement: Movimiento, in context: ModelContext) throws {
-        guard movement.tipo == .entrada else {
+        switch movement.tipo {
+        case .entrada, .salida:
+            break
+        default:
             throw DeleteMovementError.unsupportedMovementType(movement.tipo)
         }
         // Legacy wallets without a portfolio cannot own a materialized holding
@@ -69,6 +75,7 @@ struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
         guard movement.cartera?.portfolio != nil || PortfolioQueries.defaultPortfolio(in: context) != nil else {
             return
         }
+        guard movement.tipo == .entrada else { return }
         let current = try holdingRow(for: movement, in: context)?.cantidad ?? 0
         guard current - movement.cantidadCrypto >= 0 else {
             throw DeleteMovementError.insufficientHoldings
