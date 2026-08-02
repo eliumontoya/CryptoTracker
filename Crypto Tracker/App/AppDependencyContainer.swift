@@ -9,6 +9,7 @@ class AppDependencyContainer {
     
     // Servicios
     let movimientosEntradaService: MovimientosEntradaServiceProtocol
+    let priceService: PriceServiceProtocol
     
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
@@ -28,6 +29,7 @@ class AppDependencyContainer {
         
         // Inicializar servicios
         self.movimientosEntradaService = MovimientosEntradaService(modelContext: modelContext)
+        self.priceService = PriceService()
         
         // Inicializar ViewModels individuales
         self.movimientoEntradaViewModel = MovimientoEntradaViewModel(
@@ -52,7 +54,7 @@ class AppDependencyContainer {
         self.adminCarterasViewModel = AdminCarterasViewModel(modelContext: modelContext)
         self.adminCryptosViewModel = AdminCryptosViewModel(modelContext: modelContext)
         self.adminFiatViewModel = AdminFiatViewModel(modelContext: modelContext)
-        self.cryptoSyncViewModel = CryptoSyncViewModel(modelContext: modelContext)
+        self.cryptoSyncViewModel = CryptoSyncViewModel(modelContext: modelContext, priceService: priceService)
         
         // Setup inicial
         self.cargaCatalogosViewModel = CargaCatalogosViewModel(modelContext: modelContext)

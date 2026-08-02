@@ -1,13 +1,12 @@
 import SwiftUI
 import SwiftData
-import Combine
 import Foundation
 
 @MainActor
 class CryptoSyncViewModel: ObservableObject {
     @Published private(set) var state = CryptoSyncState()
     let modelContext: ModelContext
-    private var cancellables = Set<AnyCancellable>()
+    private let priceService: PriceServiceProtocol
     
     // Actor para manejar las tareas de forma thread-safe
     private actor TaskManager {
@@ -30,8 +29,9 @@ class CryptoSyncViewModel: ObservableObject {
     private var lastFetchTime: Date?
     private let cacheValidityInterval: TimeInterval = 300 // 5 minutos
     
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, priceService: PriceServiceProtocol = PriceService()) {
         self.modelContext = modelContext
+        self.priceService = priceService
         setupInitialState()
     }
     
@@ -104,7 +104,6 @@ class CryptoSyncViewModel: ObservableObject {
                     guard let crypto = config.crypto else { continue }
                     if Task.isCancelled { break }
                     try await syncCrypto(crypto, with: config)
-                    try await Task.sleep(nanoseconds: 500_000_000)
                 }
             } catch {
                 addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida", isError: true)
@@ -123,32 +122,11 @@ class CryptoSyncViewModel: ObservableObject {
     
     private func syncCrypto(_ crypto: Crypto, with config: CryptoSyncConfig) async throws {
         do {
-            let price = try await fetchPrice(from: config.syncUrl)
+            let price = try await priceService.fetchPrice(from: config.syncUrl)
             await updateCryptoPrice(crypto, newPrice: price)
         } catch {
             await handleSyncError(crypto: crypto, config: config, error: error)
         }
-    }
-    
-    private func fetchPrice(from urlString: String) async throws -> Double {
-        guard let url = URL(string: urlString) else {
-            throw URLError(.badURL)
-        }
-        
-        let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = 30
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-        
-        let session = URLSession(configuration: configuration)
-        let (data, response) = try await session.data(from: url)
-        
-        guard let httpResponse = response as? HTTPURLResponse,
-              (200...299).contains(httpResponse.statusCode) else {
-            throw URLError(.badServerResponse)
-        }
-        
-        let priceResponse = try JSONDecoder().decode(PriceResponse.self, from: data)
-        return priceResponse.price
     }
     
     private func updateCryptoPrice(_ crypto: Crypto, newPrice: Double) async {
@@ -236,7 +214,6 @@ class CryptoSyncViewModel: ObservableObject {
             guard let self = self else { return }
             self.state = CryptoSyncState()
             self.syncConfigCache.removeAll()
-            self.cancellables.removeAll()
         }
     }
 }
