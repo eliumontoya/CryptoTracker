@@ -18,6 +18,8 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
     @Published var uiState: MovimientoUIState = .idle
 
     private let modelContext: ModelContext
+    private let transactionRunner: TransactionRunner
+    private let holdingService: HoldingServiceProtocol
     /// Pierna de salida del swap (`.swapSalida`). La pierna de entrada se
     /// localiza por `groupId`.
     let movimiento: Movimiento?
@@ -54,8 +56,13 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         selectedCryptoOrigen != selectedCryptoDestino
     }
 
-    init(modelContext: ModelContext, movimiento: Movimiento? = nil) {
+    init(modelContext: ModelContext,
+         movimiento: Movimiento? = nil,
+         transactionRunner: TransactionRunner? = nil,
+         holdingService: HoldingServiceProtocol? = nil) {
         self.modelContext = modelContext
+        self.transactionRunner = transactionRunner ?? ModelContextTransactionRunner(modelContext: modelContext)
+        self.holdingService = holdingService ?? HoldingService()
         self.movimiento = movimiento
 
         if let movimiento = movimiento {
@@ -131,46 +138,56 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         uiState = .loading
 
         do {
-            if let existingMovimiento = movimiento {
-                // Actualizar el par de movimientos existente
-                let entrada = piernaEntrada(existingMovimiento)
+            try await transactionRunner.run { context in
+                if let existingMovimiento = self.movimiento {
+                    // Actualizar el par de movimientos existente: revertir los efectos
+                    // anteriores sobre los holdings y aplicar los nuevos.
+                    let previousSalida = self.holdingService.snapshot(of: existingMovimiento)
+                    let entrada = self.piernaEntrada(existingMovimiento)
+                    let previousEntrada = entrada.map { self.holdingService.snapshot(of: $0) }
 
-                existingMovimiento.fecha = fecha
-                existingMovimiento.cantidadOrigen = cantidadOrigen
-                existingMovimiento.cantidadDestino = cantidadDestino
-                existingMovimiento.precioUSDOrigen = precioUSDOrigen
-                existingMovimiento.precioUSDDestino = precioUSDDestino
-                existingMovimiento.cartera = cartera
-                existingMovimiento.cryptoOrigen = cryptoOrigen
-                existingMovimiento.cryptoDestino = cryptoDestino
+                    existingMovimiento.fecha = fecha
+                    existingMovimiento.cantidadOrigen = cantidadOrigen
+                    existingMovimiento.cantidadDestino = cantidadDestino
+                    existingMovimiento.precioUSDOrigen = precioUSDOrigen
+                    existingMovimiento.precioUSDDestino = precioUSDDestino
+                    existingMovimiento.cartera = cartera
+                    existingMovimiento.cryptoOrigen = cryptoOrigen
+                    existingMovimiento.cryptoDestino = cryptoDestino
 
-                if let entrada = entrada {
-                    entrada.fecha = fecha
-                    entrada.cantidadOrigen = cantidadOrigen
-                    entrada.cantidadDestino = cantidadDestino
-                    entrada.precioUSDOrigen = precioUSDOrigen
-                    entrada.precioUSDDestino = precioUSDDestino
-                    entrada.cartera = cartera
-                    entrada.cryptoOrigen = cryptoOrigen
-                    entrada.cryptoDestino = cryptoDestino
+                    if let entrada = entrada {
+                        entrada.fecha = fecha
+                        entrada.cantidadOrigen = cantidadOrigen
+                        entrada.cantidadDestino = cantidadDestino
+                        entrada.precioUSDOrigen = precioUSDOrigen
+                        entrada.precioUSDDestino = precioUSDDestino
+                        entrada.cartera = cartera
+                        entrada.cryptoOrigen = cryptoOrigen
+                        entrada.cryptoDestino = cryptoDestino
+                    }
+
+                    try self.holdingService.updateHoldingForMovement(existingMovimiento, previous: previousSalida, in: context)
+                    if let entrada = entrada, let previousEntrada = previousEntrada {
+                        try self.holdingService.updateHoldingForMovement(entrada, previous: previousEntrada, in: context)
+                    }
+                } else {
+                    // Crear el par de movimientos (swapSalida + swapEntrada) con groupId compartido
+                    let par = Movimiento.swap(
+                        fecha: fecha,
+                        cantidadOrigen: cantidadOrigen,
+                        cantidadDestino: cantidadDestino,
+                        precioUSDOrigen: precioUSDOrigen,
+                        precioUSDDestino: precioUSDDestino,
+                        cartera: cartera,
+                        cryptoOrigen: cryptoOrigen,
+                        cryptoDestino: cryptoDestino
+                    )
+                    context.insert(par.salida)
+                    context.insert(par.entrada)
+                    try self.holdingService.updateHoldingForMovement(par.salida, in: context)
+                    try self.holdingService.updateHoldingForMovement(par.entrada, in: context)
                 }
-            } else {
-                // Crear el par de movimientos (swapSalida + swapEntrada) con groupId compartido
-                let par = Movimiento.swap(
-                    fecha: fecha,
-                    cantidadOrigen: cantidadOrigen,
-                    cantidadDestino: cantidadDestino,
-                    precioUSDOrigen: precioUSDOrigen,
-                    precioUSDDestino: precioUSDDestino,
-                    cartera: cartera,
-                    cryptoOrigen: cryptoOrigen,
-                    cryptoDestino: cryptoDestino
-                )
-                modelContext.insert(par.salida)
-                modelContext.insert(par.entrada)
             }
-
-            try modelContext.save()
             uiState = .success
 
         } catch {
@@ -188,12 +205,15 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
         uiState = .loading
 
         do {
-            // Eliminar ambas piernas del par
-            if let entrada = piernaEntrada(movimiento) {
-                modelContext.delete(entrada)
+            // Revertir holdings y eliminar ambas piernas del par en la misma transacción.
+            try await transactionRunner.run { context in
+                if let entrada = self.piernaEntrada(movimiento) {
+                    try self.holdingService.deleteHoldingForMovement(entrada, in: context)
+                    context.delete(entrada)
+                }
+                try self.holdingService.deleteHoldingForMovement(movimiento, in: context)
+                context.delete(movimiento)
             }
-            modelContext.delete(movimiento)
-            try modelContext.save()
             uiState = .success
         } catch {
             uiState = .error(error.localizedDescription)

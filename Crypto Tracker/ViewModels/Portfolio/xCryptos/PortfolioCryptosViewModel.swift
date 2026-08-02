@@ -17,11 +17,9 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     @Published var showingSwapForm = false
     
     private let modelContext: ModelContext
-    private let movimientoService: MovimientosEntradaServiceProtocol
     
-    init(modelContext: ModelContext, movimientoService: MovimientosEntradaServiceProtocol) {
+    init(modelContext: ModelContext) {
         self.modelContext = modelContext
-        self.movimientoService = movimientoService
     }
     
     // MARK: - Public Methods
@@ -45,7 +43,7 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     func crearFormMovimientoEntrada() -> MovimientoEntradaFormView {
         MovimientoEntradaFormView(
             viewModel: MovimientoEntradaViewModel(
-                                                  movimientoService: self.movimientoService
+                modelContext: self.modelContext
             )
         )
     }

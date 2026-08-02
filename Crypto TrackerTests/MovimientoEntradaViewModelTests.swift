@@ -2,55 +2,44 @@ import XCTest
 @testable import Crypto_Tracker
 import SwiftData
 
-// MARK: - Mock Service
-
-fileprivate class MockMovimientosEntradaService: MovimientosEntradaServiceProtocol {
-    var savedMovimientos: [Movimiento] = []
-    var insertedMovimientos: [Movimiento] = []
-    var deletedMovimientos: [Movimiento] = []
-
-    func save(movimiento: Movimiento) throws {
-        savedMovimientos.append(movimiento)
-    }
-
-    func insert(movimiento: Movimiento) throws {
-        insertedMovimientos.append(movimiento)
-    }
-
-    func delete(movimiento: Movimiento) throws {
-        deletedMovimientos.append(movimiento)
-    }
-
-    func fetch() throws -> [Movimiento] {
-        return savedMovimientos + insertedMovimientos
-    }
-
-    func fetchSorted() throws -> [Movimiento] {
-        return savedMovimientos + insertedMovimientos
-    }
-
-    func checkCryptoDisponible(crypto: Crypto, cartera: Cartera) -> Decimal {
-        return 999
-    }
-}
-
 // MARK: - Tests
 
 @MainActor
 class MovimientoEntradaViewModelTests: XCTestCase {
-    fileprivate var mockService: MockMovimientosEntradaService!
+    fileprivate var modelContext: ModelContext!
     fileprivate var viewModel: MovimientoEntradaViewModel!
+    fileprivate var portfolio: Portfolio!
+    fileprivate var cartera: Cartera!
+    fileprivate var crypto: Crypto!
+    fileprivate var fiat: FIAT!
 
     override func setUpWithError() throws {
         try super.setUpWithError()
-        mockService = MockMovimientosEntradaService()
-        viewModel = MovimientoEntradaViewModel(movimiento: nil, movimientoService: mockService)
+        modelContext = TestSetup.createModelContext()
+        portfolio = Portfolio(nombre: "Test Portfolio", isDefault: true)
+        cartera = Cartera(nombre: "Test Wallet", simbolo: "TEST", portfolio: portfolio)
+        crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        fiat = FIAT(nombre: "Euro", simbolo: "EUR", precioUSD: 1.1)
+        modelContext.insert(portfolio)
+        modelContext.insert(cartera)
+        modelContext.insert(crypto)
+        modelContext.insert(fiat)
+        try modelContext.save()
+
+        viewModel = MovimientoEntradaViewModel(modelContext: modelContext)
     }
 
     override func tearDown() {
-        mockService = nil
         viewModel = nil
+        modelContext = nil
         super.tearDown()
+    }
+
+    private func holding() throws -> Holding? {
+        let key = Holding.makeId(portfolio: portfolio, cartera: cartera, crypto: crypto)
+        return try modelContext.fetch(
+            FetchDescriptor<Holding>(predicate: #Predicate { $0.id == key })
+        ).first
     }
 
     // MARK: - Tests de Validación
@@ -108,8 +97,6 @@ class MovimientoEntradaViewModelTests: XCTestCase {
 
     // MARK: - Tests de Guardado
     func testGuardarMovimiento() async throws {
-        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
-        let cartera = Cartera(nombre: "Test Wallet", simbolo: "TEST")
         viewModel.selectedCrypto = crypto
         viewModel.selectedCartera = cartera
         viewModel.cantidadCrypto = 1.0
@@ -117,19 +104,21 @@ class MovimientoEntradaViewModelTests: XCTestCase {
 
         try await viewModel.save()
 
-        XCTAssertEqual(mockService.insertedMovimientos.count, 1)
-        let movimiento = mockService.insertedMovimientos.first
-        XCTAssertEqual(movimiento?.cantidadCrypto, 1.0)
-        XCTAssertEqual(movimiento?.precioUSD, 50000)
-        XCTAssertEqual(movimiento?.crypto?.simbolo, "BTC")
-        XCTAssertEqual(movimiento?.cartera?.nombre, "Test Wallet")
+        // El movimiento se persistió
+        let movimientos = try modelContext.fetch(FetchDescriptor<Movimiento>())
+        XCTAssertEqual(movimientos.count, 1)
+        let movimiento = try XCTUnwrap(movimientos.first)
+        XCTAssertEqual(movimiento.cantidadCrypto, 1.0)
+        XCTAssertEqual(movimiento.precioUSD, 50000)
+        XCTAssertEqual(movimiento.crypto?.simbolo, "BTC")
+        XCTAssertEqual(movimiento.cartera?.nombre, "Test Wallet")
+
+        // El holding se actualizó: el dashboard ya debe mostrar datos
+        let holding = try holding()
+        XCTAssertEqual(holding?.cantidad, 1.0)
     }
 
     func testGuardarMovimientoConFIATAlterno() async throws {
-        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
-        let cartera = Cartera(nombre: "Test Wallet", simbolo: "TEST")
-        let fiat = FIAT(nombre: "Euro", simbolo: "EUR", precioUSD: 1.1)
-
         viewModel.selectedCrypto = crypto
         viewModel.selectedCartera = cartera
         viewModel.cantidadCrypto = 1.0
@@ -140,10 +129,56 @@ class MovimientoEntradaViewModelTests: XCTestCase {
 
         try await viewModel.save()
 
-        XCTAssertEqual(mockService.insertedMovimientos.count, 1)
-        let movimiento = mockService.insertedMovimientos.first
-        XCTAssertTrue(movimiento?.usaFiatAlterno ?? false)
-        XCTAssertEqual(movimiento?.fiatAlterno?.simbolo, "EUR")
-        XCTAssertEqual(movimiento?.valorTotalFiatAlterno, 45000)
+        let movimientos = try modelContext.fetch(FetchDescriptor<Movimiento>())
+        XCTAssertEqual(movimientos.count, 1)
+        let movimiento = try XCTUnwrap(movimientos.first)
+        XCTAssertTrue(movimiento.usaFiatAlterno)
+        XCTAssertEqual(movimiento.fiatAlterno?.simbolo, "EUR")
+        XCTAssertEqual(movimiento.valorTotalFiatAlterno, 45000)
+
+        XCTAssertEqual(try holding()?.cantidad, 1.0)
+    }
+
+    // MARK: - Tests de Edición y Eliminación
+
+    func testEditarMovimientoActualizaHolding() async throws {
+        // Crear movimiento con 1.0 BTC
+        viewModel.selectedCrypto = crypto
+        viewModel.selectedCartera = cartera
+        viewModel.cantidadCrypto = 1.0
+        viewModel.precioUSD = 50000
+        try await viewModel.save()
+        XCTAssertEqual(try holding()?.cantidad, 1.0)
+
+        // Editar a 2.0 BTC
+        let movimiento = try XCTUnwrap(viewModel.movimiento)
+        viewModel = MovimientoEntradaViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento
+        )
+        viewModel.cantidadCrypto = 2.0
+        viewModel.precioUSD = 50000
+        try await viewModel.save()
+
+        XCTAssertEqual(try holding()?.cantidad, 2.0)
+    }
+
+    func testEliminarMovimientoRevierteHolding() async throws {
+        viewModel.selectedCrypto = crypto
+        viewModel.selectedCartera = cartera
+        viewModel.cantidadCrypto = 1.0
+        viewModel.precioUSD = 50000
+        try await viewModel.save()
+        XCTAssertEqual(try holding()?.cantidad, 1.0)
+
+        viewModel = MovimientoEntradaViewModel(
+            modelContext: modelContext,
+            movimiento: try XCTUnwrap(viewModel.movimiento)
+        )
+        try await viewModel.delete()
+
+        let movimientos = try modelContext.fetch(FetchDescriptor<Movimiento>())
+        XCTAssertEqual(movimientos.count, 0)
+        XCTAssertNil(try holding())
     }
 }
