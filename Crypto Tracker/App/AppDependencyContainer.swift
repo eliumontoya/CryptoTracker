@@ -59,8 +59,9 @@ class AppDependencyContainer {
         // Inicializar ViewModels individuales
         self.movimientoEntradaViewModel = MovimientoEntradaViewModel(
             modelContext: modelContext,
-            transactionRunner: transactionRunner,
-            holdingService: holdingService
+            registerUseCase: registerMovementUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
         
         // Inicializar ViewModel de lista
@@ -94,8 +95,9 @@ class AppDependencyContainer {
         MovimientoEntradaViewModel(
             modelContext: modelContext,
             movimiento: movimiento,
-            transactionRunner: transactionRunner,
-            holdingService: holdingService
+            registerUseCase: registerMovementUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
     }
     

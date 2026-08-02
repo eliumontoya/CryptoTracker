@@ -27,17 +27,31 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
     
     // Dependencias
     private let modelContext: ModelContext
-    private let transactionRunner: TransactionRunner
-    private let holdingService: HoldingServiceProtocol
+    private let registerUseCase: RegisterMovementUseCaseProtocol
+    private let editUseCase: EditMovementUseCaseProtocol
+    private let deleteUseCase: DeleteMovementUseCaseProtocol
     private var cancellables = Set<AnyCancellable>()
     
     init(modelContext: ModelContext,
          movimiento: Movimiento? = nil,
-         transactionRunner: TransactionRunner? = nil,
-         holdingService: HoldingServiceProtocol? = nil) {
+         registerUseCase: RegisterMovementUseCaseProtocol? = nil,
+         editUseCase: EditMovementUseCaseProtocol? = nil,
+         deleteUseCase: DeleteMovementUseCaseProtocol? = nil) {
         self.modelContext = modelContext
-        self.transactionRunner = transactionRunner ?? ModelContextTransactionRunner(modelContext: modelContext)
-        self.holdingService = holdingService ?? HoldingService()
+        let transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
+        let holdingService = HoldingService()
+        self.registerUseCase = registerUseCase ?? RegisterMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        self.editUseCase = editUseCase ?? EditMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        self.deleteUseCase = deleteUseCase ?? DeleteMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
         self.movimiento = movimiento
         
         setupBindings()
@@ -140,26 +154,26 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
         
         do {
             if let existingMovimiento = movimiento {
-                // Actualizar movimiento existente: revertir el efecto anterior sobre
-                // el holding y aplicar el nuevo, todo en una sola transacción.
-                let previous = holdingService.snapshot(of: existingMovimiento)
-                try await transactionRunner.run { context in
-                    existingMovimiento.fecha = fecha
-                    existingMovimiento.cantidadCrypto = cantidadCrypto
-                    existingMovimiento.precioUSD = precioUSD
-                    existingMovimiento.valorTotalUSD = valorTotalUSD
-                    existingMovimiento.usaFiatAlterno = usaFiatAlterno
-                    existingMovimiento.precioFiatAlterno = usaFiatAlterno ? precioFiatAlterno : nil
-                    existingMovimiento.valorTotalFiatAlterno = usaFiatAlterno ? valorTotalFiatAlterno : nil
-                    existingMovimiento.cartera = cartera
-                    existingMovimiento.crypto = crypto
-                    existingMovimiento.fiatAlterno = usaFiatAlterno ? selectedFiatAlterno : nil
-                    
-                    try holdingService.updateHoldingForMovement(existingMovimiento, previous: previous, in: context)
-                }
+                // Actualizar movimiento existente: el use case revierte el efecto
+                // anterior sobre el holding y aplica el nuevo en una transacción.
+                try await editUseCase.execute(EditMovementInput(
+                    movement: existingMovimiento,
+                    updated: EditMovementValues(
+                        fecha: fecha,
+                        cantidadCrypto: cantidadCrypto,
+                        precioUSD: precioUSD,
+                        valorTotalUSD: valorTotalUSD,
+                        usaFiatAlterno: usaFiatAlterno,
+                        precioFiatAlterno: usaFiatAlterno ? precioFiatAlterno : nil,
+                        valorTotalFiatAlterno: usaFiatAlterno ? valorTotalFiatAlterno : nil,
+                        crypto: crypto,
+                        cartera: cartera,
+                        fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
+                    )
+                ))
             } else {
                 // Crear nuevo movimiento + actualizar holding en la misma transacción.
-                let nuevoMovimiento = Movimiento.entrada(
+                let nuevoMovimiento = try await registerUseCase.register(RegisterMovementInput(
                     fecha: fecha,
                     cantidadCrypto: cantidadCrypto,
                     precioUSD: precioUSD,
@@ -169,11 +183,7 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
                     cartera: cartera,
                     crypto: crypto,
                     fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
-                )
-                try await transactionRunner.run { context in
-                    context.insert(nuevoMovimiento)
-                    try holdingService.updateHoldingForMovement(nuevoMovimiento, in: context)
-                }
+                ))
                 self.movimiento = nuevoMovimiento
             }
             
@@ -201,10 +211,7 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
         
         do {
             // Revertir holding y borrar el movimiento en la misma transacción.
-            try await transactionRunner.run { context in
-                try holdingService.deleteHoldingForMovement(movimiento, in: context)
-                context.delete(movimiento)
-            }
+            try await deleteUseCase.delete(movimiento)
             unloadMovimiento()
             uiState = .success
         } catch {
