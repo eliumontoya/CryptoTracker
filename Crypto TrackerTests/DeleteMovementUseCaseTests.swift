@@ -132,4 +132,94 @@ struct DeleteMovementUseCaseTests {
         #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 3)
     }
+
+    // MARK: - Edge cases
+
+    @Test func deleteErrorDescriptionsAreLocalized() {
+        #expect(DeleteMovementError.unsupportedMovementType(.salida).errorDescription?.isEmpty == false)
+        #expect(DeleteMovementError.insufficientHoldings.errorDescription?.isEmpty == false)
+    }
+
+    @Test func deleteAlreadyDeletedMovementThrowsAndKeepsStoreConsistent() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let entrada = try await registerEntrada(4, cartera: cartera, crypto: btc, via: runner)
+
+        try await useCase.delete(entrada)
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
+
+        // Segundo delete sobre la misma instancia: el holding ya no cubre la
+        // cantidad → falla rápido sin tocar nada más.
+        await #expect(throws: DeleteMovementError.insufficientHoldings) {
+            try await useCase.delete(entrada)
+        }
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+    }
+
+    @Test func deleteWithZeroHoldingIsRejected() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        // Entrada 5 + salida 5 → el holding se elimina al llegar a cero.
+        let entrada = try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        try await registerSalida(5, cartera: cartera, crypto: btc, via: runner)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+
+        // Revertir la entrada (5) sobre un holding inexistente (0) → negativo.
+        await #expect(throws: DeleteMovementError.insufficientHoldings) {
+            try await useCase.delete(entrada)
+        }
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+    }
+
+    @Test func deleteAndReRegisterRebuildsHolding() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let register = RegisterMovementUseCase(transactionRunner: runner, holdingService: holdingService)
+        let input = RegisterMovementInput(
+            fecha: Date(),
+            cantidadCrypto: 4,
+            precioUSD: 50_000,
+            usaFiatAlterno: false,
+            precioFiatAlterno: nil,
+            valorTotalFiatAlterno: nil,
+            cartera: cartera,
+            crypto: btc,
+            fiatAlterno: nil
+        )
+
+        // Registro → delete → re-registro: el ciclo completo queda consistente.
+        let primero = try await register.register(input)
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 4)
+
+        try await useCase.delete(primero)
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+
+        try await register.register(input)
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 4)
+    }
+
+    @Test func deleteLegacyCarteraWithoutPortfolioDeletesMovementWithoutHolding() async throws {
+        // Cartera legacy sin portfolio y sin portfolio por defecto: no hay holding
+        // materializado, la validación se salta y el delete persiste sin tocar holdings.
+        let context = TestSetup.createModelContext()
+        let legacy = Cartera(nombre: "Legacy Wallet", simbolo: "LEG")
+        let btc = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50_000)
+        context.insert(legacy)
+        context.insert(btc)
+        try context.save()
+        let runner = ModelContextTransactionRunner(modelContext: context)
+        let useCase = DeleteMovementUseCase(transactionRunner: runner, holdingService: holdingService)
+        let entrada = Movimiento.entrada(fecha: Date(), cantidadCrypto: 2, precioUSD: 50_000, cartera: legacy, crypto: btc)
+        context.insert(entrada)
+        try context.save()
+
+        try await useCase.delete(entrada)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
+        #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
+    }
 }

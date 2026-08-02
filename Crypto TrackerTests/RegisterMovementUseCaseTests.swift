@@ -153,6 +153,97 @@ struct RegisterMovementUseCaseTests {
         #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
     }
+
+    // MARK: - Edge cases
+
+    @Test func registerWithZeroQuantityAndFiatAlternoPersistsMovementWithoutHoldingRow() async throws {
+        let (context, portfolio, cartera, btc, eur) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        let movimiento = try await useCase.register(
+            input(
+                cantidadCrypto: 0,
+                precioUSD: 45_454.55,
+                usaFiatAlterno: true,
+                precioFiatAlterno: 50_000,
+                valorTotalFiatAlterno: 0,
+                cartera: cartera,
+                crypto: btc,
+                fiatAlterno: eur
+            )
+        )
+
+        // El movimiento se persiste con cantidad 0 y sus campos FIAT alterno.
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(movimiento.cantidadCrypto == 0)
+        #expect(movimiento.usaFiatAlterno)
+        #expect(movimiento.precioFiatAlterno == 50_000)
+        #expect(movimiento.valorTotalFiatAlterno == 0)
+        // Delta +0 no crea fila de holding.
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+    }
+
+    @Test func registerWithZeroQuantityDoesNotAlterExistingHolding() async throws {
+        let (context, portfolio, cartera, btc, eur) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        try await useCase.register(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+
+        let fecha = Date(timeIntervalSince1970: 1_700_000_000)
+        try await useCase.register(
+            input(
+                fecha: fecha,
+                cantidadCrypto: 0,
+                precioUSD: 45_454.55,
+                usaFiatAlterno: true,
+                precioFiatAlterno: 50_000,
+                valorTotalFiatAlterno: 0,
+                cartera: cartera,
+                crypto: btc,
+                fiatAlterno: eur
+            )
+        )
+
+        // El holding existente no cambia, pero updatedAt se sella con la fecha del movimiento.
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.updatedAt == fecha)
+    }
+
+    @Test func registerWithMaxValuesRoundTripsMovementAndHolding() async throws {
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let maxQty: Decimal = 1_000_000_000_000
+        let maxPrice: Decimal = 1_000_000_000_000
+
+        let movimiento = try await useCase.register(
+            input(cantidadCrypto: maxQty, precioUSD: maxPrice, cartera: cartera, crypto: btc)
+        )
+
+        #expect(movimiento.cantidadCrypto == maxQty)
+        #expect(movimiento.precioUSD == maxPrice)
+        #expect(movimiento.valorTotalUSD == maxQty * maxPrice)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == maxQty)
+    }
+
+    @Test func registerWithLegacyCarteraWithoutPortfolioPersistsMovementWithoutHolding() async throws {
+        // Cartera "legacy" sin portfolio y sin portfolio por defecto en el contexto:
+        // el movimiento se persiste, pero no se materializa fila de holding.
+        let context = TestSetup.createModelContext()
+        let cartera = Cartera(nombre: "Legacy Wallet", simbolo: "LEG")
+        let btc = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50_000)
+        context.insert(cartera)
+        context.insert(btc)
+        try context.save()
+
+        let useCase = makeUseCase(context: context)
+        let movimiento = try await useCase.register(input(cartera: cartera, crypto: btc))
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(movimiento.cartera?.nombre == "Legacy Wallet")
+        #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
+    }
 }
 
 // MARK: - Fakes
