@@ -147,28 +147,25 @@ struct DeleteMovementUseCaseTests {
 
     @Test func deleteNonEntryOrExitMovementIsRejected() async throws {
         let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
-        let carteraDestino = Cartera(nombre: "Destination Wallet", simbolo: "DEST", portfolio: portfolio)
-        context.insert(carteraDestino)
-        try context.save()
         try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
-        let par = Movimiento.transferencia(
+        let ajuste = Movimiento(
+            tipo: .ajuste,
             fecha: Date(),
-            cantidadCryptoSalida: 2,
-            cantidadCryptoEntrada: 2,
-            carteraOrigen: cartera,
-            carteraDestino: carteraDestino,
+            cantidadCrypto: 1,
+            precioUSD: 50_000,
+            valorTotalUSD: 50_000,
+            cartera: cartera,
             crypto: btc
         )
-        let transferenciaEntrada = par.entrada
         try await runner.run { ctx in
-            ctx.insert(transferenciaEntrada)
+            ctx.insert(ajuste)
         }
 
-        await #expect(throws: DeleteMovementError.unsupportedMovementType(.transferenciaEntrada)) {
-            try await useCase.delete(transferenciaEntrada)
+        await #expect(throws: DeleteMovementError.unsupportedMovementType(.ajuste)) {
+            try await useCase.delete(ajuste)
         }
 
-        // Nothing changed: the transfer and the entry still exist, holding stays intact.
+        // Nothing changed: the ajuste and the entry still exist, holding stays intact.
         #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
     }
@@ -176,8 +173,9 @@ struct DeleteMovementUseCaseTests {
     // MARK: - Edge cases
 
     @Test func deleteErrorDescriptionsAreLocalized() {
-        #expect(DeleteMovementError.unsupportedMovementType(.transferenciaEntrada).errorDescription?.isEmpty == false)
+        #expect(DeleteMovementError.unsupportedMovementType(.ajuste).errorDescription?.isEmpty == false)
         #expect(DeleteMovementError.insufficientHoldings.errorDescription?.isEmpty == false)
+        #expect(DeleteMovementError.missingPairedMovement.errorDescription?.isEmpty == false)
     }
 
     @Test func deleteAlreadyDeletedMovementThrowsAndKeepsStoreConsistent() async throws {
@@ -261,5 +259,107 @@ struct DeleteMovementUseCaseTests {
 
         #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
         #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
+    }
+
+    // MARK: - Transfer delete
+
+    @Test func deleteTransferRemovesBothLegsAndRevertsHoldings() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let destination = Cartera(nombre: "Destination Wallet", simbolo: "DEST", portfolio: portfolio)
+        context.insert(destination)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let transferUseCase = MoveBetweenWalletsUseCase(transactionRunner: runner, holdingService: holdingService)
+        let transfer = try await transferUseCase.execute(
+            MoveBetweenWalletsInput(
+                fecha: Date(),
+                cantidadCryptoSalida: 3,
+                cantidadCryptoEntrada: 2,
+                precioUSD: 50_000,
+                carteraOrigen: cartera,
+                carteraDestino: destination,
+                crypto: btc
+            )
+        )
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc)?.cantidad == 2)
+
+        try await useCase.delete(transfer.salida)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1) // seeded entry only
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc) == nil)
+    }
+
+    @Test func deleteTransferFromEntradaLegRemovesBothLegs() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let destination = Cartera(nombre: "Destination Wallet", simbolo: "DEST", portfolio: portfolio)
+        context.insert(destination)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let transferUseCase = MoveBetweenWalletsUseCase(transactionRunner: runner, holdingService: holdingService)
+        let transfer = try await transferUseCase.execute(
+            MoveBetweenWalletsInput(
+                fecha: Date(),
+                cantidadCryptoSalida: 3,
+                cantidadCryptoEntrada: 2,
+                precioUSD: 50_000,
+                carteraOrigen: cartera,
+                carteraDestino: destination,
+                crypto: btc
+            )
+        )
+
+        try await useCase.delete(transfer.entrada)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc) == nil)
+    }
+
+    @Test func deleteTransferRejectionWhenDestinationSpentTooMuch() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let destination = Cartera(nombre: "Destination Wallet", simbolo: "DEST", portfolio: portfolio)
+        context.insert(destination)
+        try context.save()
+
+        try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
+        let transferUseCase = MoveBetweenWalletsUseCase(transactionRunner: runner, holdingService: holdingService)
+        let transfer = try await transferUseCase.execute(
+            MoveBetweenWalletsInput(
+                fecha: Date(),
+                cantidadCryptoSalida: 3,
+                cantidadCryptoEntrada: 3,
+                precioUSD: 50_000,
+                carteraOrigen: cartera,
+                carteraDestino: destination,
+                crypto: btc
+            )
+        )
+        // Destination receives 3, then sells 2. Destination now has 1.
+        let salidaDesdeDestino = Movimiento.salida(
+            fecha: Date(),
+            cantidadCrypto: 2,
+            precioUSD: 50_000,
+            cartera: destination,
+            crypto: btc
+        )
+        try await runner.run { ctx in
+            ctx.insert(salidaDesdeDestino)
+            try holdingService.updateHoldingForMovement(salidaDesdeDestino, in: ctx)
+        }
+        #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc)?.cantidad == 1)
+
+        // Reverting the transfer entrada (-3) would leave destination at -2.
+        await #expect(throws: DeleteMovementError.insufficientHoldings) {
+            try await useCase.delete(transfer.salida)
+        }
+
+        // All 4 movements remain: seeded entry, transfer pair, and destination sale.
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 4)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc)?.cantidad == 1)
     }
 }
