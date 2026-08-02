@@ -8,7 +8,8 @@ class AppDependencyContainer {
     let modelContext: ModelContext
     
     // Servicios
-    let movimientosEntradaService: MovimientosEntradaServiceProtocol
+    let transactionRunner: TransactionRunner
+    let holdingService: HoldingServiceProtocol
     let priceService: PriceServiceProtocol
     
     // ViewModels compartidos
@@ -28,23 +29,25 @@ class AppDependencyContainer {
         self.modelContext = modelContext
         
         // Inicializar servicios
-        self.movimientosEntradaService = MovimientosEntradaService(modelContext: modelContext)
+        self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
+        self.holdingService = HoldingService()
         self.priceService = PriceService()
         
         // Inicializar ViewModels individuales
         self.movimientoEntradaViewModel = MovimientoEntradaViewModel(
-            movimientoService: movimientosEntradaService
+            modelContext: modelContext,
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
         )
         
         // Inicializar ViewModel de lista
         self.movimientosEntradaListViewModel = MovimientosEntradaListViewModel(
-            movimientoService: movimientosEntradaService
+            modelContext: modelContext
         )
         
         // Portfolio
         self.portfolioPorCryptosViewModel = PortfolioPorCryptosViewModel(
-            modelContext: modelContext,
-            movimientoService: movimientosEntradaService
+            modelContext: modelContext
         )
         self.portfolioDetalleViewModel = PortfolioDetalleViewModel(
             modelContext: modelContext
@@ -65,25 +68,39 @@ class AppDependencyContainer {
     // MARK: - ViewModel Factories
     
     func makeMovimientoEntradaViewModel(movimiento: Movimiento? = nil) -> MovimientoEntradaViewModel {
-        if let movimiento = movimiento {
-            return MovimientoEntradaViewModel(
-                movimiento: movimiento,
-                movimientoService: movimientosEntradaService
-            )
-        }
-        return MovimientoEntradaViewModel(movimientoService: movimientosEntradaService)
+        MovimientoEntradaViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
     }
     
     func makeMovimientoSalidaViewModel(movimiento: Movimiento? = nil) -> MovimientoSalidaViewModel {
-        MovimientoSalidaViewModel(modelContext: modelContext, movimiento: movimiento)
+        MovimientoSalidaViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
     }
     
     func makeMovimientoEntreCarterasViewModel(movimiento: Movimiento? = nil) -> MovimientoEntreCarterasViewModel {
-        MovimientoEntreCarterasViewModel(modelContext: modelContext, movimiento: movimiento)
+        MovimientoEntreCarterasViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
     }
     
     func makeMovimientoSwapViewModel(movimiento: Movimiento? = nil) -> MovimientoSwapViewModel {
-        MovimientoSwapViewModel(modelContext: modelContext, movimiento: movimiento)
+        MovimientoSwapViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
     }
     
     func makeCarteraMovimientosViewModel(cartera: Cartera) -> CarteraMovimientosViewModel {

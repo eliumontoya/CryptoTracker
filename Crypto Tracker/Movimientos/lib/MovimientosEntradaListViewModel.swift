@@ -14,17 +14,21 @@ final class MovimientosEntradaListViewModel: ObservableObject {
     @Published var entradaViewModel: MovimientoEntradaViewModel
     
     // Dependencias
-    private let movimientoService: MovimientosEntradaServiceProtocol
+    private let modelContext: ModelContext
+    private let transactionRunner: TransactionRunner
+    private let holdingService: HoldingServiceProtocol
     
     // Cancellables para gestionar subscripciones
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     
-    init(movimientoService: MovimientosEntradaServiceProtocol) {
-        self.movimientoService = movimientoService
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+        self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
+        self.holdingService = HoldingService()
         // Inicializar el entradaViewModel primero
-        self.entradaViewModel = MovimientoEntradaViewModel(movimientoService: movimientoService)
+        self.entradaViewModel = MovimientoEntradaViewModel(modelContext: modelContext)
         
         // Ahora que todas las propiedades están inicializadas, podemos llamar a setupBindings
         setupBindings()
@@ -58,7 +62,12 @@ final class MovimientosEntradaListViewModel: ObservableObject {
         do {
             for index in offsets {
                 try await Task.sleep(nanoseconds: 100_000_000) // pequeña pausa para evitar conflictos
-                try movimientoService.delete(movimiento: movimientos[index])
+                let movimiento = movimientos[index]
+                // Revertir holding y borrar el movimiento en la misma transacción.
+                try await transactionRunner.run { context in
+                    try holdingService.deleteHoldingForMovement(movimiento, in: context)
+                    context.delete(movimiento)
+                }
             }
             
             uiState = .success
