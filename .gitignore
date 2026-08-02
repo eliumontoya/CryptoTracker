@@ -34,4 +34,5 @@ playwright/.cache/
 .config/
 .env*
 .DS_Store
+*.zip
 opencode.json

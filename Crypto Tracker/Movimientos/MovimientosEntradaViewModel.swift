@@ -119,7 +119,7 @@ final class MovimientoEntradaViewModel: ObservableObject, MovimientoViewModel {
         
         guard let crypto = selectedCrypto,
               let cartera = selectedCartera else {
-            throw MovimientoFormError.missingCartera
+            throw MovimientoFormCommonError.missingCartera
         }
         
         isLoading = true

@@ -103,10 +103,16 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
     
     func save() async throws {
         guard let cryptoOrigen = selectedCryptoOrigen,
-              let cryptoDestino = selectedCryptoDestino,
-              let cartera = selectedCartera,
-              cryptoOrigen != cryptoDestino else {
-            throw MovimientoFormError.invalidAmount
+              let cryptoDestino = selectedCryptoDestino else {
+            throw MovimientoFormCommonError.missingCrypto
+        }
+
+        guard cryptoOrigen != cryptoDestino else {
+            throw MovimientoFormCommonError.invalidAmount
+        }
+
+        guard let cartera = selectedCartera else {
+            throw MovimientoFormCommonError.missingCartera
         }
         
         isLoading = true
