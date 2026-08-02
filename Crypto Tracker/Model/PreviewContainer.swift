@@ -13,6 +13,7 @@ class PreviewContainer {
             FIAT.self,
             Crypto.self,
             Cartera.self,
+            Portfolio.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,
@@ -50,14 +51,18 @@ class PreviewContainer {
         let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 2250.0)
         let sol = Crypto(nombre: "Solana", simbolo: "SOL", precio: 98.0)
         
+        // Crear Portfolio por defecto
+        let portfolio = Portfolio(nombre: "Portafolio Principal", descripcion: "Portafolio de ejemplo", isDefault: true)
+        
         // Crear Carteras
-        let binance = Cartera(nombre: "Binance", simbolo: "BNB")
-        let metamask = Cartera(nombre: "MetaMask", simbolo: "MM")
-        let phantom = Cartera(nombre: "Phantom", simbolo: "PHT")
+        let binance = Cartera(nombre: "Binance", simbolo: "BNB", isMain: true, portfolio: portfolio)
+        let metamask = Cartera(nombre: "MetaMask", simbolo: "MM", portfolio: portfolio)
+        let phantom = Cartera(nombre: "Phantom", simbolo: "PHT", portfolio: portfolio)
         
         // Insertar todos los objetos en el contexto
         [usd, eur, mxn].forEach { context.insert($0) }
         [btc, eth, sol].forEach { context.insert($0) }
+        context.insert(portfolio)
         [binance, metamask, phantom].forEach { context.insert($0) }
         
         // Crear algunos movimientos de ejemplo

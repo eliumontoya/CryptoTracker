@@ -16,6 +16,7 @@ final class CargaMovimientosTests: XCTestCase {
                 FIAT.self,
                 Crypto.self,
                 Cartera.self,
+                Portfolio.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,

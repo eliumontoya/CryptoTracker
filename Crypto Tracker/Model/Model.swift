@@ -102,6 +102,29 @@ class PrecioHistorico {
     }
 }
 
+// MARK: - Entidad Portfolio
+@Model
+class Portfolio {
+    @Attribute(.unique) var id: UUID
+    var nombre: String {
+        didSet { nombre = nombre.validated(maxLength: 50) }
+    }
+    var descripcion: String {
+        didSet { descripcion = descripcion.validated(maxLength: 200) }
+    }
+    var isDefault: Bool
+    
+    @Relationship(inverse: \Cartera.portfolio) var carteras: [Cartera] = []
+    
+    init(nombre: String, descripcion: String = "", isDefault: Bool = false) {
+        self.id = UUID()
+        self.nombre = nombre.validated(maxLength: 50)
+        self.descripcion = descripcion.validated(maxLength: 200)
+        self.isDefault = isDefault
+        self.carteras = []
+    }
+}
+
 // MARK: - Entidad Cartera
 @Model
 class Cartera {
@@ -112,6 +135,8 @@ class Cartera {
     var simbolo: String {
         didSet { simbolo = simbolo.validated(maxLength: 10) }
     }
+    var isMain: Bool = false
+    @Relationship var portfolio: Portfolio?
     
     @Relationship(inverse: \MovimientoIngreso.cartera) var movimientosIngreso: [MovimientoIngreso] = []
     @Relationship(inverse: \MovimientoEgreso.cartera) var movimientosEgreso: [MovimientoEgreso] = []
@@ -119,10 +144,12 @@ class Cartera {
     @Relationship(inverse: \MovimientoEntreCarteras.carteraDestino) var movimientosEntrada: [MovimientoEntreCarteras] = []
     @Relationship(inverse: \MovimientoSwap.cartera) var swaps: [MovimientoSwap] = []
     
-    init(nombre: String, simbolo: String) {
+    init(nombre: String, simbolo: String, isMain: Bool = false, portfolio: Portfolio? = nil) {
         self.id = UUID()
         self.nombre = nombre.validated(maxLength: 20)
         self.simbolo = simbolo.validated(maxLength: 10)
+        self.isMain = isMain
+        self.portfolio = portfolio
         self.movimientosIngreso = []
         self.movimientosEgreso = []
         self.movimientosSalida = []

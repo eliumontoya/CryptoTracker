@@ -14,13 +14,14 @@ struct CryptoTrackerApp: App {
                 FIAT.self,
                 Crypto.self,
                 Cartera.self,
+                Portfolio.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
                 MovimientoSwap.self,
                 PrecioHistorico.self,
                 CryptoSyncConfig.self
-            ], version: .init(2, 0, 0))
+            ], version: .init(3, 0, 0))
             
             // Configuración del modelo
             let modelConfiguration = ModelConfiguration(
@@ -34,6 +35,9 @@ struct CryptoTrackerApp: App {
                 for: schema,
                 configurations: [modelConfiguration]
             )
+            
+            // Migración de datos v2 → v3: carteras huérfanas al portafolio por defecto
+            PortfolioMigration.apply(in: container.mainContext)
             
             // Inicializar el contenedor de dependencias
                 dependencies = AppDependencyContainer(modelContext: container.mainContext)

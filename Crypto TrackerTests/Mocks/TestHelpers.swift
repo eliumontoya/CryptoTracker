@@ -10,6 +10,7 @@ class TestSetup {
         let schema = Schema([
             Crypto.self,
             Cartera.self,
+            Portfolio.self,
             FIAT.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
