@@ -16,6 +16,9 @@ class AppDependencyContainer {
     // Use cases
     let editMovementUseCase: EditMovementUseCaseProtocol
     
+    // Use cases
+    let deleteMovementUseCase: DeleteMovementUseCaseProtocol
+    
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
@@ -43,6 +46,12 @@ class AppDependencyContainer {
         
         // Inicializar use cases
         self.editMovementUseCase = EditMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        
+        // Inicializar use cases
+        self.deleteMovementUseCase = DeleteMovementUseCase(
             transactionRunner: transactionRunner,
             holdingService: holdingService
         )

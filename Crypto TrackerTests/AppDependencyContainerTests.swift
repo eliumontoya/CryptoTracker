@@ -51,6 +51,7 @@ final class AppDependencyContainerTests: XCTestCase {
     func testTransactionServicesAreInjectedIntoMovimientoViewModels() {
         XCTAssertNotNil(dependencies.transactionRunner)
         XCTAssertNotNil(dependencies.holdingService)
+        XCTAssertNotNil(dependencies.deleteMovementUseCase)
         XCTAssertNotNil(dependencies.registerMovementUseCase)
         XCTAssertNotNil(dependencies.movimientosEntradaListViewModel.entradaViewModel)
     }
