@@ -1,72 +1,32 @@
 import Foundation
+import SwiftData
 
 class MainPortfolioCalculator {
-    static func calcularResumen(portfolioDetails: [CarteraDetail], carteras: [Cartera]) -> MainPortfolioSummary {
-        let totalInvertidoUSD = portfolioDetails.reduce(0) { $0 + $1.totalInvertidoUSD }
-        let valorActualUSD = portfolioDetails.reduce(0) { $0 + $1.valorTotalUSD }
-
-        // Calcular total de ventas incluyendo swaps
-        let totalVentasUSD = carteras.reduce(Decimal(0)) { carteraSum, cartera in
-            let ventasDirectas = cartera.movimientos.reduce(Decimal(0)) { movSum, movimiento in
-                movimiento.tipo == .salida ? movSum + movimiento.valorTotalUSD : movSum
-            }
-
-            let ventasSwaps = cartera.movimientos.reduce(Decimal(0)) { swapSum, movimiento in
-                movimiento.tipo == .swapSalida
-                    ? swapSum + (movimiento.cantidadOrigen * movimiento.precioUSDOrigen)
-                    : swapSum
-            }
-
-            return carteraSum + ventasDirectas + ventasSwaps
-        }
-
-        let gananciaTotal = valorActualUSD - totalInvertidoUSD
-        let rendimientoTotal = totalInvertidoUSD > 0 ? ((valorActualUSD - totalInvertidoUSD) / totalInvertidoUSD) * 100 : 0
+    static func calcularResumen(portfolioId: UUID, in context: ModelContext) -> MainPortfolioSummary {
+        let summary = PortfolioQueries.portfolioSummary(portfolioId: portfolioId, in: context)
 
         return MainPortfolioSummary(
-            totalInvertidoUSD: totalInvertidoUSD,
-            valorActualUSD: valorActualUSD,
-            totalVentasUSD: totalVentasUSD,
-            gananciaTotal: gananciaTotal,
-            rendimientoTotal: rendimientoTotal
+            totalInvertidoUSD: summary.invertidoUSD,
+            valorActualUSD: summary.valorActualUSD,
+            totalVentasUSD: summary.totalVentasUSD,
+            gananciaTotal: summary.gananciaUSD,
+            rendimientoTotal: summary.rendimientoPct
         )
     }
 
-    static func calcularDistribucionGanancias(portfolioDetails: [CarteraDetail]) -> [MainCryptoDistribution] {
-        // Agrupar todas las cryptos del portfolio
-        var cryptoGanancias: [UUID: (nombre: String, ganancia: Decimal, valorTotal: Decimal)] = [:]
-
-        for carteraDetail in portfolioDetails {
-            for cryptoDetail in carteraDetail.cryptoDetails {
-                if let existingData = cryptoGanancias[cryptoDetail.crypto.id] {
-                    cryptoGanancias[cryptoDetail.crypto.id] = (
-                        nombre: existingData.nombre,
-                        ganancia: existingData.ganancia + cryptoDetail.ganancia,
-                        valorTotal: existingData.valorTotal + cryptoDetail.valorUSD
-                    )
-                } else {
-                    cryptoGanancias[cryptoDetail.crypto.id] = (
-                        nombre: cryptoDetail.crypto.simbolo,
-                        ganancia: cryptoDetail.ganancia,
-                        valorTotal: cryptoDetail.valorUSD
-                    )
-                }
-            }
-        }
+    static func calcularDistribucionGanancias(portfolioId: UUID, in context: ModelContext) -> [MainCryptoDistribution] {
+        let aggregates = PortfolioQueries.portfolioByCryptos(portfolioId: portfolioId, in: context)
 
         // Calcular el total absoluto para los porcentajes
-        let totalAbsoluto = cryptoGanancias.values.reduce(Decimal(0)) { $0 + abs($1.ganancia) }
+        let totalAbsoluto = aggregates.reduce(Decimal(0)) { $0 + abs($1.pnlUSD) }
 
-        // Convertir a array y ordenar por ganancia
-        return cryptoGanancias.map { (id, data) in
-            let porcentaje = totalAbsoluto != 0 ? (data.ganancia / totalAbsoluto) * 100 : 0
-
-            return MainCryptoDistribution(
-                cryptoId: id,
-                nombre: data.nombre,
-                ganancia: data.ganancia,
-                valorTotal: data.valorTotal,
-                porcentaje: porcentaje
+        return aggregates.map { aggregate in
+            MainCryptoDistribution(
+                cryptoId: aggregate.crypto.id,
+                nombre: aggregate.simbolo,
+                ganancia: aggregate.pnlUSD,
+                valorTotal: aggregate.valorActualUSD,
+                porcentaje: totalAbsoluto != 0 ? (aggregate.pnlUSD / totalAbsoluto) * 100 : 0
             )
         }.sorted { $0.ganancia > $1.ganancia }
     }

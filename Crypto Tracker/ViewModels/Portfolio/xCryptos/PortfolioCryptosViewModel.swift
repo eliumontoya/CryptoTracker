@@ -19,28 +19,26 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     private let modelContext: ModelContext
     private let movimientoService: MovimientosEntradaServiceProtocol
     
-
-    
     init(modelContext: ModelContext, movimientoService: MovimientosEntradaServiceProtocol) {
         self.modelContext = modelContext
         self.movimientoService = movimientoService
-
     }
     
     // MARK: - Public Methods
-    func actualizarPortfolio(carteras: [Cartera], cryptos: [Crypto]) {
+    func actualizarPortfolio() {
         isLoading = true
         
-        do {
-            cryptoSummaries = PortfolioCryptoCalculator.calcularResumenPorCrypto(
-                carteras: carteras,
-                cryptos: cryptos
-            )
+        guard let portfolio = PortfolioQueries.defaultPortfolio(in: modelContext) else {
+            cryptoSummaries = []
             isLoading = false
-        } catch {
-            errorMessage = error.localizedDescription
-            isLoading = false
+            return
         }
+        
+        cryptoSummaries = PortfolioCryptoCalculator.calcularResumenPorCrypto(
+            portfolioId: portfolio.id,
+            in: modelContext
+        )
+        isLoading = false
     }
     
     // MARK: - Navigation Methods

@@ -17,18 +17,19 @@ final class PortfolioDetalleViewModel: ObservableObject {
         (carterasDetail.count + 1) / 2
     }
     
-    func actualizarPortfolio(carteras: [Cartera], cryptos: [Crypto]) {
+    func actualizarPortfolio() {
         isLoading = true
         
-        do {
-            carterasDetail = PortfolioCalculator.calcularDetallesPortfolio(
-                carteras: carteras,
-                cryptos: cryptos
-            )
-        } catch {
-            errorMessage = error.localizedDescription
+        guard let portfolio = PortfolioQueries.defaultPortfolio(in: modelContext) else {
+            carterasDetail = []
+            isLoading = false
+            return
         }
         
+        carterasDetail = PortfolioCalculator.calcularDetallesPortfolio(
+            portfolioId: portfolio.id,
+            in: modelContext
+        )
         isLoading = false
     }
 }
