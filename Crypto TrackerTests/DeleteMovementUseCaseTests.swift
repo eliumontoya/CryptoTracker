@@ -3,9 +3,9 @@ import SwiftData
 import Testing
 @testable import Crypto_Tracker
 
-/// Verifies `DeleteMovementUseCase` physically deletes an entry movement and
-/// reverts its holding in a single transaction, rejecting deletes that would
-/// drive the materialized holding negative or that target non-entry movements.
+/// Verifies `DeleteMovementUseCase` physically deletes an entry or exit movement
+/// and reverts its holding in a single transaction, rejecting deletes that would
+/// drive the materialized holding negative or that target unsupported movement types.
 @MainActor
 struct DeleteMovementUseCaseTests {
     private let holdingService = HoldingService()
@@ -79,6 +79,32 @@ struct DeleteMovementUseCaseTests {
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
     }
 
+    // MARK: - Delete simple exit
+
+    @Test func deleteSimpleExitRevertsHoldingAndRemovesMovement() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        try await registerEntrada(4, cartera: cartera, crypto: btc, via: runner)
+        let salida = try await registerSalida(4, cartera: cartera, crypto: btc, via: runner)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+
+        try await useCase.delete(salida)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 4)
+    }
+
+    @Test func deleteExitWhenHoldingPartiallySpentAddsBackQuantity() async throws {
+        let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        try await registerEntrada(4, cartera: cartera, crypto: btc, via: runner)
+        let salida = try await registerSalida(2, cartera: cartera, crypto: btc, via: runner)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+
+        try await useCase.delete(salida)
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 4)
+    }
+
     // MARK: - Delete when holding partially spent
 
     @Test func deleteEntryWhenHoldingPartiallySpentKeepsPositiveBalance() async throws {
@@ -117,26 +143,40 @@ struct DeleteMovementUseCaseTests {
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 3)
     }
 
-    // MARK: - Scope: entrada only
+    // MARK: - Scope: entrada and salida only
 
-    @Test func deleteNonEntryMovementIsRejected() async throws {
+    @Test func deleteNonEntryOrExitMovementIsRejected() async throws {
         let (context, runner, useCase, portfolio, cartera, btc) = try makeContext()
+        let carteraDestino = Cartera(nombre: "Destination Wallet", simbolo: "DEST", portfolio: portfolio)
+        context.insert(carteraDestino)
+        try context.save()
         try await registerEntrada(5, cartera: cartera, crypto: btc, via: runner)
-        let salida = try await registerSalida(2, cartera: cartera, crypto: btc, via: runner)
-
-        await #expect(throws: DeleteMovementError.unsupportedMovementType(.salida)) {
-            try await useCase.delete(salida)
+        let par = Movimiento.transferencia(
+            fecha: Date(),
+            cantidadCryptoSalida: 2,
+            cantidadCryptoEntrada: 2,
+            carteraOrigen: cartera,
+            carteraDestino: carteraDestino,
+            crypto: btc
+        )
+        let transferenciaEntrada = par.entrada
+        try await runner.run { ctx in
+            ctx.insert(transferenciaEntrada)
         }
 
-        // Nada cambió: la salida sigue existiendo y el holding quedó intacto.
+        await #expect(throws: DeleteMovementError.unsupportedMovementType(.transferenciaEntrada)) {
+            try await useCase.delete(transferenciaEntrada)
+        }
+
+        // Nothing changed: the transfer and the entry still exist, holding stays intact.
         #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
-        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
     }
 
     // MARK: - Edge cases
 
     @Test func deleteErrorDescriptionsAreLocalized() {
-        #expect(DeleteMovementError.unsupportedMovementType(.salida).errorDescription?.isEmpty == false)
+        #expect(DeleteMovementError.unsupportedMovementType(.transferenciaEntrada).errorDescription?.isEmpty == false)
         #expect(DeleteMovementError.insufficientHoldings.errorDescription?.isEmpty == false)
     }
 
