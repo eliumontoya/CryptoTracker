@@ -2,10 +2,8 @@ import SwiftUI
 import SwiftData
 
 struct PortfolioView: View {
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
-    
-    @State private var portfolioDetails: [CarteraDetail] = []
+    @Environment(\.modelContext) private var modelContext
+
     @State private var portfolioSummary: MainPortfolioSummary?
     @State private var distribucionGanancias: [MainCryptoDistribution] = []
     
@@ -57,21 +55,18 @@ struct PortfolioView: View {
     }
     
     private func actualizarPortfolio() {
-        // Calcular detalles del portfolio
-        portfolioDetails = PortfolioCalculator.calcularDetallesPortfolio(
-            carteras: carteras,
-            cryptos: cryptos
-        )
+        guard let portfolio = PortfolioQueries.defaultPortfolio(in: modelContext) else { return }
         
         // Calcular resumen
         portfolioSummary = MainPortfolioCalculator.calcularResumen(
-            portfolioDetails: portfolioDetails,
-            carteras: carteras
+            portfolioId: portfolio.id,
+            in: modelContext
         )
         
         // Calcular distribución de ganancias
         distribucionGanancias = MainPortfolioCalculator.calcularDistribucionGanancias(
-            portfolioDetails: portfolioDetails
+            portfolioId: portfolio.id,
+            in: modelContext
         )
     }
 }

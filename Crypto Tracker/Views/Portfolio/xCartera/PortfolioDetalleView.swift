@@ -1,12 +1,8 @@
 import SwiftUI
-import SwiftData
 
 struct PortfolioDetalleView: View {
     private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: PortfolioDetalleViewModel
-    
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
     
     init(viewModel: PortfolioDetalleViewModel, dependencies: AppDependencyContainer) {
         _viewModel = StateObject(wrappedValue: viewModel)
@@ -24,10 +20,7 @@ struct PortfolioDetalleView: View {
         }
         .navigationTitle("Desglose por Carteras")
         .onAppear {
-            viewModel.actualizarPortfolio(
-                carteras: carteras,
-                cryptos: cryptos
-            )
+            viewModel.actualizarPortfolio()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {
@@ -50,10 +43,7 @@ struct PortfolioDetalleView: View {
                         dependencies.makeCarteraDetailView(
                             carteraDetail: viewModel.carterasDetail[renglon * 2],
                             onUpdateData: {
-                                viewModel.actualizarPortfolio(
-                                    carteras: carteras,
-                                    cryptos: cryptos
-                                )
+                                viewModel.actualizarPortfolio()
                             }
                         )
                         .frame(maxWidth: .infinity)
@@ -64,10 +54,7 @@ struct PortfolioDetalleView: View {
                         dependencies.makeCarteraDetailView(
                             carteraDetail: viewModel.carterasDetail[renglon * 2 + 1],
                             onUpdateData: {
-                                viewModel.actualizarPortfolio(
-                                    carteras: carteras,
-                                    cryptos: cryptos
-                                )
+                                viewModel.actualizarPortfolio()
                             }
                         )
                         .frame(maxWidth: .infinity)

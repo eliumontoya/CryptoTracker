@@ -1,10 +1,6 @@
 import SwiftUI
-import SwiftData
 
 struct PortfolioPorCryptosView: View {
-    @Query(sort: \Cartera.nombre) private var carteras: [Cartera]
-    @Query(sort: \Crypto.nombre) private var cryptos: [Crypto]
- 
     private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: PortfolioPorCryptosViewModel
 
@@ -30,7 +26,7 @@ struct PortfolioPorCryptosView: View {
             .sheet(item: $viewModel.selectedCrypto) { crypto in
                 dependencies.makeCryptoDetailView(crypto: crypto)
                     .onDisappear {
-                        viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
+                        viewModel.actualizarPortfolio()
                     }
             }
             .applyMovimientoSheets(
@@ -58,13 +54,7 @@ struct PortfolioPorCryptosView: View {
         }
         .navigationTitle("Portafolio por Cryptos")
         .onAppear {
-            viewModel.actualizarPortfolio(carteras: carteras, cryptos: cryptos)
-        }
-        .onChange(of: carteras) { _, newCarteras in
-            viewModel.actualizarPortfolio(carteras: newCarteras, cryptos: cryptos)
-        }
-        .onChange(of: cryptos) { _, newCryptos in
-            viewModel.actualizarPortfolio(carteras: carteras, cryptos: newCryptos)
+            viewModel.actualizarPortfolio()
         }
         .alert("Error", isPresented: .constant(viewModel.errorMessage != nil)) {
             Button("OK") {

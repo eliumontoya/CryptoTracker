@@ -3,76 +3,70 @@ import SwiftData
 
 // MARK: - Servicio de Cálculos de Portfolio
 class PortfolioCalculator {
-    static func calcularDetallesCartera(_ cartera: Cartera, cryptos: [Crypto]) -> CarteraDetail {
-        let cryptoDetails = cryptos.compactMap { crypto -> CryptoDetail? in
-            // Calcular totales por crypto
-            let ingresosPorEntradas = cartera.movimientos
-                .filter { $0.tipo == .entrada && $0.crypto?.id == crypto.id }
+    static func calcularDetallesCartera(_ cartera: Cartera, in context: ModelContext) -> CarteraDetail {
+        let holdings = PortfolioQueries.holdingsByWallet(walletId: cartera.id, in: context)
+        let movimientos = PortfolioQueries.movementsByWallet(walletId: cartera.id, in: context)
+
+        let cryptoDetails = holdings.holdings.map { holding -> CryptoDetail? in
+            let movimientosCrypto = movimientos.filter { movimiento in
+                movimiento.crypto?.id == holding.crypto.id
+            }
+
+            // Desglose de cantidades por tipo (fuente: movimientos de la cartera)
+            let ingresosPorEntradas = movimientosCrypto
+                .filter { $0.tipo == .entrada }
                 .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
 
-            let ingresosPorSwaps = cartera.movimientos
-                .filter { $0.tipo == .swapEntrada && $0.cryptoDestino?.id == crypto.id }
+            let ingresosPorSwaps = movimientosCrypto
+                .filter { $0.tipo == .swapEntrada }
                 .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
 
             let totalCryptoIngresado = ingresosPorEntradas + ingresosPorSwaps
 
-            let egresosPorVentas = cartera.movimientos
-                .filter { $0.tipo == .salida && $0.crypto?.id == crypto.id }
+            let egresosPorVentas = movimientosCrypto
+                .filter { $0.tipo == .salida }
                 .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
 
-            let egresosPorSwaps = cartera.movimientos
-                .filter { $0.tipo == .swapSalida && $0.cryptoOrigen?.id == crypto.id }
+            let egresosPorSwaps = movimientosCrypto
+                .filter { $0.tipo == .swapSalida }
                 .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
 
             let totalCryptoVendido = egresosPorVentas + egresosPorSwaps
 
-            // Transferencias entre carteras (entradas y salidas)
-            let transferenciasEntrada = cartera.movimientos
-                .filter { $0.tipo == .transferenciaEntrada && $0.crypto?.id == crypto.id }
+            let transferenciasEntrada = movimientosCrypto
+                .filter { $0.tipo == .transferenciaEntrada }
                 .reduce(Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
 
-            let transferenciasSalida = cartera.movimientos
-                .filter { $0.tipo == .transferenciaSalida && $0.crypto?.id == crypto.id }
+            let transferenciasSalida = movimientosCrypto
+                .filter { $0.tipo == .transferenciaSalida }
                 .reduce(Decimal(0)) { $0 + $1.cantidadCryptoSalida }
 
-            // Balance neto de transferencias (positivo = más entradas, negativo = más salidas)
             let balanceTransferencias = transferenciasEntrada - transferenciasSalida
 
-            // Calcular balance total
-            let balanceActual = BalanceCalculator.balance(crypto: crypto, en: cartera)
-
-            // Si no hay movimientos, no incluir esta crypto
-            guard balanceActual != 0 else { return nil }
-
-            // Calcular total USD invertido en entradas
-            let totalInvertidoUSD = cartera.movimientos
-                .filter { $0.tipo == .entrada && $0.crypto?.id == crypto.id }
-                .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
-
-            // Calcular valor actual en USD
-            let valorUSD = balanceActual * crypto.precio
+            guard holding.cantidad != 0 else { return nil }
 
             return CryptoDetail(
-                crypto: crypto,
+                crypto: holding.crypto,
                 totalCryptoIngresado: totalCryptoIngresado,
                 totalCryptoVendido: totalCryptoVendido,
                 totalCryptoTransferido: balanceTransferencias,
-                balanceActual: balanceActual,
-                totalInvertidoUSD: totalInvertidoUSD,
-                valorUSD: valorUSD,
-                ganancia: valorUSD - totalInvertidoUSD
+                balanceActual: holding.cantidad,
+                totalInvertidoUSD: holding.invertidoUSD,
+                valorUSD: holding.valorUSD,
+                ganancia: holding.gananciaUSD
             )
         }
 
         return CarteraDetail(
             cartera: cartera,
-            cryptoDetails: cryptoDetails
+            cryptoDetails: cryptoDetails.compactMap { $0 }
         )
     }
 
-    static func calcularDetallesPortfolio(carteras: [Cartera], cryptos: [Crypto]) -> [CarteraDetail] {
+    static func calcularDetallesPortfolio(portfolioId: UUID, in context: ModelContext) -> [CarteraDetail] {
+        let carteras = PortfolioQueries.carteras(portfolioId: portfolioId, in: context)
         let carterasDetail = carteras.map { cartera in
-            calcularDetallesCartera(cartera, cryptos: cryptos)
+            calcularDetallesCartera(cartera, in: context)
         }
         // Filtrar carteras sin cryptos
         return carterasDetail.filter { !$0.cryptoDetails.isEmpty }
