@@ -3,9 +3,10 @@ import SwiftData
 
 struct MovimientosSalidaView: View {
     private let dependencies: AppDependencyContainer
-    @Query(sort: \MovimientoEgreso.fecha, order: .reverse) private var movimientos: [MovimientoEgreso]
+    @Query(filter: #Predicate<Movimiento> { $0.tipoRaw == "salida" },
+           sort: \Movimiento.fecha, order: .reverse) private var movimientos: [Movimiento]
     @State private var showingAddSheet = false
-    @State private var selectedMovimiento: MovimientoEgreso?
+    @State private var selectedMovimiento: Movimiento?
     
     init(dependencies: AppDependencyContainer) {
         self.dependencies = dependencies
@@ -68,7 +69,7 @@ struct MovimientosSalidaView: View {
 }
 
 struct MovimientoSalidaRowView: View {
-    let movimiento: MovimientoEgreso
+    let movimiento: Movimiento
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

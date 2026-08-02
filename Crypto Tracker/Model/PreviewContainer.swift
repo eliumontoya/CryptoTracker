@@ -15,6 +15,7 @@ class PreviewContainer {
             Cartera.self,
             Portfolio.self,
             Holding.self,
+            Movimiento.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,
@@ -67,9 +68,9 @@ class PreviewContainer {
         [binance, metamask, phantom].forEach { context.insert($0) }
         
         // Crear algunos movimientos de ejemplo
-        
+
         // Movimiento con USD
-        let movimiento1 = MovimientoIngreso(
+        let movimiento1 = Movimiento.entrada(
             fecha: Date().addingTimeInterval(-86400), // Ayer
             cantidadCrypto: 0.23,
             precioUSD: 43478.26,
@@ -80,7 +81,7 @@ class PreviewContainer {
         )
         
         // Movimiento con FIAT alterno (EUR)
-        let movimiento2 = MovimientoIngreso(
+        let movimiento2 = Movimiento.entrada(
             fecha: Date().addingTimeInterval(-43200), // Hace 12 horas
             cantidadCrypto: 2.22,
             precioUSD: 2252.25,
@@ -93,7 +94,7 @@ class PreviewContainer {
         )
         
         // Movimiento con FIAT alterno (MXN)
-        let movimiento3 = MovimientoIngreso(
+        let movimiento3 = Movimiento.entrada(
             fecha: Date().addingTimeInterval(-21600), // Hace 6 horas
             cantidadCrypto: 5.0,
             precioUSD: 98.0,

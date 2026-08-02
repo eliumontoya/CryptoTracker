@@ -28,12 +28,12 @@ class MovimientoSwapParser {
         worksheet: ExcelWorksheet,
         carteras: [Cartera],
         cryptos: [Crypto]
-    ) throws -> [MovimientoSwap] {
+    ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo de swaps...")
         try worksheet.validateHeaders(MovimientoSwapHeaders.required)
         
         let headers = Dictionary(uniqueKeysWithValues: worksheet.headerRow.enumerated().map { ($1, $0) })
-        var movimientos: [MovimientoSwap] = []
+        var movimientos: [Movimiento] = []
         
         print("📊 Iniciando procesamiento de \(worksheet.rows.count) filas...")
         
@@ -41,14 +41,15 @@ class MovimientoSwapParser {
             let currentRow = rowIndex + 2
             do {
                 print("📝 Procesando fila \(currentRow)...")
-                let movimiento = try parseRow(
+                let par = try parseRow(
                     row: row,
                     rowIndex: currentRow,
                     headers: headers,
                     carteras: carteras,
                     cryptos: cryptos
                 )
-                movimientos.append(movimiento)
+                movimientos.append(par.salida)
+                movimientos.append(par.entrada)
                 print("✅ Fila \(currentRow) procesada correctamente")
             } catch {
                 print("❌ Error en fila \(currentRow): \(error.localizedDescription)")
@@ -56,7 +57,7 @@ class MovimientoSwapParser {
             }
         }
         
-        print("✅ Procesamiento completado. Total swaps: \(movimientos.count)")
+        print("✅ Procesamiento completado. Total swaps: \(movimientos.count / 2)")
         return movimientos
     }
     
@@ -66,7 +67,7 @@ class MovimientoSwapParser {
         headers: [String: Int],
         carteras: [Cartera],
         cryptos: [Crypto]
-    ) throws -> MovimientoSwap {
+    ) throws -> (salida: Movimiento, entrada: Movimiento) {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoSwapHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
               !fechaStr.isEmpty else {
@@ -180,7 +181,7 @@ class MovimientoSwapParser {
             )
         }
         
-        return MovimientoSwap(
+        return Movimiento.swap(
             fecha: fecha,
             cantidadOrigen: montoOrigen,
             cantidadDestino: montoDestino,

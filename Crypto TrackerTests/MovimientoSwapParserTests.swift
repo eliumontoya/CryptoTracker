@@ -19,7 +19,7 @@ final class MovimientoSwapParserTests: XCTestCase {
         cartera = Cartera(nombre: "Binance", simbolo: "BNB")
         
         // Simular un balance en la cartera
-        let movimientoInicial = MovimientoIngreso(
+        let movimientoInicial = Movimiento.entrada(
             fecha: Date(),
             cantidadCrypto: 2.0,
             precioUSD: 45000,
@@ -83,7 +83,7 @@ final class MovimientoSwapParserTests: XCTestCase {
         )
         
         // Then
-        XCTAssertEqual(movimientos.count, 1)
+        XCTAssertEqual(movimientos.count, 2) // 1 par = 2 piernas
         let movimiento = movimientos[0]
         XCTAssertEqual(movimiento.cantidadOrigen, Decimal(string: "1.5"))
         XCTAssertEqual(movimiento.cantidadDestino, Decimal(string: "25.0"))

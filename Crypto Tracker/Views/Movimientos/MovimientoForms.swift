@@ -2,15 +2,9 @@
 import SwiftUI
 import SwiftData
 
-// MARK: - Vista de Edición General
-
-
 // MARK: - Vista para buscar el movimiento correcto
 enum EditMovementMode: Equatable {
-    case entrada(MovimientoIngreso)
-    case salida(MovimientoEgreso)
-    case entreCarteras(MovimientoEntreCarteras)
-    case swap(MovimientoSwap)
+    case movimiento(Movimiento)
 }
 
 // MARK: - Vista para buscar el movimiento correcto
@@ -25,12 +19,9 @@ struct MovimientoSearchView: View {
         _movimientoEntradaViewModel = StateObject(wrappedValue:
             dependencies.makeMovimientoEntradaViewModel())
     }
-    
-    @Query private var movimientosIngreso: [MovimientoIngreso]
-    @Query private var movimientosEgreso: [MovimientoEgreso]
-    @Query private var movimientosEntreCarteras: [MovimientoEntreCarteras]
-    @Query private var movimientosSwap: [MovimientoSwap]
-    
+
+    @Query private var movimientos: [Movimiento]
+
     var body: some View {
         NavigationStack {
             if let mode = findEditMode() {
@@ -48,42 +39,18 @@ struct MovimientoSearchView: View {
             }
         }
     }
-    
+
     private func findEditMode() -> EditMovementMode? {
-        switch movimientoDetalle.tipo {
-        case .entrada:
-            if let movimiento = movimientosIngreso.first(where: { $0.id == movimientoDetalle.id }) {
-                print("Encontrado movimiento entrada: \(movimiento.id)")
-                return .entrada(movimiento)
-            }
-            
-        case .salida:
-            if let movimiento = movimientosEgreso.first(where: { $0.id == movimientoDetalle.id }) {
-                print("Encontrado movimiento salida: \(movimiento.id)")
-                return .salida(movimiento)
-            }
-            
-        case .transferencia:
-            if let movimiento = movimientosEntreCarteras.first(where: { $0.id == movimientoDetalle.id }) {
-                print("Encontrado movimiento transferencia: \(movimiento.id)")
-                return .entreCarteras(movimiento)
-            }
-            
-        case .swap:
-            if let movimiento = movimientosSwap.first(where: { $0.id == movimientoDetalle.id }) {
-                print("Encontrado movimiento swap: \(movimiento.id)")
-                return .swap(movimiento)
-            }
+        if let movimiento = movimientos.first(where: { $0.id == movimientoDetalle.id }) {
+            print("Encontrado movimiento: \(movimiento.id)")
+            return .movimiento(movimiento)
         }
-        
+
         // Debug: Imprimir información para diagnóstico
         print("No se encontró el movimiento con ID: \(movimientoDetalle.id)")
         print("Tipo de movimiento: \(movimientoDetalle.tipo)")
-        print("Cantidad de movimientos ingreso: \(movimientosIngreso.count)")
-        print("Cantidad de movimientos egreso: \(movimientosEgreso.count)")
-        print("Cantidad de movimientos transferencia: \(movimientosEntreCarteras.count)")
-        print("Cantidad de movimientos swap: \(movimientosSwap.count)")
-        
+        print("Cantidad de movimientos: \(movimientos.count)")
+
         return nil
     }
 }
@@ -102,28 +69,38 @@ struct EditMovimientoView: View {
     var mode: EditMovementMode
     private var movimientoEntradaViewModel: MovimientoEntradaViewModel
     private let dependencies: AppDependencyContainer
- 
+
         // Hacer el inicializador público
         init(mode: EditMovementMode, movimientoEntradaViewModel: MovimientoEntradaViewModel, dependencies: AppDependencyContainer) {
             self.mode = mode
             self.movimientoEntradaViewModel = movimientoEntradaViewModel
             self.dependencies = dependencies
         }
-        
+
     var body: some View {
         NavigationStack {
             Group {
                 switch mode {
-                case .entrada:
-                    MovimientoEntradaFormView(
-                        viewModel: self.movimientoEntradaViewModel
-                    )
-                case .salida(let movimiento):
-                    dependencies.makeMovimientoSalidaFormView(movimiento: movimiento)
-                case .entreCarteras(let movimiento):
-                    dependencies.makeMovimientoEntreCarterasFormView(movimiento: movimiento)
-                case .swap(let movimiento):
-                    dependencies.makeMovimientoSwapFormView(movimiento: movimiento)
+                case .movimiento(let movimiento):
+                    switch movimiento.tipo {
+                    case .entrada:
+                        EntradaEditView(
+                            movimiento: movimiento,
+                            viewModel: movimientoEntradaViewModel
+                        )
+                    case .salida:
+                        dependencies.makeMovimientoSalidaFormView(movimiento: movimiento)
+                    case .transferenciaSalida, .transferenciaEntrada:
+                        dependencies.makeMovimientoEntreCarterasFormView(movimiento: movimiento)
+                    case .swapSalida, .swapEntrada:
+                        dependencies.makeMovimientoSwapFormView(movimiento: movimiento)
+                    case .ajuste, .comision:
+                        ContentUnavailableView(
+                            "Movimiento no editable",
+                            systemImage: "exclamationmark.triangle",
+                            description: Text("Este tipo de movimiento no se puede editar desde aquí.")
+                        )
+                    }
                 }
             }
             .adaptiveSheetFrame()
@@ -131,3 +108,20 @@ struct EditMovimientoView: View {
     }
 }
 
+// MARK: - Edición de entrada
+/// Recarga el ViewModel compartido de entrada con el movimiento a editar y
+/// presenta el formulario.
+struct EntradaEditView: View {
+    let movimiento: Movimiento
+    let viewModel: MovimientoEntradaViewModel
+
+    init(movimiento: Movimiento, viewModel: MovimientoEntradaViewModel) {
+        self.movimiento = movimiento
+        self.viewModel = viewModel
+        viewModel.loadMovimiento(movimiento)
+    }
+
+    var body: some View {
+        MovimientoEntradaFormView(viewModel: viewModel)
+    }
+}

@@ -13,6 +13,7 @@ class TestSetup {
             Portfolio.self,
             Holding.self,
             FIAT.self,
+            Movimiento.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,

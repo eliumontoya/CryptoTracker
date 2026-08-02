@@ -75,11 +75,7 @@ class AdminCarterasViewModel: ObservableObject {
     }
     
     func canDeleteCartera(_ cartera: Cartera) -> Bool {
-        cartera.movimientosIngreso.isEmpty &&
-        cartera.movimientosEgreso.isEmpty &&
-        cartera.movimientosEntrada.isEmpty &&
-        cartera.movimientosSalida.isEmpty &&
-        cartera.swaps.isEmpty
+        cartera.movimientos.isEmpty
     }
     
     func getCalculosCartera(_ cartera: Cartera) -> (valorTotal: Decimal, resumen: String, ganancia: (Decimal, Bool)) {
@@ -97,7 +93,7 @@ class AdminCarterasViewModel: ObservableObject {
     }
     
     private func calcularValorTotalUSD(for cartera: Cartera) -> Decimal {
-        let cryptos = Set(cartera.movimientosIngreso.compactMap { $0.crypto })
+        let cryptos = Set(cartera.movimientos.compactMap { $0.crypto ?? $0.cryptoOrigen ?? $0.cryptoDestino })
         return cryptos.reduce(Decimal(0)) { total, crypto in
             let balance = BalanceCalculator.balance(crypto: crypto, en: cartera)
             return total + (balance * crypto.precio)
@@ -105,12 +101,14 @@ class AdminCarterasViewModel: ObservableObject {
     }
     
     private func calcularResumenCryptos(for cartera: Cartera) -> String {
-        let cryptos = Set(cartera.movimientosIngreso.compactMap { $0.crypto })
+        let cryptos = Set(cartera.movimientos.compactMap { $0.crypto ?? $0.cryptoOrigen ?? $0.cryptoDestino })
         return cryptos.compactMap { $0.simbolo }.joined(separator: ", ")
     }
     
     private func calcularGananciaPerdida(for cartera: Cartera) -> (Decimal, Bool) {
-        let inversionTotalUSD = cartera.movimientosIngreso.reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
+        let inversionTotalUSD = cartera.movimientos
+            .filter { $0.tipo == .entrada }
+            .reduce(Decimal(0)) { $0 + $1.valorTotalUSD }
         let valorActual = calcularValorTotalUSD(for: cartera)
         let gananciaPerdida = valorActual - inversionTotalUSD
         return (abs(gananciaPerdida), gananciaPerdida >= 0)

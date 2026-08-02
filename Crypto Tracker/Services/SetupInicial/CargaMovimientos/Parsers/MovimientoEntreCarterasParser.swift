@@ -26,12 +26,12 @@ class MovimientoEntreCarterasParser {
         worksheet: ExcelWorksheet,
         carteras: [Cartera],
         cryptos: [Crypto]
-    ) throws -> [MovimientoEntreCarteras] {
+    ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo de transferencias entre carteras...")
         try worksheet.validateHeaders(MovimientoEntreCarterasHeaders.required)
         
         let headers = Dictionary(uniqueKeysWithValues: worksheet.headerRow.enumerated().map { ($1, $0) })
-        var movimientos: [MovimientoEntreCarteras] = []
+        var movimientos: [Movimiento] = []
         
         print("📊 Iniciando procesamiento de \(worksheet.rows.count) filas...")
         
@@ -39,14 +39,15 @@ class MovimientoEntreCarterasParser {
             let currentRow = rowIndex + 2
             do {
                 print("📝 Procesando fila \(currentRow)...")
-                let movimiento = try parseRow(
+                let par = try parseRow(
                     row: row,
                     rowIndex: currentRow,
                     headers: headers,
                     carteras: carteras,
                     cryptos: cryptos
                 )
-                movimientos.append(movimiento)
+                movimientos.append(par.salida)
+                movimientos.append(par.entrada)
                 print("✅ Fila \(currentRow) procesada correctamente")
             } catch {
                 print("❌ Error en fila \(currentRow): \(error.localizedDescription)")
@@ -54,7 +55,7 @@ class MovimientoEntreCarterasParser {
             }
         }
         
-        print("✅ Procesamiento completado. Total transferencias: \(movimientos.count)")
+        print("✅ Procesamiento completado. Total transferencias: \(movimientos.count / 2)")
         return movimientos
     }
     
@@ -64,7 +65,7 @@ class MovimientoEntreCarterasParser {
         headers: [String: Int],
         carteras: [Cartera],
         cryptos: [Crypto]
-    ) throws -> MovimientoEntreCarteras {
+    ) throws -> (salida: Movimiento, entrada: Movimiento) {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoEntreCarterasHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
               !fechaStr.isEmpty else {
@@ -160,7 +161,7 @@ class MovimientoEntreCarterasParser {
             )
         }
         
-        return MovimientoEntreCarteras(
+        return Movimiento.transferencia(
             fecha: fecha,
             cantidadCryptoSalida: montoEnvio,
             cantidadCryptoEntrada: montoRecibido,

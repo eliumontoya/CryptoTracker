@@ -16,6 +16,7 @@ struct CryptoTrackerApp: App {
                 Cartera.self,
                 Portfolio.self,
                 Holding.self,
+                Movimiento.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,
@@ -39,6 +40,9 @@ struct CryptoTrackerApp: App {
             
             // Migración de datos v2 → v3: carteras huérfanas al portafolio por defecto
             PortfolioMigration.apply(in: container.mainContext)
+            
+            // Migración de datos v3 → v4: 4 tablas de movimientos → Movimiento unificado
+            MovimientoMigration.apply(in: container.mainContext)
             
             // Inicializar el contenedor de dependencias
                 dependencies = AppDependencyContainer(modelContext: container.mainContext)

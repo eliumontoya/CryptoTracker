@@ -5,27 +5,27 @@ import SwiftData
 // MARK: - Mock Service
 
 fileprivate class MockMovimientosEntradaService: MovimientosEntradaServiceProtocol {
-    var savedMovimientos: [MovimientoIngreso] = []
-    var insertedMovimientos: [MovimientoIngreso] = []
-    var deletedMovimientos: [MovimientoIngreso] = []
+    var savedMovimientos: [Movimiento] = []
+    var insertedMovimientos: [Movimiento] = []
+    var deletedMovimientos: [Movimiento] = []
 
-    func save(movimiento: MovimientoIngreso) throws {
+    func save(movimiento: Movimiento) throws {
         savedMovimientos.append(movimiento)
     }
 
-    func insert(movimiento: MovimientoIngreso) throws {
+    func insert(movimiento: Movimiento) throws {
         insertedMovimientos.append(movimiento)
     }
 
-    func delete(movimiento: MovimientoIngreso) throws {
+    func delete(movimiento: Movimiento) throws {
         deletedMovimientos.append(movimiento)
     }
 
-    func fetch() throws -> [MovimientoIngreso] {
+    func fetch() throws -> [Movimiento] {
         return savedMovimientos + insertedMovimientos
     }
 
-    func fetchSorted() throws -> [MovimientoIngreso] {
+    func fetchSorted() throws -> [Movimiento] {
         return savedMovimientos + insertedMovimientos
     }
 

@@ -43,10 +43,7 @@ class EliminarDataViewModel: ObservableObject {
     private var cryptos: [Crypto]
     private var carteras: [Cartera]
     private var fiats: [FIAT]
-    private var movimientosIngreso: [MovimientoIngreso]
-    private var movimientosEgreso: [MovimientoEgreso]
-    private var movimientosEntreCarteras: [MovimientoEntreCarteras]
-    private var movimientosSwap: [MovimientoSwap]
+    private var movimientos: [Movimiento]
     private var preciosHistoricos: [PrecioHistorico]
     private var syncConfigs: [CryptoSyncConfig]
     
@@ -66,10 +63,7 @@ class EliminarDataViewModel: ObservableObject {
         let cryptoDescriptor = FetchDescriptor<Crypto>()
         let carteraDescriptor = FetchDescriptor<Cartera>()
         let fiatDescriptor = FetchDescriptor<FIAT>()
-        let ingresoDescriptor = FetchDescriptor<MovimientoIngreso>()
-        let egresoDescriptor = FetchDescriptor<MovimientoEgreso>()
-        let entreCarterasDescriptor = FetchDescriptor<MovimientoEntreCarteras>()
-        let swapDescriptor = FetchDescriptor<MovimientoSwap>()
+        let movimientosDescriptor = FetchDescriptor<Movimiento>()
         let preciosDescriptor = FetchDescriptor<PrecioHistorico>()
         let syncConfigDescriptor = FetchDescriptor<CryptoSyncConfig>()
         
@@ -77,10 +71,7 @@ class EliminarDataViewModel: ObservableObject {
             self.cryptos = try modelContext.fetch(cryptoDescriptor)
             self.carteras = try modelContext.fetch(carteraDescriptor)
             self.fiats = try modelContext.fetch(fiatDescriptor)
-            self.movimientosIngreso = try modelContext.fetch(ingresoDescriptor)
-            self.movimientosEgreso = try modelContext.fetch(egresoDescriptor)
-            self.movimientosEntreCarteras = try modelContext.fetch(entreCarterasDescriptor)
-            self.movimientosSwap = try modelContext.fetch(swapDescriptor)
+            self.movimientos = try modelContext.fetch(movimientosDescriptor)
             self.preciosHistoricos = try modelContext.fetch(preciosDescriptor)
             self.syncConfigs = try modelContext.fetch(syncConfigDescriptor)
         } catch {
@@ -89,10 +80,7 @@ class EliminarDataViewModel: ObservableObject {
             self.cryptos = []
             self.carteras = []
             self.fiats = []
-            self.movimientosIngreso = []
-            self.movimientosEgreso = []
-            self.movimientosEntreCarteras = []
-            self.movimientosSwap = []
+            self.movimientos = []
             self.preciosHistoricos = []
             self.syncConfigs = []
         }
@@ -124,17 +112,8 @@ class EliminarDataViewModel: ObservableObject {
         
         // Borrando movimientos
         if deleteOptions.all || deleteOptions.movimientos {
-            agregarLog("Borrando movimientos de ingreso...")
-            movimientosIngreso.forEach { modelContext.delete($0) }
-            
-            agregarLog("Borrando movimientos de egreso...")
-            movimientosEgreso.forEach { modelContext.delete($0) }
-            
-            agregarLog("Borrando movimientos entre carteras...")
-            movimientosEntreCarteras.forEach { modelContext.delete($0) }
-            
-            agregarLog("Borrando movimientos de swap...")
-            movimientosSwap.forEach { modelContext.delete($0) }
+            agregarLog("Borrando movimientos...")
+            movimientos.forEach { modelContext.delete($0) }
         }
 
         // borrando precios historicos

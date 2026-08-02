@@ -2,14 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct MovimientosEntradaView: View {
-    @Query(sort: \MovimientoIngreso.fecha, order: .reverse) private var movimientos: [MovimientoIngreso]
+    @Query(filter: #Predicate<Movimiento> { $0.tipoRaw == "entrada" },
+           sort: \Movimiento.fecha, order: .reverse) private var movimientos: [Movimiento]
     
     @ObservedObject private var viewModel: MovimientosEntradaListViewModel
     
     // Estados para controlar los sheets
     @State private var showingAddSheet = false
     @State private var showingEditSheet = false
-    @State private var selectedMovimiento: MovimientoIngreso?
+    @State private var selectedMovimiento: Movimiento?
     
     // Inicializador que recibe directamente el ViewModel
     init(viewModel: MovimientosEntradaListViewModel) {
@@ -124,7 +125,7 @@ struct MovimientosEntradaView: View {
 
 // MARK: - Fila de Movimiento Entrada
 struct MovimientoEntradaRowView: View {
-    let movimiento: MovimientoIngreso
+    let movimiento: Movimiento
     
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {

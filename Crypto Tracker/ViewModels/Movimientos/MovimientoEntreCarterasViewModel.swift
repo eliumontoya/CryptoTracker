@@ -14,26 +14,28 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
     @Published var hasError = false
     @Published var errorMessage = ""
     @Published var uiState: MovimientoUIState = .idle
-    
+
     private let modelContext: ModelContext
-    let movimiento: MovimientoEntreCarteras?
+    /// Pierna de salida de la transferencia (`.transferenciaSalida`). La pierna de
+    /// entrada se localiza por `groupId`.
+    let movimiento: Movimiento?
     private var cancellables = Set<AnyCancellable>()
-    
+
     var comision: Decimal {
         cantidadCryptoSalida - cantidadCryptoEntrada
     }
-    
+
      var cryptoDisponible: Decimal {
         guard let cartera = selectedCarteraOrigen,
               let crypto = selectedCrypto else { return 0 }
-        
+
         if let movimiento = movimiento {
             return cartera.getCryptoDisponible(crypto: crypto, movimientoActual: movimiento.cantidadCryptoSalida)
         } else {
             return cartera.getCryptoDisponible(crypto: crypto)
         }
     }
-    
+
     var formIsValid: Bool {
         selectedCrypto != nil &&
         selectedCarteraOrigen != nil &&
@@ -44,17 +46,17 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         cantidadCryptoEntrada <= cantidadCryptoSalida &&
         cantidadCryptoSalida <= cryptoDisponible
     }
-    
-    init(modelContext: ModelContext, movimiento: MovimientoEntreCarteras? = nil) {
+
+    init(modelContext: ModelContext, movimiento: Movimiento? = nil) {
         self.modelContext = modelContext
         self.movimiento = movimiento
-        
+
         setupBindings()
         if let movimiento = movimiento {
             loadMovimiento(movimiento)
         }
     }
-    
+
     private func setupBindings() {
         // Actualizar entrada cuando cambia salida
         $cantidadCryptoSalida
@@ -66,8 +68,8 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
             }
             .store(in: &cancellables)
     }
-    
-    private func loadMovimiento(_ movimiento: MovimientoEntreCarteras) {
+
+    private func loadMovimiento(_ movimiento: Movimiento) {
         selectedCrypto = movimiento.crypto
         selectedCarteraOrigen = movimiento.carteraOrigen
         selectedCarteraDestino = movimiento.carteraDestino
@@ -75,7 +77,17 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         cantidadCryptoSalida = movimiento.cantidadCryptoSalida
         cantidadCryptoEntrada = movimiento.cantidadCryptoEntrada
     }
-    
+
+    /// Pierna de entrada de la transferencia actual (si existe), localizada por `groupId`.
+    private func piernaEntrada(_ movimiento: Movimiento) -> Movimiento? {
+        guard let groupId = movimiento.groupId else { return nil }
+        return (try? modelContext.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == "transferenciaEntrada" }
+            )
+        ))?.first
+    }
+
     func adjustCantidades() {
         if cantidadCryptoSalida > cryptoDisponible {
             cantidadCryptoSalida = cryptoDisponible
@@ -84,16 +96,16 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
             cantidadCryptoEntrada = cantidadCryptoSalida
         }
     }
-    
+
     func setMaxCantidadSalida() {
         cantidadCryptoSalida = cryptoDisponible
         adjustCantidades()
     }
-    
+
     func setMaxCantidadEntrada() {
         cantidadCryptoEntrada = cantidadCryptoSalida
     }
-    
+
     func save() async throws {
         guard let crypto = selectedCrypto else {
             throw MovimientoFormCommonError.missingCrypto
@@ -107,23 +119,37 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         if carteraOrigen.id == carteraDestino.id {
             throw MovimientoFormCommonError.sameCartera
         }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
             if let existingMovimiento = movimiento {
-                // Actualizar movimiento existente
+                // Actualizar el par de movimientos existente
+                let entrada = piernaEntrada(existingMovimiento)
+
                 existingMovimiento.fecha = fecha
                 existingMovimiento.cantidadCryptoSalida = cantidadCryptoSalida
                 existingMovimiento.cantidadCryptoEntrada = cantidadCryptoEntrada
                 existingMovimiento.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
                 existingMovimiento.carteraOrigen = carteraOrigen
                 existingMovimiento.carteraDestino = carteraDestino
+                existingMovimiento.cartera = carteraOrigen
                 existingMovimiento.crypto = crypto
+
+                if let entrada = entrada {
+                    entrada.fecha = fecha
+                    entrada.cantidadCryptoSalida = cantidadCryptoSalida
+                    entrada.cantidadCryptoEntrada = cantidadCryptoEntrada
+                    entrada.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
+                    entrada.carteraOrigen = carteraOrigen
+                    entrada.carteraDestino = carteraDestino
+                    entrada.cartera = carteraDestino
+                    entrada.crypto = crypto
+                }
             } else {
-                // Crear nuevo movimiento
-                let nuevoMovimiento = MovimientoEntreCarteras(
+                // Crear el par de movimientos (salida + entrada) con groupId compartido
+                let par = Movimiento.transferencia(
                     fecha: fecha,
                     cantidadCryptoSalida: cantidadCryptoSalida,
                     cantidadCryptoEntrada: cantidadCryptoEntrada,
@@ -131,12 +157,13 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
                     carteraDestino: carteraDestino,
                     crypto: crypto
                 )
-                modelContext.insert(nuevoMovimiento)
+                modelContext.insert(par.salida)
+                modelContext.insert(par.entrada)
             }
-            
+
             try modelContext.save()
             uiState = .success
-            
+
         } catch {
             uiState = .error(error.localizedDescription)
             isLoading = false
@@ -144,14 +171,18 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         }
         isLoading = false
     }
-    
+
     func delete() async throws {
         guard let movimiento = movimiento else { return }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
+            // Eliminar ambas piernas del par
+            if let entrada = piernaEntrada(movimiento) {
+                modelContext.delete(entrada)
+            }
             modelContext.delete(movimiento)
             try modelContext.save()
             uiState = .success

@@ -149,8 +149,10 @@ final class MovimientoEntreCarterasViewModelTests: XCTestCase {
             try await viewModel.save()
             
  
-            // Verificar que el movimiento se guardó correctamente
-            let fetchRequest = FetchDescriptor<MovimientoEntreCarteras>()
+            // Verificar que los movimientos se guardaron correctamente (par con groupId)
+            let fetchRequest = FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.tipoRaw == "transferenciaSalida" }
+            )
             let movimientos = try modelContext.fetch(fetchRequest)
             
             XCTAssertEqual(movimientos.count, 1)
@@ -172,7 +174,7 @@ final class MovimientoEntreCarterasViewModelTests: XCTestCase {
     // MARK: - Pruebas de Eliminación
     func testDelete_Success() async throws {
         // Primero crear un movimiento para eliminar
-        let movimiento = MovimientoEntreCarteras(
+        let par = Movimiento.transferencia(
             fecha: Date(),
             cantidadCryptoSalida: 50,
             cantidadCryptoEntrada: 50,
@@ -180,17 +182,18 @@ final class MovimientoEntreCarterasViewModelTests: XCTestCase {
             carteraDestino: mockCarteraDestino,
             crypto: mockCrypto
         )
-        modelContext.insert(movimiento)
+        modelContext.insert(par.salida)
+        modelContext.insert(par.entrada)
         
         // Inicializar ViewModel con el movimiento
-        viewModel = MovimientoEntreCarterasViewModel(modelContext: modelContext, movimiento: movimiento)
+        viewModel = MovimientoEntreCarterasViewModel(modelContext: modelContext, movimiento: par.salida)
         
         do {
             try await viewModel.delete()
             
  
-            // Verificar que el movimiento se eliminó
-            let fetchRequest = FetchDescriptor<MovimientoEntreCarteras>()
+            // Verificar que los movimientos se eliminaron
+            let fetchRequest = FetchDescriptor<Movimiento>()
             let movimientos = try modelContext.fetch(fetchRequest)
             
             XCTAssertEqual(movimientos.count, 0)

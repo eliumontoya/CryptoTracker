@@ -36,7 +36,7 @@ final class MovimientosEntradaListViewModel: ObservableObject {
         entradaViewModel.unloadMovimiento()
     }
     
-    func prepareForEdit(movimiento: MovimientoIngreso) {
+    func prepareForEdit(movimiento: Movimiento) {
         entradaViewModel.loadMovimiento(movimiento)
     }
     
@@ -46,7 +46,7 @@ final class MovimientosEntradaListViewModel: ObservableObject {
         // SwiftData actualiza automáticamente las consultas @Query
     }
     
-    func deleteMovimientos(at offsets: IndexSet, from movimientos: [MovimientoIngreso]) async throws {
+    func deleteMovimientos(at offsets: IndexSet, from movimientos: [Movimiento]) async throws {
         isLoading = true
         uiState = .loading
         

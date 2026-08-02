@@ -28,12 +28,12 @@ class MovimientoEntradaParser {
         carteras: [Cartera],
         cryptos: [Crypto],
         fiats: [FIAT]
-    ) throws -> [MovimientoIngreso] {
+    ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo...")
         try worksheet.validateHeaders(MovimientoEntradaHeaders.required)
         
         let headers = Dictionary(uniqueKeysWithValues: worksheet.headerRow.enumerated().map { ($1, $0) })
-        var movimientos: [MovimientoIngreso] = []
+        var movimientos: [Movimiento] = []
         
         print("📊 Iniciando procesamiento de \(worksheet.rows.count) filas...")
         
@@ -68,7 +68,7 @@ class MovimientoEntradaParser {
         carteras: [Cartera],
         cryptos: [Crypto],
         fiats: [FIAT]
-    ) throws -> MovimientoIngreso {
+    ) throws -> Movimiento {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoEntradaHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
               !fechaStr.isEmpty else {
@@ -138,7 +138,7 @@ class MovimientoEntradaParser {
             cantidadCrypto: cantidadCrypto
         )
         
-        return MovimientoIngreso(
+        return Movimiento.entrada(
             fecha: fecha,
             cantidadCrypto: cantidadCrypto,
             precioUSD: precioUSD,
