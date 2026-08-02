@@ -11,6 +11,7 @@ class AppDependencyContainer {
     let transactionRunner: TransactionRunner
     let holdingService: HoldingServiceProtocol
     let priceService: PriceServiceProtocol
+    let registerMovementUseCase: RegisterMovementUseCaseProtocol
     
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
@@ -32,6 +33,10 @@ class AppDependencyContainer {
         self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
         self.holdingService = HoldingService()
         self.priceService = PriceService()
+        self.registerMovementUseCase = RegisterMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
         
         // Inicializar ViewModels individuales
         self.movimientoEntradaViewModel = MovimientoEntradaViewModel(
