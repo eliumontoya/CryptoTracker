@@ -62,7 +62,7 @@ struct MainChartLegendView: View {
                     Text(item.nombre)
                         .font(.subheadline)
                     
-                    Text(item.porcentaje.formatted(.number.precision(.fractionLength(2))) + "%")
+                    Text(Format.percent(item.porcentaje))
                         .foregroundStyle(item.porcentaje >= 0 ? .green : .red)
                         .font(.subheadline)
                 }

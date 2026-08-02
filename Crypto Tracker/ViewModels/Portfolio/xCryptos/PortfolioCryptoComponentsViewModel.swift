@@ -29,16 +29,16 @@ final class PortfolioCryptoComponentsViewModel: ObservableObject {
             summary.porcentajeGanancia >= 0
         }
         
-        func formatearCantidad(_ cantidad: Decimal) -> String {
-            cantidad.formatted()
+        func formatearCantidad(_ cantidad: Decimal, symbol: String) -> String {
+            Format.crypto(cantidad, symbol: symbol)
         }
         
         func formatearUSD(_ cantidad: Decimal) -> String {
-            cantidad.formatted(.currency(code: "USD"))
+            Format.usd(cantidad)
         }
         
         func formatearPorcentaje(_ porcentaje: Decimal) -> String {
-            porcentaje.formatted(.number.precision(.fractionLength(2))) + "%"
+            Format.percent(porcentaje)
         }
     }
     
@@ -76,11 +76,11 @@ final class PortfolioCryptoComponentsViewModel: ObservableObject {
         }
         
         func formatearUSD(_ cantidad: Decimal) -> String {
-            cantidad.formatted(.currency(code: "USD"))
+            Format.usd(cantidad)
         }
         
         func formatearPorcentaje(_ porcentaje: Decimal) -> String {
-            porcentaje.formatted(.number.precision(.fractionLength(2))) + "%"
+            Format.percent(porcentaje)
         }
     }
 }

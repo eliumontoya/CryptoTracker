@@ -148,7 +148,7 @@ struct MovimientoSalidaFormView: View {
                     .disabled(viewModel.usaFiatAlterno)
             }
             
-            Text("Total USD: \(viewModel.valorTotalUSD.formatted(.currency(code: "USD")))")
+            Text("Total USD: \(Format.usd(viewModel.valorTotalUSD))")
                 .font(.headline)
                 .foregroundStyle(.blue)
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -171,7 +171,7 @@ struct MovimientoSalidaFormView: View {
             .pickerStyle(.menu)
             
             if let fiat = viewModel.selectedFiatAlterno {
-                Text("Tasa de cambio: 1 USD = \(fiat.precioUSD.formatted()) \(fiat.simbolo)")
+                Text("Tasa de cambio: 1 USD = \(Format.currency(fiat.precioUSD, code: fiat.simbolo))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)

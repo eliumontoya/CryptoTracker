@@ -20,7 +20,7 @@ struct MainPortfolioCardView: View {
             }
             
             // Valor principal
-            Text(value.formatted(.currency(code: "USD")))
+            Text(Format.usd(value))
                 .font(.system(size: 24, weight: .bold))
             
             // Texto secundario (opcional)
@@ -50,7 +50,7 @@ struct MainPortfolioHeaderView: View {
                 .font(.largeTitle)
                 .bold()
             Spacer()
-            Text(Date().formatted(date: .abbreviated, time: .shortened))
+            Text(Format.date(Date()))
                 .foregroundStyle(.secondary)
         }
         .padding(.bottom)
@@ -75,7 +75,7 @@ struct MainPortfolioSummaryView: View {
             MainPortfolioCardView(
                 title: "Valor Actual",
                 value: summary.valorActualUSD,
-                secondaryText: "\(summary.rendimientoTotal.formatted(.number.precision(.fractionLength(2))))%",
+                secondaryText: "\(Format.percent(summary.rendimientoTotal))",
                 isPositive: summary.isGanancia,
                 icon: "chart.line.uptrend.xyaxis.circle.fill",
                 color: summary.isGanancia ? .green : .red
@@ -93,7 +93,7 @@ struct MainPortfolioSummaryView: View {
             MainPortfolioCardView(
                 title: "Ganancia Total",
                 value: summary.gananciaTotal,
-                secondaryText: "\(summary.rendimientoTotal.formatted(.number.precision(.fractionLength(2))))%",
+                secondaryText: "\(Format.percent(summary.rendimientoTotal))",
                 isPositive: summary.isGanancia,
                 icon: "chart.pie.fill",
                 color: summary.isGanancia ? .green : .red

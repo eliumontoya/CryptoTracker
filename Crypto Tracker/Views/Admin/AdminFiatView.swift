@@ -71,7 +71,7 @@ struct FiatRowView: View {
                 Text("(\(fiat.simbolo))")
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(precio.formatted(.currency(code: "USD")))
+                Text(Format.usd(precio))
                     .font(.subheadline)
             }
         }

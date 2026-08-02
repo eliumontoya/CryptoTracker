@@ -41,10 +41,10 @@ struct CryptoPreciosHistoricosView: View {
                 
                 List(historicos, id: \.id) { historico in
                     HStack {
-                        Text(historico.fecha.formatted(date: .abbreviated, time: .shortened))
+                        Text(Format.date(historico.fecha))
                             .foregroundStyle(.secondary)
                         Spacer()
-                        Text(historico.precio.formatted(.currency(code: "USD")))
+                        Text(Format.usd(historico.precio))
                             .monospacedDigit()
                     }
                     .padding(.vertical, 4)

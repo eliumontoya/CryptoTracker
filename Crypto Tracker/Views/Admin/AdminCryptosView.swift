@@ -70,13 +70,13 @@ struct CryptoRowView: View {
                     .foregroundColor(.secondary)
                 Spacer()
                 let calculos = viewModel.getCalculosCrypto(crypto)
-                Text(calculos.precio.formatted(.currency(code: "USD")))
+                Text(Format.usd(calculos.precio))
                     .font(.subheadline)
             }
             
             HStack {
                 let calculos = viewModel.getCalculosCrypto(crypto)
-                Text("Última actualización: \(calculos.ultimaActualizacion.formatted())")
+                Text("Última actualización: \(Format.date(calculos.ultimaActualizacion))")
                     .font(.caption)
                     .foregroundColor(.secondary)
                 Spacer()

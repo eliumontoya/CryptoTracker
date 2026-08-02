@@ -92,7 +92,7 @@ struct CarteraRowView: View {
                 Text("(\(cartera.simbolo))")
                     .foregroundColor(.secondary)
                 Spacer()
-                Text(valorTotalUSD.formatted(.currency(code: "USD")))
+                Text(Format.usd(valorTotalUSD))
                     .font(.subheadline)
                     .foregroundColor(.blue)
             }
@@ -106,7 +106,7 @@ struct CarteraRowView: View {
             HStack {
                 Text(gananciaPerdida.esGanancia ? "Ganancia:" : "Pérdida:")
                     .font(.caption)
-                Text(gananciaPerdida.ganancia.formatted(.currency(code: "USD")))
+                Text(Format.usd(gananciaPerdida.ganancia))
                     .font(.caption)
                     .foregroundColor(gananciaPerdida.esGanancia ? .green : .red)
             }

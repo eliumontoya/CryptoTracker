@@ -164,7 +164,7 @@ struct CryptoOrigenSectionView: View {
     
     private func cryptoOrigenDetails(_ crypto: Crypto) -> some View {
         Group {
-            Text("Disponible: \(viewModel.cryptoDisponible.formatted()) \(crypto.simbolo)")
+            Text("Disponible: \(Format.crypto(viewModel.cryptoDisponible, symbol: crypto.simbolo))")
                 .font(.caption)
                 .foregroundColor(.secondary)
             
@@ -196,7 +196,7 @@ struct CryptoOrigenSectionView: View {
             }
             
             if viewModel.cantidadOrigen > 0 && viewModel.precioUSDOrigen > 0 {
-                Text("Total USD Origen: \(viewModel.valorTotalOrigen.formatted(.currency(code: "USD")))")
+                Text("Total USD Origen: \(Format.usd(viewModel.valorTotalOrigen))")
                     .font(.caption)
                     .foregroundStyle(.blue)
             }
@@ -248,7 +248,7 @@ struct CryptoDestinoSectionView: View {
             }
             
             if viewModel.cantidadDestino > 0 && viewModel.precioUSDDestino > 0 {
-                Text("Total USD Destino: \(viewModel.valorTotalDestino.formatted(.currency(code: "USD")))")
+                Text("Total USD Destino: \(Format.usd(viewModel.valorTotalDestino))")
                     .font(.caption)
                     .foregroundStyle(.blue)
             }
@@ -273,8 +273,8 @@ struct ResumenSwapSectionView: View {
                     VStack(alignment: .leading) {
                         Text("Entrega:")
                             .foregroundStyle(.red)
-                        Text("\(viewModel.cantidadOrigen.formatted()) \(cryptoOrigen.simbolo)")
-                        Text("(\(viewModel.valorTotalOrigen.formatted(.currency(code: "USD"))))")
+                        Text("\(Format.crypto(viewModel.cantidadOrigen, symbol: cryptoOrigen.simbolo))")
+                        Text("(\(Format.usd(viewModel.valorTotalOrigen)))")
                             .font(.caption)
                     }
                     
@@ -287,8 +287,8 @@ struct ResumenSwapSectionView: View {
                     VStack(alignment: .trailing) {
                         Text("Recibe:")
                             .foregroundStyle(.green)
-                        Text("\(viewModel.cantidadDestino.formatted()) \(cryptoDestino.simbolo)")
-                        Text("(\(viewModel.valorTotalDestino.formatted(.currency(code: "USD"))))")
+                        Text("\(Format.crypto(viewModel.cantidadDestino, symbol: cryptoDestino.simbolo))")
+                        Text("(\(Format.usd(viewModel.valorTotalDestino)))")
                             .font(.caption)
                     }
                 }

@@ -29,11 +29,11 @@ final class CarteraDetailViewModel: ObservableObject {
     }
     
     var valorTotalUSD: String {
-        carteraDetail.valorTotalUSD.formatted(.currency(code: "USD"))
+        Format.usd(carteraDetail.valorTotalUSD)
     }
     
     var gananciaTotal: String {
-        carteraDetail.gananciaTotal.formatted(.currency(code: "USD"))
+        Format.usd(carteraDetail.gananciaTotal)
     }
     
     var isGananciaPositive: Bool {
@@ -41,7 +41,7 @@ final class CarteraDetailViewModel: ObservableObject {
     }
     
     var rentabilidadFormatted: String {
-        carteraDetail.rentabilidadTotal.formatted(.number.precision(.fractionLength(2))) + "%"
+        Format.percent(carteraDetail.rentabilidadTotal)
     }
     
     var cryptoDetails: [CryptoDetail] {

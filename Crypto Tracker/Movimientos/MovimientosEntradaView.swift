@@ -130,7 +130,7 @@ struct MovimientoEntradaRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Primera línea: Fecha y Crypto
             HStack {
-                Text(movimiento.fecha.formatted(date: .abbreviated, time: .shortened))
+                Text(Format.date(movimiento.fecha))
                     .font(.subheadline)
                 Spacer()
                 if let crypto = movimiento.crypto {
@@ -142,10 +142,10 @@ struct MovimientoEntradaRowView: View {
             // Segunda línea: Cantidad y Precio USD
             HStack {
                 if let crypto = movimiento.crypto {
-                    Text("Cantidad: \(movimiento.cantidadCrypto.formatted()) \(crypto.simbolo)")
+                    Text("Cantidad: \(Format.crypto(movimiento.cantidadCrypto, symbol: crypto.simbolo))")
                 }
                 Spacer()
-                Text("Precio USD: \(movimiento.precioUSD.formatted(.currency(code: "USD")))")
+                Text("Precio USD: \(Format.usd(movimiento.precioUSD))")
             }
             .font(.subheadline)
             
@@ -156,11 +156,11 @@ struct MovimientoEntradaRowView: View {
                 }
                 Spacer()
                 VStack(alignment: .trailing) {
-                    Text("Total USD: \(movimiento.valorTotalUSD.formatted(.currency(code: "USD")))")
+                    Text("Total USD: \(Format.usd(movimiento.valorTotalUSD))")
                     if movimiento.usaFiatAlterno,
                        let fiat = movimiento.fiatAlterno,
                        let valorFiat = movimiento.valorTotalFiatAlterno {
-                        Text("Total \(fiat.simbolo): \(valorFiat.formatted(.currency(code: fiat.simbolo)))")
+                        Text("Total \(fiat.simbolo): \(Format.currency(valorFiat, code: fiat.simbolo))")
                             .foregroundStyle(.green)
                     }
                 }

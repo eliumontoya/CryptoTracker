@@ -42,7 +42,7 @@ struct MovimientoDetalleRowView: View {
             Text(movimiento.tipo.title)
                 .foregroundStyle(colorMovimiento)
             Spacer()
-            Text(movimiento.fecha.formatted(date: .abbreviated, time: .shortened))
+            Text(Format.date(movimiento.fecha))
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -52,12 +52,12 @@ struct MovimientoDetalleRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             switch movimiento.tipo {
             case .entrada:
-                Text("Recibido: \(movimiento.cantidadDestino.formatted()) \(movimiento.cryptoDestino)")
+                Text("Recibido: \(Format.crypto(movimiento.cantidadDestino, symbol: movimiento.cryptoDestino))")
             case .salida:
-                Text("Enviado: \(movimiento.cantidadOrigen.formatted()) \(movimiento.cryptoOrigen)")
+                Text("Enviado: \(Format.crypto(movimiento.cantidadOrigen, symbol: movimiento.cryptoOrigen))")
             case .transferencia, .swap:
-                Text("Enviado: \(movimiento.cantidadOrigen.formatted()) \(movimiento.cryptoOrigen)")
-                Text("Recibido: \(movimiento.cantidadDestino.formatted()) \(movimiento.cryptoDestino)")
+                Text("Enviado: \(Format.crypto(movimiento.cantidadOrigen, symbol: movimiento.cryptoOrigen))")
+                Text("Recibido: \(Format.crypto(movimiento.cantidadDestino, symbol: movimiento.cryptoDestino))")
             }
         }
         .font(.subheadline)
@@ -68,7 +68,7 @@ struct MovimientoDetalleRowView: View {
             carterasText
             Spacer()
             if let valorUSD = movimiento.valorUSD {
-                Text(valorUSD.formatted(.currency(code: "USD")))
+                Text(Format.usd(valorUSD))
                     .foregroundStyle(colorMovimiento)
             }
         }

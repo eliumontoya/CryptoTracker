@@ -74,7 +74,7 @@ struct MovimientoSwapRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             // Fecha y cryptos
             HStack {
-                Text(movimiento.fecha.formatted(date: .abbreviated, time: .shortened))
+                Text(Format.date(movimiento.fecha))
                     .font(.subheadline)
                 Spacer()
                 if let cryptoOrigen = movimiento.cryptoOrigen,
@@ -89,12 +89,12 @@ struct MovimientoSwapRowView: View {
                 if let cryptoOrigen = movimiento.cryptoOrigen {
                     HStack {
                         Label {
-                            Text("\(movimiento.cantidadOrigen.formatted()) \(cryptoOrigen.simbolo)")
+                            Text("\(Format.crypto(movimiento.cantidadOrigen, symbol: cryptoOrigen.simbolo))")
                         } icon: {
                             Image(systemName: "arrow.up.right")
                                 .foregroundStyle(.red)
                         }
-                        Text("@ \(movimiento.precioUSDOrigen.formatted(.currency(code: "USD")))")
+                        Text("@ \(Format.usd(movimiento.precioUSDOrigen))")
                             .font(.caption)
                     }
                 }
@@ -102,12 +102,12 @@ struct MovimientoSwapRowView: View {
                 if let cryptoDestino = movimiento.cryptoDestino {
                     HStack {
                         Label {
-                            Text("\(movimiento.cantidadDestino.formatted()) \(cryptoDestino.simbolo)")
+                            Text("\(Format.crypto(movimiento.cantidadDestino, symbol: cryptoDestino.simbolo))")
                         } icon: {
                             Image(systemName: "arrow.down.right")
                                 .foregroundStyle(.green)
                         }
-                        Text("@ \(movimiento.precioUSDDestino.formatted(.currency(code: "USD")))")
+                        Text("@ \(Format.usd(movimiento.precioUSDDestino))")
                             .font(.caption)
                     }
                 }
