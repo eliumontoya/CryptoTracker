@@ -157,33 +157,4 @@ struct EliminarDataView: View {
     }
 }
 
-/*
-#Preview {
-    struct PreviewWrapper: View {
-            let context: ModelContext
-            
-            init() {
-                let config = ModelConfiguration(isStoredInMemoryOnly: true)
-                let container = try! ModelContainer(
-                    for: Crypto.self,
-                        Cartera.self,
-                        FIAT.self,
-                        MovimientoIngreso.self,
-                        MovimientoEgreso.self,
-                        MovimientoEntreCarteras.self,
-                        MovimientoSwap.self,
-                        PrecioHistorico.self,
-                        CryptoSyncConfig.self,
-                    configurations: config
-                )
-                self.context = container.mainContext
-            }
-            
-            var body: some View {
-                EliminarDataView(modelContext: context)
-            }
-        }
-        
-          return PreviewWrapper()
-}
-*/
+

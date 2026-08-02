@@ -75,9 +75,6 @@ class FIAT {
     var precioUSD: Decimal
 
     @Relationship(inverse: \Movimiento.fiatAlterno) var movimientos: [Movimiento] = []
-    // Deprecado: solo para migración v3 → v4
-    @Relationship(inverse: \MovimientoIngreso.fiatAlterno) var movimientosIngreso: [MovimientoIngreso] = []
-    @Relationship(inverse: \MovimientoEgreso.fiatAlterno) var movimientosEgreso: [MovimientoEgreso] = []
 
     init(nombre: String, simbolo: String, precioUSD: Decimal) {
         self.id = UUID()
@@ -85,8 +82,6 @@ class FIAT {
         self.simbolo = simbolo.validated(maxLength: 10)
         self.precioUSD = precioUSD
         self.movimientos = []
-        self.movimientosIngreso = []
-        self.movimientosEgreso = []
     }
 }
 
@@ -106,12 +101,7 @@ class Crypto {
     @Relationship(inverse: \Movimiento.crypto) var movimientos: [Movimiento] = []
     @Relationship(inverse: \Movimiento.cryptoOrigen) var movimientosComoCryptoOrigen: [Movimiento] = []
     @Relationship(inverse: \Movimiento.cryptoDestino) var movimientosComoCryptoDestino: [Movimiento] = []
-    // Deprecado: solo para migración v3 → v4
-    @Relationship(inverse: \MovimientoIngreso.crypto) var movimientosIngreso: [MovimientoIngreso] = []
-    @Relationship(inverse: \MovimientoEgreso.crypto) var movimientosEgreso: [MovimientoEgreso] = []
     @Relationship(inverse: \PrecioHistorico.crypto) var historicosPrecios: [PrecioHistorico] = []
-    @Relationship(inverse: \MovimientoSwap.cryptoOrigen) var swapsComoOrigen: [MovimientoSwap] = []
-    @Relationship(inverse: \MovimientoSwap.cryptoDestino) var swapsComoDestino: [MovimientoSwap] = []
 
     init(nombre: String, simbolo: String, precio: Decimal) {
         self.id = UUID()
@@ -122,11 +112,7 @@ class Crypto {
         self.movimientos = []
         self.movimientosComoCryptoOrigen = []
         self.movimientosComoCryptoDestino = []
-        self.movimientosIngreso = []
-        self.movimientosEgreso = []
         self.historicosPrecios = []
-        self.swapsComoOrigen = []
-        self.swapsComoDestino = []
     }
 
     func precioEnFecha(_ fecha: Date) -> Decimal? {
@@ -198,12 +184,6 @@ class Cartera {
     @Relationship(inverse: \Movimiento.cartera) var movimientos: [Movimiento] = []
     @Relationship(inverse: \Movimiento.carteraOrigen) var movimientosComoOrigen: [Movimiento] = []
     @Relationship(inverse: \Movimiento.carteraDestino) var movimientosComoDestino: [Movimiento] = []
-    // Deprecado: solo para migración v3 → v4
-    @Relationship(inverse: \MovimientoIngreso.cartera) var movimientosIngreso: [MovimientoIngreso] = []
-    @Relationship(inverse: \MovimientoEgreso.cartera) var movimientosEgreso: [MovimientoEgreso] = []
-    @Relationship(inverse: \MovimientoEntreCarteras.carteraOrigen) var movimientosSalida: [MovimientoEntreCarteras] = []
-    @Relationship(inverse: \MovimientoEntreCarteras.carteraDestino) var movimientosEntrada: [MovimientoEntreCarteras] = []
-    @Relationship(inverse: \MovimientoSwap.cartera) var swaps: [MovimientoSwap] = []
 
     init(nombre: String, simbolo: String, isMain: Bool = false, portfolio: Portfolio? = nil) {
         self.id = UUID()
@@ -214,11 +194,6 @@ class Cartera {
         self.movimientos = []
         self.movimientosComoOrigen = []
         self.movimientosComoDestino = []
-        self.movimientosIngreso = []
-        self.movimientosEgreso = []
-        self.movimientosSalida = []
-        self.movimientosEntrada = []
-        self.swaps = []
     }
 }
 
@@ -256,7 +231,6 @@ class Holding {
     }
 }
 
-// MARK: - Entidad MovimientoIngreso
 // MARK: - Entidad Movimiento (unificado)
 /// Entidad unificada de movimientos. Reemplaza a `MovimientoIngreso`,
 /// `MovimientoEgreso`, `MovimientoEntreCarteras` y `MovimientoSwap`.
@@ -494,165 +468,5 @@ class Movimiento {
             cryptoDestino: cryptoDestino
         )
         return (salida, entrada)
-    }
-}
-
-// MARK: - Entidad MovimientoIngreso (DEPRECADA)
-/// ⚠️ Deprecado: se conserva temporalmente solo para la migración v3 → v4
-/// (`MovimientoMigration`). No usar en código nuevo — usar `Movimiento`.
-@Model
-class MovimientoIngreso {
-    @Attribute(.unique) var id: UUID
-    var fecha: Date
-
-    // Campos principales
-    var cantidadCrypto: Decimal
-    var precioUSD: Decimal
-    var valorTotalUSD: Decimal
-
-    // FIAT Alterno
-    var usaFiatAlterno: Bool
-    var precioFiatAlterno: Decimal?
-    var valorTotalFiatAlterno: Decimal?
-
-    // Relaciones
-    @Relationship var cartera: Cartera?
-    @Relationship var crypto: Crypto?
-    @Relationship var fiatAlterno: FIAT?
-
-    init(fecha: Date,
-         cantidadCrypto: Decimal,
-         precioUSD: Decimal,
-         usaFiatAlterno: Bool = false,
-         precioFiatAlterno: Decimal? = nil,
-         valorTotalFiatAlterno: Decimal? = nil,
-         cartera: Cartera,
-         crypto: Crypto,
-         fiatAlterno: FIAT? = nil) {
-        self.id = UUID()
-        self.fecha = fecha
-        self.cantidadCrypto = cantidadCrypto
-        self.precioUSD = precioUSD
-        self.valorTotalUSD = cantidadCrypto * precioUSD
-        self.usaFiatAlterno = usaFiatAlterno
-        self.precioFiatAlterno = precioFiatAlterno
-        self.valorTotalFiatAlterno = valorTotalFiatAlterno
-        self.cartera = cartera
-        self.crypto = crypto
-        self.fiatAlterno = fiatAlterno
-    }
-}
-
-// MARK: - Entidad MovimientoEgreso (DEPRECADA)
-/// ⚠️ Deprecado: se conserva temporalmente solo para la migración v3 → v4
-/// (`MovimientoMigration`). No usar en código nuevo — usar `Movimiento`.
-@Model
-class MovimientoEgreso {
-    @Attribute(.unique) var id: UUID
-    var fecha: Date
-
-    // Campos principales en USD
-    var cantidadCrypto: Decimal
-    var precioUSD: Decimal
-    var valorTotalUSD: Decimal
-
-    // FIAT Alterno
-    var usaFiatAlterno: Bool
-    var precioFiatAlterno: Decimal?
-    var valorTotalFiatAlterno: Decimal?
-
-    // Relaciones
-    @Relationship var cartera: Cartera?
-    @Relationship var crypto: Crypto?
-    @Relationship var fiatAlterno: FIAT?
-
-    init(fecha: Date,
-         cantidadCrypto: Decimal,
-         precioUSD: Decimal,
-         usaFiatAlterno: Bool = false,
-         precioFiatAlterno: Decimal? = nil,
-         valorTotalFiatAlterno: Decimal? = nil,
-         cartera: Cartera,
-         crypto: Crypto,
-         fiatAlterno: FIAT? = nil) {
-        self.id = UUID()
-        self.fecha = fecha
-        self.cantidadCrypto = cantidadCrypto
-        self.precioUSD = precioUSD
-        self.valorTotalUSD = cantidadCrypto * precioUSD
-        self.usaFiatAlterno = usaFiatAlterno
-        self.precioFiatAlterno = precioFiatAlterno
-        self.valorTotalFiatAlterno = valorTotalFiatAlterno
-        self.cartera = cartera
-        self.crypto = crypto
-        self.fiatAlterno = fiatAlterno
-    }
-}
-
-// MARK: - Entidad MovimientoEntreCarteras (DEPRECADA)
-/// ⚠️ Deprecado: se conserva temporalmente solo para la migración v3 → v4
-/// (`MovimientoMigration`). No usar en código nuevo — usar `Movimiento`.
-@Model
-class MovimientoEntreCarteras {
-    @Attribute(.unique) var id: UUID
-    var fecha: Date
-    var cantidadCryptoSalida: Decimal // Renombrado para claridad
-    var cantidadCryptoEntrada: Decimal // Nuevo campo
-    var cantidadCryptoComision: Decimal // Nuevo campo
-
-    @Relationship var carteraOrigen: Cartera?
-    @Relationship var carteraDestino: Cartera?
-    @Relationship var crypto: Crypto?
-
-    init(fecha: Date,
-         cantidadCryptoSalida: Decimal,
-         cantidadCryptoEntrada: Decimal,
-         carteraOrigen: Cartera,
-         carteraDestino: Cartera,
-         crypto: Crypto) {
-        self.id = UUID()
-        self.fecha = fecha
-        self.cantidadCryptoSalida = cantidadCryptoSalida
-        self.cantidadCryptoEntrada = cantidadCryptoEntrada
-        self.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
-        self.carteraOrigen = carteraOrigen
-        self.carteraDestino = carteraDestino
-        self.crypto = crypto
-    }
-}
-
-// MARK: - Entidad MovimientoSwap (DEPRECADA)
-/// ⚠️ Deprecado: se conserva temporalmente solo para la migración v3 → v4
-/// (`MovimientoMigration`). No usar en código nuevo — usar `Movimiento`.
-@Model
-class MovimientoSwap {
-    @Attribute(.unique) var id: UUID
-    var fecha: Date
-    var cantidadOrigen: Decimal
-    var cantidadDestino: Decimal
-    var precioUSDOrigen: Decimal
-    var precioUSDDestino: Decimal
-
-    @Relationship var cartera: Cartera?
-    @Relationship var cryptoOrigen: Crypto?
-    @Relationship var cryptoDestino: Crypto?
-
-    init(fecha: Date,
-         cantidadOrigen: Decimal,
-         cantidadDestino: Decimal,
-         precioUSDOrigen: Decimal,
-         precioUSDDestino: Decimal,
-         cartera: Cartera,
-         cryptoOrigen: Crypto,
-         cryptoDestino: Crypto) {
-        self.id = UUID()
-        self.fecha = fecha
-        self.cantidadOrigen = cantidadOrigen
-        self.cantidadDestino = cantidadDestino
-        self.precioUSDOrigen = precioUSDOrigen
-        self.precioUSDDestino = precioUSDDestino
-        self.cartera = cartera
-        self.cryptoOrigen = cryptoOrigen
-        self.cryptoDestino = cryptoDestino
     }
 }

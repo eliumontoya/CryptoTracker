@@ -17,13 +17,9 @@ struct CryptoTrackerApp: App {
                 Portfolio.self,
                 Holding.self,
                 Movimiento.self,
-                MovimientoIngreso.self,
-                MovimientoEgreso.self,
-                MovimientoEntreCarteras.self,
-                MovimientoSwap.self,
                 PrecioHistorico.self,
                 CryptoSyncConfig.self
-            ], version: .init(4, 0, 0))
+            ], version: .init(5, 0, 0))
             
             // Configuración del modelo
             let modelConfiguration = ModelConfiguration(
@@ -40,14 +36,10 @@ struct CryptoTrackerApp: App {
             
             // Migración de datos v2 → v3: carteras huérfanas al portafolio por defecto
             PortfolioMigration.apply(in: container.mainContext)
-            
-            // Migración de datos v3 → v4: 4 tablas de movimientos → Movimiento unificado
-            MovimientoMigration.apply(in: container.mainContext)
-            
+
             // Inicializar el contenedor de dependencias
-                dependencies = AppDependencyContainer(modelContext: container.mainContext)
-                        
-            
+            dependencies = AppDependencyContainer(modelContext: container.mainContext)
+
         } catch {
             fatalError("Could not initialize ModelContainer: \(error.localizedDescription)")
         }
