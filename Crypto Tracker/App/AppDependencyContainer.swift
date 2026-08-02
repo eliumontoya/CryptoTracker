@@ -12,6 +12,9 @@ class AppDependencyContainer {
     let holdingService: HoldingServiceProtocol
     let priceService: PriceServiceProtocol
     
+    // Use cases
+    let deleteMovementUseCase: DeleteMovementUseCaseProtocol
+    
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
@@ -32,6 +35,12 @@ class AppDependencyContainer {
         self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
         self.holdingService = HoldingService()
         self.priceService = PriceService()
+        
+        // Inicializar use cases
+        self.deleteMovementUseCase = DeleteMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
         
         // Inicializar ViewModels individuales
         self.movimientoEntradaViewModel = MovimientoEntradaViewModel(
