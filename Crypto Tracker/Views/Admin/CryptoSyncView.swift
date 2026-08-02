@@ -7,7 +7,6 @@ struct CryptoSyncView: View {
     init(viewModel: CryptoSyncViewModel) {
         _viewModel = StateObject(wrappedValue: viewModel)
     }
-    }
     
     var body: some View {
         VStack(spacing: 20) {

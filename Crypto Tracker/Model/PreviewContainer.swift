@@ -14,6 +14,7 @@ class PreviewContainer {
             Crypto.self,
             Cartera.self,
             Portfolio.self,
+            Holding.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
             MovimientoEntreCarteras.self,
@@ -105,6 +106,13 @@ class PreviewContainer {
         )
         
         [movimiento1, movimiento2, movimiento3].forEach { context.insert($0) }
+        
+        // Crear holdings materializados (balance por portfolio/cartera/crypto)
+        let holding1 = Holding(portfolio: portfolio, cartera: binance, crypto: btc, cantidad: 0.23)
+        let holding2 = Holding(portfolio: portfolio, cartera: metamask, crypto: eth, cantidad: 2.22)
+        let holding3 = Holding(portfolio: portfolio, cartera: phantom, crypto: sol, cantidad: 5.0)
+        
+        [holding1, holding2, holding3].forEach { context.insert($0) }
     }
 }
 

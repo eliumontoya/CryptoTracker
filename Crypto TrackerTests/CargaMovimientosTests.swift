@@ -17,6 +17,7 @@ final class CargaMovimientosTests: XCTestCase {
                 Crypto.self,
                 Cartera.self,
                 Portfolio.self,
+                Holding.self,
                 MovimientoIngreso.self,
                 MovimientoEgreso.self,
                 MovimientoEntreCarteras.self,

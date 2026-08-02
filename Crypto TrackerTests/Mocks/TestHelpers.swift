@@ -11,6 +11,7 @@ class TestSetup {
             Crypto.self,
             Cartera.self,
             Portfolio.self,
+            Holding.self,
             FIAT.self,
             MovimientoIngreso.self,
             MovimientoEgreso.self,
