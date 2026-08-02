@@ -19,6 +19,9 @@ class AppDependencyContainer {
     // Use cases
     let deleteMovementUseCase: DeleteMovementUseCaseProtocol
     
+    // Use cases
+    let moveBetweenWalletsUseCase: MoveBetweenWalletsUseCaseProtocol
+    
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
@@ -52,6 +55,12 @@ class AppDependencyContainer {
         
         // Inicializar use cases
         self.deleteMovementUseCase = DeleteMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        
+        // Inicializar use cases
+        self.moveBetweenWalletsUseCase = MoveBetweenWalletsUseCase(
             transactionRunner: transactionRunner,
             holdingService: holdingService
         )
