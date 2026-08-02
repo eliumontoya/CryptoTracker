@@ -29,8 +29,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
         
         // Configurar el ModelContainer y ModelContext
         let schema = Schema([
-            MovimientoIngreso.self,
-            MovimientoEgreso.self,
+            Movimiento.self,
             Crypto.self,
             Cartera.self,
             FIAT.self

@@ -29,7 +29,7 @@ final class MovimientoEntreCarterasParserTests: XCTestCase {
         
         // Configurar el ModelContainer y ModelContext
         let schema = Schema([
-            MovimientoIngreso.self,
+            Movimiento.self,
             Crypto.self,
             Cartera.self
         ])

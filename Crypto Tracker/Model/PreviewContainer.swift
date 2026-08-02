@@ -16,10 +16,6 @@ class PreviewContainer {
             Portfolio.self,
             Holding.self,
             Movimiento.self,
-            MovimientoIngreso.self,
-            MovimientoEgreso.self,
-            MovimientoEntreCarteras.self,
-            MovimientoSwap.self,
             PrecioHistorico.self,
             CryptoSyncConfig.self
         ])
