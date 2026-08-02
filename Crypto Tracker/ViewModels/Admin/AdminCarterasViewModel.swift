@@ -99,7 +99,7 @@ class AdminCarterasViewModel: ObservableObject {
     private func calcularValorTotalUSD(for cartera: Cartera) -> Decimal {
         let cryptos = Set(cartera.movimientosIngreso.compactMap { $0.crypto })
         return cryptos.reduce(Decimal(0)) { total, crypto in
-            let balance = calcularBalanceCrypto(crypto, en: cartera)
+            let balance = BalanceCalculator.balance(crypto: crypto, en: cartera)
             return total + (balance * crypto.precio)
         }
     }
@@ -114,35 +114,6 @@ class AdminCarterasViewModel: ObservableObject {
         let valorActual = calcularValorTotalUSD(for: cartera)
         let gananciaPerdida = valorActual - inversionTotalUSD
         return (abs(gananciaPerdida), gananciaPerdida >= 0)
-    }
-    
-    private func calcularBalanceCrypto(_ crypto: Crypto, en cartera: Cartera) -> Decimal {
-        let ingresos = cartera.movimientosIngreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
-        
-        let egresos = cartera.movimientosEgreso
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadCrypto }
-        
-        let transferenciasEntrada = cartera.movimientosEntrada
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadCryptoEntrada }
-        
-        let transferenciasSalida = cartera.movimientosSalida
-            .filter { $0.crypto?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadCryptoSalida }
-        
-        let swapsEntrada = cartera.swaps
-            .filter { $0.cryptoDestino?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadDestino }
-        
-        let swapsSalida = cartera.swaps
-            .filter { $0.cryptoOrigen?.id == crypto.id }
-            .reduce(Decimal(0)) { $0 + $1.cantidadOrigen }
-        
-        return ingresos + transferenciasEntrada + swapsEntrada -
-               (egresos + transferenciasSalida + swapsSalida)
     }
     
     func clearCache() {

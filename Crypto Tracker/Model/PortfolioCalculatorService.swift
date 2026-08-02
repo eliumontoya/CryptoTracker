@@ -39,8 +39,7 @@ class PortfolioCalculator {
             let balanceTransferencias = transferenciasEntrada - transferenciasSalida
             
             // Calcular balance total
-            let balanceActual = totalCryptoIngresado + transferenciasEntrada -
-                              (totalCryptoVendido + transferenciasSalida)
+            let balanceActual = BalanceCalculator.balance(crypto: crypto, en: cartera)
             
             // Si no hay movimientos, no incluir esta crypto
             guard balanceActual != 0 else { return nil }
