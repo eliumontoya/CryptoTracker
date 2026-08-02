@@ -17,43 +17,46 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
     @Published var hasError = false
     @Published var errorMessage = ""
     @Published var uiState: MovimientoUIState = .idle
-    
+
     private let modelContext: ModelContext
-    private let transactionRunner: TransactionRunner
-    private let holdingService: HoldingServiceProtocol
+    private let registerUseCase: RegisterMovementUseCaseProtocol
+    private let editUseCase: EditMovementUseCaseProtocol
+    private let deleteUseCase: DeleteMovementUseCaseProtocol
     let movimiento: Movimiento?
     private var cancellables = Set<AnyCancellable>()
-    
+
     private var cryptoDisponible: Decimal {
         guard let cartera = selectedCartera,
               let crypto = selectedCrypto else { return 0 }
-        
+
         if let movimiento = movimiento {
             return cartera.getCryptoDisponible(crypto: crypto, movimientoActual: movimiento.cantidadCrypto)
         } else {
             return cartera.getCryptoDisponible(crypto: crypto)
         }
     }
-    
+
     var formIsValid: Bool {
         guard let cartera = selectedCartera,
               let crypto = selectedCrypto else { return false }
-        
+
         return cantidadCrypto > 0 &&
                cantidadCrypto <= cryptoDisponible &&
                precioUSD > 0 &&
                (!usaFiatAlterno || (selectedFiatAlterno != nil && valorTotalFiatAlterno > 0))
     }
-    
+
     init(modelContext: ModelContext,
          movimiento: Movimiento? = nil,
-         transactionRunner: TransactionRunner? = nil,
-         holdingService: HoldingServiceProtocol? = nil) {
+         registerUseCase: RegisterMovementUseCaseProtocol,
+         editUseCase: EditMovementUseCaseProtocol,
+         deleteUseCase: DeleteMovementUseCaseProtocol) {
         self.modelContext = modelContext
-        self.transactionRunner = transactionRunner ?? ModelContextTransactionRunner(modelContext: modelContext)
-        self.holdingService = holdingService ?? HoldingService()
+        self.registerUseCase = registerUseCase
+        self.editUseCase = editUseCase
+        self.deleteUseCase = deleteUseCase
         self.movimiento = movimiento
-        
+
         setupBindings()
         if let movimiento = movimiento {
             loadMovimiento(movimiento)
@@ -127,32 +130,27 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
               let cartera = selectedCartera else {
             throw MovimientoFormCommonError.missingCartera
         }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
             if let existingMovimiento = movimiento {
-                // Actualizar movimiento existente: revertir el efecto anterior sobre
-                // el holding y aplicar el nuevo, todo en una sola transacción.
-                let previous = holdingService.snapshot(of: existingMovimiento)
-                try await transactionRunner.run { context in
-                    existingMovimiento.fecha = fecha
-                    existingMovimiento.cantidadCrypto = cantidadCrypto
-                    existingMovimiento.precioUSD = precioUSD
-                    existingMovimiento.valorTotalUSD = valorTotalUSD
-                    existingMovimiento.usaFiatAlterno = usaFiatAlterno
-                    existingMovimiento.precioFiatAlterno = usaFiatAlterno ? precioFiatAlterno : nil
-                    existingMovimiento.valorTotalFiatAlterno = usaFiatAlterno ? valorTotalFiatAlterno : nil
-                    existingMovimiento.cartera = cartera
-                    existingMovimiento.crypto = crypto
-                    existingMovimiento.fiatAlterno = usaFiatAlterno ? selectedFiatAlterno : nil
-                    
-                    try holdingService.updateHoldingForMovement(existingMovimiento, previous: previous, in: context)
-                }
+                let values = EditMovementValues(
+                    fecha: fecha,
+                    cantidadCrypto: cantidadCrypto,
+                    precioUSD: precioUSD,
+                    valorTotalUSD: valorTotalUSD,
+                    usaFiatAlterno: usaFiatAlterno,
+                    precioFiatAlterno: usaFiatAlterno ? precioFiatAlterno : nil,
+                    valorTotalFiatAlterno: usaFiatAlterno ? valorTotalFiatAlterno : nil,
+                    crypto: crypto,
+                    cartera: cartera,
+                    fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
+                )
+                try await editUseCase.execute(EditMovementInput(movement: existingMovimiento, updated: values))
             } else {
-                // Crear nuevo movimiento + actualizar holding en la misma transacción.
-                let nuevoMovimiento = Movimiento.salida(
+                let input = RegisterMovementInput(
                     fecha: fecha,
                     cantidadCrypto: cantidadCrypto,
                     precioUSD: precioUSD,
@@ -163,14 +161,10 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
                     crypto: crypto,
                     fiatAlterno: usaFiatAlterno ? selectedFiatAlterno : nil
                 )
-                try await transactionRunner.run { context in
-                    context.insert(nuevoMovimiento)
-                    try holdingService.updateHoldingForMovement(nuevoMovimiento, in: context)
-                }
+                _ = try await registerUseCase.registerSalida(input)
             }
-            
+
             uiState = .success
-            
         } catch {
             uiState = .error(error.localizedDescription)
             isLoading = false
@@ -178,19 +172,15 @@ final class MovimientoSalidaViewModel: MovimientoViewModel {
         }
         isLoading = false
     }
-    
+
     func delete() async throws {
         guard let movimiento = movimiento else { return }
-        
+
         isLoading = true
         uiState = .loading
-        
+
         do {
-            // Revertir holding y borrar el movimiento en la misma transacción.
-            try await transactionRunner.run { context in
-                try holdingService.deleteHoldingForMovement(movimiento, in: context)
-                context.delete(movimiento)
-            }
+            try await deleteUseCase.delete(movimiento)
             uiState = .success
         } catch {
             uiState = .error(error.localizedDescription)

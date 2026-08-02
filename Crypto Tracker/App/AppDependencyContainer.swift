@@ -71,7 +71,10 @@ class AppDependencyContainer {
         
         // Portfolio
         self.portfolioPorCryptosViewModel = PortfolioPorCryptosViewModel(
-            modelContext: modelContext
+            modelContext: modelContext,
+            registerUseCase: registerMovementUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
         self.portfolioDetalleViewModel = PortfolioDetalleViewModel(
             modelContext: modelContext
@@ -105,8 +108,9 @@ class AppDependencyContainer {
         MovimientoSalidaViewModel(
             modelContext: modelContext,
             movimiento: movimiento,
-            transactionRunner: transactionRunner,
-            holdingService: holdingService
+            registerUseCase: registerMovementUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
     }
     

@@ -17,9 +17,18 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     @Published var showingSwapForm = false
     
     private let modelContext: ModelContext
-    
-    init(modelContext: ModelContext) {
+    private let registerUseCase: RegisterMovementUseCaseProtocol
+    private let editUseCase: EditMovementUseCaseProtocol
+    private let deleteUseCase: DeleteMovementUseCaseProtocol
+
+    init(modelContext: ModelContext,
+         registerUseCase: RegisterMovementUseCaseProtocol,
+         editUseCase: EditMovementUseCaseProtocol,
+         deleteUseCase: DeleteMovementUseCaseProtocol) {
         self.modelContext = modelContext
+        self.registerUseCase = registerUseCase
+        self.editUseCase = editUseCase
+        self.deleteUseCase = deleteUseCase
     }
     
     // MARK: - Public Methods
@@ -51,7 +60,10 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     func crearFormMovimientoSalida() -> MovimientoSalidaFormView {
         MovimientoSalidaFormView(
             viewModel: MovimientoSalidaViewModel(
-                modelContext: self.modelContext
+                modelContext: self.modelContext,
+                registerUseCase: self.registerUseCase,
+                editUseCase: self.editUseCase,
+                deleteUseCase: self.deleteUseCase
             )
         )
     }
