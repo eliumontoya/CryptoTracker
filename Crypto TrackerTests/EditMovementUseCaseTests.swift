@@ -205,4 +205,104 @@ struct EditMovementUseCaseTests {
             ))
         }
     }
+
+    // MARK: - Edge cases
+
+    @Test func editErrorDescriptionsAreLocalized() {
+        #expect(EditMovementError.insufficientHoldings.errorDescription?.isEmpty == false)
+        #expect(EditMovementError.unsupportedMovementType.errorDescription?.isEmpty == false)
+    }
+
+    @Test func editToSameValuesIsNoOp() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let entrada = try await seedEntrada(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 2)
+
+        // Mismos valores que la entrada original → revertir y re-aplicar netea a cero.
+        try await useCase.execute(EditMovementInput(
+            movement: entrada,
+            updated: values(
+                cantidadCrypto: 2,
+                precioUSD: 50_000,
+                crypto: btc,
+                cartera: wallet,
+                fecha: entrada.fecha
+            )
+        ))
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 2)
+        #expect(entrada.cantidadCrypto == 2)
+        #expect(entrada.precioUSD == 50_000)
+        #expect(entrada.valorTotalUSD == 100_000)
+    }
+
+    @Test func editDetectsConcurrentModificationBeforeMutatingHolding() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let entrada = try await seedEntrada(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 2)
+
+        // Modificación concurrente: otra parte mutó la entidad sin pasar por el
+        // use case (holding desincronizado: 8 vs 2). El snapshot captura el estado
+        // ya mutado y la validación de revert lo detecta: falla rápido.
+        entrada.cantidadCrypto = 8
+
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditMovementInput(
+                movement: entrada,
+                updated: values(cantidadCrypto: 5, precioUSD: 50_000, crypto: btc, cartera: wallet)
+            ))
+        }
+
+        // El use case no tocó el holding ni aplicó su edición (validación previa).
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 2)
+        #expect(entrada.precioUSD == 50_000)
+        #expect(entrada.valorTotalUSD == 100_000)
+        // La mutación externa de la entidad es del caller, no del use case: queda
+        // como el caller la dejó (fuera de la transacción del use case).
+        #expect(entrada.cantidadCrypto == 8)
+    }
+
+    @Test func editWithLargeDecimalValuesUpdatesMovementAndHoldingExactly() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let entrada = try await seedEntrada(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        let largeQty: Decimal = 1_000_000_000_000
+        let largePrice: Decimal = 1_000_000_000_000
+
+        try await useCase.execute(EditMovementInput(
+            movement: entrada,
+            updated: values(cantidadCrypto: largeQty, precioUSD: largePrice, crypto: btc, cartera: wallet)
+        ))
+
+        #expect(entrada.cantidadCrypto == largeQty)
+        #expect(entrada.precioUSD == largePrice)
+        #expect(entrada.valorTotalUSD == largeQty * largePrice)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == largeQty)
+    }
+
+    @Test func editLegacyCarteraWithoutPortfolioSkipsHoldingValidation() async throws {
+        // Cartera legacy sin portfolio y sin portfolio por defecto: no hay holding
+        // materializado, la validación se salta y la edición persiste sin tocar holdings.
+        let context = TestSetup.createModelContext()
+        let legacy = Cartera(nombre: "Legacy Wallet", simbolo: "LEG")
+        let btc = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50_000)
+        context.insert(legacy)
+        context.insert(btc)
+        try context.save()
+        let useCase = makeUseCase(context: context)
+        let entrada = Movimiento.entrada(fecha: Date(), cantidadCrypto: 2, precioUSD: 50_000, cartera: legacy, crypto: btc)
+        context.insert(entrada)
+        try context.save()
+
+        try await useCase.execute(EditMovementInput(
+            movement: entrada,
+            updated: values(cantidadCrypto: 5, precioUSD: 50_000, crypto: btc, cartera: legacy)
+        ))
+
+        #expect(entrada.cantidadCrypto == 5)
+        #expect(entrada.valorTotalUSD == 250_000)
+        #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
+    }
 }
