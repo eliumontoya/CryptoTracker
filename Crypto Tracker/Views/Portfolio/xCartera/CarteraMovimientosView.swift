@@ -3,13 +3,14 @@ import SwiftData
 
 struct CarteraMovimientosView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: CarteraMovimientosViewModel
     
-    init(cartera: Cartera, modelContext: ModelContext) {
+    init(cartera: Cartera, dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _viewModel = StateObject(wrappedValue: CarteraMovimientosViewModel(
             cartera: cartera,
-            modelContext: modelContext
+            modelContext: dependencies.modelContext
         ))
     }
     
@@ -50,7 +51,7 @@ struct CarteraMovimientosView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-                MovimientoSearchView(movimientoDetalle: movimientoDetalle, modelContext: modelContext)
+                dependencies.makeMovimientoSearchView(movimientoDetalle: movimientoDetalle)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()
@@ -80,9 +81,8 @@ struct CarteraMovimientosView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.movimientos) { movimiento in
                     #if os(iOS)
-                    NavigationLink(destination: MovimientoSearchView(
-                        movimientoDetalle: movimiento,
-                        modelContext: modelContext
+                    NavigationLink(destination: dependencies.makeMovimientoSearchView(
+                        movimientoDetalle: movimiento
                     )) {
                         MovimientoDetalleRowView(movimiento: movimiento, onTap: {})
                     }

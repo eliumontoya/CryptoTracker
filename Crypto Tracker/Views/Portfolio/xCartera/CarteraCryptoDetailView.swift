@@ -2,10 +2,11 @@ import SwiftUI
 import SwiftData
 struct CarteraCryptoDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: CarteraCryptoDetailViewModel
     
-    init(crypto: Crypto, cartera: Cartera) {
+    init(crypto: Crypto, cartera: Cartera, dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _viewModel = StateObject(wrappedValue: CarteraCryptoDetailViewModel(
             crypto: crypto,
             cartera: cartera
@@ -46,7 +47,7 @@ struct CarteraCryptoDetailView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-                MovimientoSearchView(movimientoDetalle: movimientoDetalle, modelContext: modelContext)
+                dependencies.makeMovimientoSearchView(movimientoDetalle: movimientoDetalle)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()
@@ -81,9 +82,8 @@ struct CarteraCryptoDetailView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.movimientos) { movimiento in
                     #if os(iOS)
-                    NavigationLink(destination: MovimientoSearchView(
-                        movimientoDetalle: movimiento,
-                        modelContext: modelContext
+                    NavigationLink(destination: dependencies.makeMovimientoSearchView(
+                        movimientoDetalle: movimiento
                     )) {
                         MovimientoDetalleRowView(movimiento: movimiento, onTap: {})
                     }
@@ -106,9 +106,10 @@ struct CarteraCryptoDetailView: View {
 
 #Preview {
     let previewContainer = PreviewContainer.shared
+    let dependencies = AppDependencyContainer(modelContext: previewContainer.context)
     let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 45000)
     let cartera = Cartera(nombre: "Mi Cartera", simbolo: "MC")
     
-    return CarteraCryptoDetailView(crypto: crypto, cartera: cartera)
+    return CarteraCryptoDetailView(crypto: crypto, cartera: cartera, dependencies: dependencies)
         .modelContainer(previewContainer.container)
 }

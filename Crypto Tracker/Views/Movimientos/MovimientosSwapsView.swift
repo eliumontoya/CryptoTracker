@@ -2,10 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct MovimientosSwapsView: View {
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @Query(sort: \MovimientoSwap.fecha, order: .reverse) private var movimientos: [MovimientoSwap]
     @State private var showingAddSheet = false
     @State private var selectedMovimiento: MovimientoSwap?
+    
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+    }
     
     var body: some View {
         List {
@@ -29,42 +33,24 @@ struct MovimientosSwapsView: View {
         #if os(iOS)
         .fullScreenCover(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoSwapFormView(
-                    viewModel: MovimientoSwapViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoSwapFormView(movimiento: movimiento)
             }
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoSwapFormView(
-                    viewModel: MovimientoSwapViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoSwapFormView()
             }
         }
         #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoSwapFormView(
-                    viewModel: MovimientoSwapViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoSwapFormView(movimiento: movimiento)
             }
             .adaptiveSheetFrame()
         }
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoSwapFormView(
-                    viewModel: MovimientoSwapViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoSwapFormView()
             }
             .adaptiveSheetFrame()
         }
@@ -74,9 +60,9 @@ struct MovimientosSwapsView: View {
     private func deleteMovimientos(at offsets: IndexSet) {
         Task {
             for index in offsets {
-                modelContext.delete(movimientos[index])
+                dependencies.modelContext.delete(movimientos[index])
             }
-            try? modelContext.save()
+            try? dependencies.modelContext.save()
         }
     }
 }

@@ -2,10 +2,14 @@ import SwiftUI
 import SwiftData
 
 struct MovimientosEntreCarterasView: View {
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @Query(sort: \MovimientoEntreCarteras.fecha, order: .reverse) private var movimientos: [MovimientoEntreCarteras]
     @State private var showingAddSheet = false
     @State private var selectedMovimiento: MovimientoEntreCarteras?
+    
+    init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+    }
     
     var body: some View {
         List {
@@ -29,42 +33,24 @@ struct MovimientosEntreCarterasView: View {
         #if os(iOS)
         .fullScreenCover(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoEntreCarterasFormView(
-                    viewModel: MovimientoEntreCarterasViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoEntreCarterasFormView(movimiento: movimiento)
             }
         }
         .fullScreenCover(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoEntreCarterasFormView(
-                    viewModel: MovimientoEntreCarterasViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoEntreCarterasFormView()
             }
         }
         #else
         .sheet(item: $selectedMovimiento) { movimiento in
             NavigationStack {
-                MovimientoEntreCarterasFormView(
-                    viewModel: MovimientoEntreCarterasViewModel(
-                        modelContext: modelContext,
-                        movimiento: movimiento
-                    )
-                )
+                dependencies.makeMovimientoEntreCarterasFormView(movimiento: movimiento)
             }
             .adaptiveSheetFrame()
         }
         .sheet(isPresented: $showingAddSheet) {
             NavigationStack {
-                MovimientoEntreCarterasFormView(
-                    viewModel: MovimientoEntreCarterasViewModel(
-                        modelContext: modelContext
-                    )
-                )
+                dependencies.makeMovimientoEntreCarterasFormView()
             }
             .adaptiveSheetFrame()
         }
@@ -74,9 +60,9 @@ struct MovimientosEntreCarterasView: View {
     private func deleteMovimientos(at offsets: IndexSet) {
         Task {
             for index in offsets {
-                modelContext.delete(movimientos[index])
+                dependencies.modelContext.delete(movimientos[index])
             }
-            try? modelContext.save()
+            try? dependencies.modelContext.save()
         }
     }
 }

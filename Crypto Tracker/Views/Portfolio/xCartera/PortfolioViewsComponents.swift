@@ -37,11 +37,12 @@ struct CarteraHeaderView: View {
 
 // MARK: - Vista Principal de Cartera
 struct CarteraDetailView: View {
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @StateObject private var viewModel: CarteraDetailViewModel
  
-    init( carteraDetail: CarteraDetail, onUpdateData: @escaping () -> Void) {
-         _viewModel = StateObject(wrappedValue: CarteraDetailViewModel(
+    init(carteraDetail: CarteraDetail, onUpdateData: @escaping () -> Void, dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
+        _viewModel = StateObject(wrappedValue: CarteraDetailViewModel(
             carteraDetail: carteraDetail,
             onUpdateData: onUpdateData
         ))
@@ -53,7 +54,7 @@ struct CarteraDetailView: View {
             cardContent
                 .applyMovimientoSheets(
                     viewModel: viewModel,
-                    context: modelContext,
+                    dependencies: dependencies,
                     showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
                     showingEntradaForm: $viewModel.showingEntradaForm,
                     showingSalidaForm: $viewModel.showingSalidaForm,
@@ -73,11 +74,11 @@ struct CarteraDetailView: View {
                     viewModel.selectedCryptoDetail = pair.map { ($0.crypto, $0.cartera) }
                 }
             )) { pair in
-                CarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
+                dependencies.makeCarteraCryptoDetailView(crypto: pair.crypto, cartera: pair.cartera)
             }
             .applyMovimientoSheets(
                 viewModel: viewModel,
-                context: modelContext,
+                dependencies: dependencies,
                 showingCarteraMovimientos: $viewModel.showingCarteraMovimientos,
                 showingEntradaForm: $viewModel.showingEntradaForm,
                 showingSalidaForm: $viewModel.showingSalidaForm,
@@ -102,9 +103,8 @@ struct CarteraDetailView: View {
     private var headerWithMenu: some View {
         HStack {
             #if os(iOS)
-            NavigationLink(destination: CarteraMovimientosView(
-                cartera: viewModel.carteraDetail.cartera,
-                modelContext: modelContext
+            NavigationLink(destination: dependencies.makeCarteraMovimientosView(
+                cartera: viewModel.carteraDetail.cartera
             )) {
                 Text(viewModel.carteraNombre)
                     .font(.title2)
@@ -198,7 +198,7 @@ struct CarteraDetailView: View {
     private var contenidoTabla: some View {
         ForEach(viewModel.cryptoDetails) { detail in
             #if os(iOS)
-            NavigationLink(destination: CarteraCryptoDetailView(
+            NavigationLink(destination: dependencies.makeCarteraCryptoDetailView(
                 crypto: detail.crypto,
                 cartera: viewModel.carteraDetail.cartera
             )) {
@@ -248,7 +248,7 @@ struct CarteraDetailView: View {
 private extension View {
     func applyMovimientoSheets(
         viewModel: CarteraDetailViewModel,
-         context: ModelContext,
+        dependencies: AppDependencyContainer,
         showingCarteraMovimientos: Binding<Bool>,
         showingEntradaForm: Binding<Bool>,
         showingSalidaForm: Binding<Bool>,
@@ -259,103 +259,60 @@ private extension View {
         self
             .fullScreenCover(isPresented: showingEntradaForm) {
                 NavigationStack {
-                    MovimientoEntradaFormView(
-                        viewModel: MovimientoEntradaViewModel(
-                            movimiento: nil,
-                            movimientoService: MovimientosEntradaService(modelContext: context)
-                        )
-                    )
+                    dependencies.makeMovimientoEntradaFormView()
                 }
                 .onDisappear { viewModel.updateData() }
             }
             .fullScreenCover(isPresented: showingSalidaForm) {
                 NavigationStack {
-                    MovimientoSalidaFormView(
-                        viewModel: MovimientoSalidaViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoSalidaFormView()
                 }
                 .onDisappear { viewModel.updateData() }
             }
             .fullScreenCover(isPresented: showingEntreCarterasForm) {
                 NavigationStack {
-                    MovimientoEntreCarterasFormView(
-                        viewModel: MovimientoEntreCarterasViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoEntreCarterasFormView()
                 }
                 .onDisappear { viewModel.updateData() }
             }
             .fullScreenCover(isPresented: showingSwapForm) {
                 NavigationStack {
-                    MovimientoSwapFormView(
-                        viewModel: MovimientoSwapViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoSwapFormView()
                 }
                 .onDisappear { viewModel.updateData() }
             }
         #else
         self
             .sheet(isPresented: showingCarteraMovimientos) {
-                CarteraMovimientosView(
-                    cartera: viewModel.carteraDetail.cartera,
-                    modelContext: context
-                )
+                dependencies.makeCarteraMovimientosView(cartera: viewModel.carteraDetail.cartera)
                     .onDisappear {
                         viewModel.updateData()
                     }
             }
             .sheet(isPresented: showingEntradaForm) {
                 NavigationStack {
-                    MovimientoEntradaFormView(
-                        viewModel: MovimientoEntradaViewModel(
-                            movimiento: nil,
-                            movimientoService: MovimientosEntradaService(modelContext: context)
-                        )
-                    )
+                    dependencies.makeMovimientoEntradaFormView()
                 }
                 .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingSalidaForm) {
                 NavigationStack {
-                    MovimientoSalidaFormView(
-                        viewModel: MovimientoSalidaViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoSalidaFormView()
                 }
                 .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingEntreCarterasForm) {
                 NavigationStack {
-                    MovimientoEntreCarterasFormView(
-                        viewModel: MovimientoEntreCarterasViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoEntreCarterasFormView()
                 }
                 .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }
             }
             .sheet(isPresented: showingSwapForm) {
                 NavigationStack {
-                    MovimientoSwapFormView(
-                        viewModel: MovimientoSwapViewModel(
-                            modelContext: context,
-                            movimiento: nil
-                        )
-                    )
+                    dependencies.makeMovimientoSwapFormView()
                 }
                 .adaptiveSheetFrame()
                 .onDisappear { viewModel.updateData() }

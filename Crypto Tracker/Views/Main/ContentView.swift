@@ -25,7 +25,6 @@ enum MovimientosMenuOption {
 }
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
     
     // Contenedor de dependencias
@@ -57,7 +56,7 @@ struct ContentView: View {
             List {
                 // Opción Home
                 NavigationLink(
-                    destination: PortfolioView(),
+                    destination: dependencies.makePortfolioView(),
                     tag: MainMenuOption.home,
                     selection: $selectedMainMenu
                 ) {
@@ -65,7 +64,7 @@ struct ContentView: View {
                 }
                 
                 NavigationLink(
-                    destination: PortfolioPorCryptosView(viewModel: dependencies.portfolioPorCryptosViewModel),
+                    destination: dependencies.makePortfolioPorCryptosView(),
                     tag: MainMenuOption.portfolioCryptos,
                     selection: $selectedMainMenu
                 ) {
@@ -73,7 +72,7 @@ struct ContentView: View {
                 }
                 
                 NavigationLink(
-                    destination: PortfolioDetalleView(modelContext: modelContext),
+                    destination: dependencies.makePortfolioDetalleView(),
                     tag: MainMenuOption.portfolioDetalle,
                     selection: $selectedMainMenu
                 ) {
@@ -84,7 +83,7 @@ struct ContentView: View {
                 DisclosureGroup(
                     content: {
                         NavigationLink(
-                            destination: MovimientosEntradaView(viewModel: dependencies.movimientosEntradaListViewModel),
+                            destination: dependencies.makeMovimientosEntradaView(),
                             tag: .entrada,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -92,8 +91,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: MovimientosSalidaView()
-                                .environment(\.modelContext, modelContext),
+                            destination: dependencies.makeMovimientosSalidaView(),
                             tag: .salida,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -101,8 +99,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: MovimientosEntreCarterasView()
-                                .environment(\.modelContext, modelContext),
+                            destination: dependencies.makeMovimientosEntreCarterasView(),
                             tag: .entreCarteras,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -110,8 +107,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: MovimientosSwapsView()
-                                .environment(\.modelContext, modelContext),
+                            destination: dependencies.makeMovimientosSwapsView(),
                             tag: .swaps,
                             selection: $selectedMovimientosMenu
                         ) {
@@ -127,7 +123,7 @@ struct ContentView: View {
                 DisclosureGroup(
                     content: {
                         NavigationLink(
-                            destination: AdminCryptosView(modelContext: modelContext),
+                            destination: dependencies.makeAdminCryptosView(),
                             tag: .cryptos,
                             selection: $selectedAdminMenu
                         ) {
@@ -135,7 +131,7 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: AdminCarterasView(modelContext: modelContext),
+                            destination: dependencies.makeAdminCarterasView(),
                             tag: .carteras,
                             selection: $selectedAdminMenu
                         ) {
@@ -143,14 +139,14 @@ struct ContentView: View {
                         }
                         
                         NavigationLink(
-                            destination: AdminFiatView(modelContext: modelContext),
+                            destination: dependencies.makeAdminFiatView(),
                             tag: .fiat,
                             selection: $selectedAdminMenu
                         ) {
                             Label("FIAT", systemImage: "dollarsign.circle")
                         }
                         NavigationLink(
-                            destination: CryptoSyncView(modelContext: modelContext),
+                            destination: dependencies.makeCryptoSyncView(),
                             tag: .sync,
                             selection: $selectedAdminMenu
                         ) {
@@ -158,7 +154,7 @@ struct ContentView: View {
                         }
                         // Setup Inicial
                         NavigationLink(
-                            destination: SetupInicialView(),
+                            destination: dependencies.makeSetupInicialView(),
                             tag: .setup,
                             selection: $selectedAdminMenu
                         ) {
@@ -173,7 +169,7 @@ struct ContentView: View {
             .listStyle(SidebarListStyle())
             .navigationTitle("Crypto Tracker")
         } detail: {
-            PortfolioView()
+            dependencies.makePortfolioView()
         }
     }
     
@@ -183,19 +179,19 @@ struct ContentView: View {
             NavigationStack {
                 List {
                     NavigationLink {
-                        PortfolioView()
+                        dependencies.makePortfolioView()
                     } label: {
                         Label("Portafolio", systemImage: "chart.pie.fill")
                     }
                     
                     NavigationLink {
-                        PortfolioPorCryptosView(viewModel: dependencies.portfolioPorCryptosViewModel)
+                        dependencies.makePortfolioPorCryptosView()
                     } label: {
                         Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
                     }
                     
                     NavigationLink {
-                        PortfolioDetalleView(modelContext: modelContext)
+                        dependencies.makePortfolioDetalleView()
                     } label: {
                         Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
                     }
@@ -209,28 +205,25 @@ struct ContentView: View {
             NavigationStack {
                 List {
                     NavigationLink {
-                        MovimientosEntradaView(viewModel: dependencies.movimientosEntradaListViewModel)
+                        dependencies.makeMovimientosEntradaView()
                     } label: {
                         Label("Entrada", systemImage: "arrow.down.circle")
                     }
                     
                     NavigationLink {
-                        MovimientosSalidaView()
-                            .environment(\.modelContext, modelContext)
+                        dependencies.makeMovimientosSalidaView()
                     } label: {
                         Label("Salida", systemImage: "arrow.up.circle")
                     }
                     
                     NavigationLink {
-                        MovimientosEntreCarterasView()
-                            .environment(\.modelContext, modelContext)
+                        dependencies.makeMovimientosEntreCarterasView()
                     } label: {
                         Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
                     }
                     
                     NavigationLink {
-                        MovimientosSwapsView()
-                            .environment(\.modelContext, modelContext)
+                        dependencies.makeMovimientosSwapsView()
                     } label: {
                         Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
                     }
@@ -244,31 +237,31 @@ struct ContentView: View {
             NavigationStack {
                 List {
                     NavigationLink {
-                        AdminCryptosView(modelContext: modelContext)
+                        dependencies.makeAdminCryptosView()
                     } label: {
                         Label("Cryptos", systemImage: "bitcoinsign.circle")
                     }
                     
                     NavigationLink {
-                        AdminCarterasView(modelContext: modelContext)
+                        dependencies.makeAdminCarterasView()
                     } label: {
                         Label("Carteras", systemImage: "folder")
                     }
                     
                     NavigationLink {
-                        AdminFiatView(modelContext: modelContext)
+                        dependencies.makeAdminFiatView()
                     } label: {
                         Label("FIAT", systemImage: "dollarsign.circle")
                     }
                     
                     NavigationLink {
-                        CryptoSyncView(modelContext: modelContext)
+                        dependencies.makeCryptoSyncView()
                     } label: {
                         Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
                     }
                     
                     NavigationLink {
-                        SetupInicialView()
+                        dependencies.makeSetupInicialView()
                     } label: {
                         Label("Setup Inicial", systemImage: "gearshape.circle.fill")
                     }

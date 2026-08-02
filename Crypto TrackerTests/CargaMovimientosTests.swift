@@ -3,6 +3,7 @@ import SwiftData
 @testable import Crypto_Tracker
 
 // MARK: - Test Suite para Servicios de Carga de Movimientos
+@MainActor
 final class CargaMovimientosTests: XCTestCase {
     var modelContext: ModelContext!
     var mockDelegate: MockCargaMovimientosDelegate!
@@ -11,8 +12,7 @@ final class CargaMovimientosTests: XCTestCase {
         try await super.setUp()
         // Configurar el contexto de prueba y el delegado mock antes de cada test
         await MainActor.run {
-            let config = ModelConfiguration(isStoredInMemoryOnly: true)
-            let container = try! ModelContainer(for: Schema([
+            let schema = Schema([
                 FIAT.self,
                 Crypto.self,
                 Cartera.self,
@@ -22,7 +22,9 @@ final class CargaMovimientosTests: XCTestCase {
                 MovimientoSwap.self,
                 PrecioHistorico.self,
                 CryptoSyncConfig.self
-            ]), configurations: [config])
+            ])
+            let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+            let container = try! ModelContainer(for: schema, configurations: [config])
             modelContext = ModelContext(container)
         }
         mockDelegate = MockCargaMovimientosDelegate()

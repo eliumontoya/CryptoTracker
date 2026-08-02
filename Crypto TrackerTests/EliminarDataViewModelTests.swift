@@ -10,9 +10,8 @@ final class EliminarDataViewModelTests: XCTestCase {
     
     override func setUp() async throws {
         // Configurar un contenedor de modelo en memoria para pruebas
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        modelContainer = try ModelContainer(
-            for: Crypto.self,
+        let schema = Schema([
+            Crypto.self,
             Cartera.self,
             FIAT.self,
             MovimientoIngreso.self,
@@ -20,10 +19,11 @@ final class EliminarDataViewModelTests: XCTestCase {
             MovimientoEntreCarteras.self,
             MovimientoSwap.self,
             PrecioHistorico.self,
-            CryptoSyncConfig.self,
-            configurations: config
-        )
-        modelContext = modelContainer.mainContext
+            CryptoSyncConfig.self
+        ])
+        let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
+        modelContainer = try ModelContainer(for: schema, configurations: [config])
+        modelContext = ModelContext(modelContainer)
         
         // Preparar datos de prueba
         try prepararDatosDePrueba()

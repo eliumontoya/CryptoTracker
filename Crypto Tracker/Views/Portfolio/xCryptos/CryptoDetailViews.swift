@@ -3,11 +3,12 @@ import SwiftData
 
 struct CryptoDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @Environment(\.modelContext) private var modelContext
+    private let dependencies: AppDependencyContainer
     @Query private var carteras: [Cartera]
     @StateObject private var viewModel: CryptoDetailViewModel
     
-    init(crypto: Crypto) {
+    init(crypto: Crypto, dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _viewModel = StateObject(wrappedValue: CryptoDetailViewModel(
             crypto: crypto,
             carteras: []  // Se actualizará con @Query
@@ -47,7 +48,7 @@ struct CryptoDetailView: View {
         }
         .sheet(item: $viewModel.selectedMovimientoDetalle) { movimientoDetalle in
             NavigationStack {
-                MovimientoSearchView(movimientoDetalle: movimientoDetalle, modelContext: modelContext)
+                dependencies.makeMovimientoSearchView(movimientoDetalle: movimientoDetalle)
             }
             .onDisappear {
                 viewModel.cargarMovimientos()
@@ -86,9 +87,8 @@ struct CryptoDetailView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.movimientos) { movimiento in
                     #if os(iOS)
-                    NavigationLink(destination: MovimientoSearchView(
-                        movimientoDetalle: movimiento,
-                        modelContext: modelContext
+                    NavigationLink(destination: dependencies.makeMovimientoSearchView(
+                        movimientoDetalle: movimiento
                     )) {
                         MovimientoDetalleRowView(movimiento: movimiento, onTap: {})
                     }
@@ -110,8 +110,9 @@ struct CryptoDetailView: View {
 
 #Preview {
     let previewContainer = PreviewContainer.shared
+    let dependencies = AppDependencyContainer(modelContext: previewContainer.context)
     let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 45000)
     
-    return CryptoDetailView(crypto: crypto)
+    return CryptoDetailView(crypto: crypto, dependencies: dependencies)
         .modelContainer(previewContainer.container)
 }

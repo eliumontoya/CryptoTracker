@@ -16,8 +16,8 @@ final class PortfolioPorCryptosViewModel: ObservableObject {
     @Published var showingEntreCarterasForm = false
     @Published var showingSwapForm = false
     
-    var modelContext: ModelContext
-    private var movimientoService: MovimientosEntradaServiceProtocol
+    private let modelContext: ModelContext
+    private let movimientoService: MovimientosEntradaServiceProtocol
     
 
     
