@@ -11,6 +11,10 @@ class AppDependencyContainer {
     let transactionRunner: TransactionRunner
     let holdingService: HoldingServiceProtocol
     let priceService: PriceServiceProtocol
+    let registerMovementUseCase: RegisterMovementUseCaseProtocol
+    
+    // Use cases
+    let editMovementUseCase: EditMovementUseCaseProtocol
     
     // Use cases
     let deleteMovementUseCase: DeleteMovementUseCaseProtocol
@@ -35,6 +39,16 @@ class AppDependencyContainer {
         self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
         self.holdingService = HoldingService()
         self.priceService = PriceService()
+        self.registerMovementUseCase = RegisterMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        
+        // Inicializar use cases
+        self.editMovementUseCase = EditMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
         
         // Inicializar use cases
         self.deleteMovementUseCase = DeleteMovementUseCase(
