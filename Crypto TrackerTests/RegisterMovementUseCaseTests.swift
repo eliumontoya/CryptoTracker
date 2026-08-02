@@ -244,6 +244,120 @@ struct RegisterMovementUseCaseTests {
         #expect(movimiento.cartera?.nombre == "Legacy Wallet")
         #expect(try context.fetchCount(FetchDescriptor<Holding>()) == 0)
     }
+
+    // MARK: - Register salida
+
+    @Test func registerSalidaCreatesExitMovementAndSubtractsHolding() async throws {
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        let fecha = Date(timeIntervalSince1970: 1_700_000_000)
+
+        // Seed an entry so the holding exists.
+        try await useCase.register(input(cantidadCrypto: 5, precioUSD: 50_000, cartera: cartera, crypto: btc))
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 5)
+
+        let movimiento = try await useCase.registerSalida(
+            input(fecha: fecha, cantidadCrypto: 2, precioUSD: 60_000, cartera: cartera, crypto: btc)
+        )
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 2)
+        #expect(movimiento.tipo == .salida)
+        #expect(movimiento.cantidadCrypto == 2)
+        #expect(movimiento.precioUSD == 60_000)
+        #expect(movimiento.valorTotalUSD == 120_000)
+        #expect(movimiento.fecha == fecha)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.updatedAt == fecha)
+    }
+
+    @Test func registerSalidaDeletesHoldingAtZero() async throws {
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        try await useCase.register(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+
+        _ = try await useCase.registerSalida(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+    }
+
+    @Test func registerSalidaThrowsWhenHoldingIsMissing() async throws {
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        do {
+            _ = try await useCase.registerSalida(input(cantidadCrypto: 1, cartera: cartera, crypto: btc))
+            Issue.record("Expected registerSalida to throw")
+        } catch RegisterMovementError.insufficientHoldings {
+            // Expected: no movement is inserted and the holding stays empty.
+        }
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 0)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+    }
+
+    @Test func registerSalidaThrowsWhenFundsAreInsufficient() async throws {
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        try await useCase.register(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+
+        do {
+            _ = try await useCase.registerSalida(input(cantidadCrypto: 3, cartera: cartera, crypto: btc))
+            Issue.record("Expected registerSalida to throw")
+        } catch RegisterMovementError.insufficientHoldings {
+            // Expected: nothing is persisted.
+        }
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+    }
+
+    @Test func registerSalidaWithFiatAlternoPersistsAlternateFields() async throws {
+        let (context, portfolio, cartera, btc, eur) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        try await useCase.register(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+
+        let movimiento = try await useCase.registerSalida(
+            input(
+                cantidadCrypto: 1,
+                precioUSD: 45_454.55,
+                usaFiatAlterno: true,
+                precioFiatAlterno: 50_000,
+                valorTotalFiatAlterno: 50_000,
+                cartera: cartera,
+                crypto: btc,
+                fiatAlterno: eur
+            )
+        )
+
+        #expect(movimiento.tipo == .salida)
+        #expect(movimiento.usaFiatAlterno)
+        #expect(movimiento.fiatAlterno?.simbolo == "EUR")
+        #expect(movimiento.precioFiatAlterno == 50_000)
+        #expect(movimiento.valorTotalFiatAlterno == 50_000)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 1)
+    }
+
+    @Test func registerSalidaRollsBackMovementAndHoldingWhenValidationFails() async throws {
+        // Even if the holding update were to run before validation, the transaction must
+        // roll back so the holding and movement remain unchanged.
+        let (context, portfolio, cartera, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+
+        try await useCase.register(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
+
+        do {
+            _ = try await useCase.registerSalida(input(cantidadCrypto: 5, cartera: cartera, crypto: btc))
+            Issue.record("Expected registerSalida to throw")
+        } catch RegisterMovementError.insufficientHoldings {
+            // Expected.
+        }
+
+        #expect(try context.fetchCount(FetchDescriptor<Movimiento>()) == 1)
+        #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc)?.cantidad == 2)
+    }
 }
 
 // MARK: - Fakes
