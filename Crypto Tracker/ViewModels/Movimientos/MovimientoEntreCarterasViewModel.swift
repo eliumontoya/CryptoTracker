@@ -16,8 +16,9 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
     @Published var uiState: MovimientoUIState = .idle
 
     private let modelContext: ModelContext
-    private let transactionRunner: TransactionRunner
-    private let holdingService: HoldingServiceProtocol
+    private let moveBetweenWalletsUseCase: MoveBetweenWalletsUseCaseProtocol
+    private let editUseCase: EditMovementUseCaseProtocol
+    private let deleteUseCase: DeleteMovementUseCaseProtocol
     /// Pierna de salida de la transferencia (`.transferenciaSalida`). La pierna de
     /// entrada se localiza por `groupId`.
     let movimiento: Movimiento?
@@ -51,11 +52,24 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
 
     init(modelContext: ModelContext,
          movimiento: Movimiento? = nil,
-         transactionRunner: TransactionRunner? = nil,
-         holdingService: HoldingServiceProtocol? = nil) {
+         moveBetweenWalletsUseCase: MoveBetweenWalletsUseCaseProtocol? = nil,
+         editUseCase: EditMovementUseCaseProtocol? = nil,
+         deleteUseCase: DeleteMovementUseCaseProtocol? = nil) {
         self.modelContext = modelContext
-        self.transactionRunner = transactionRunner ?? ModelContextTransactionRunner(modelContext: modelContext)
-        self.holdingService = holdingService ?? HoldingService()
+        let transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
+        let holdingService = HoldingService()
+        self.moveBetweenWalletsUseCase = moveBetweenWalletsUseCase ?? MoveBetweenWalletsUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        self.editUseCase = editUseCase ?? EditMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        self.deleteUseCase = deleteUseCase ?? DeleteMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
         self.movimiento = movimiento
 
         setupBindings()
@@ -85,16 +99,6 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         cantidadCryptoEntrada = movimiento.cantidadCryptoEntrada
     }
 
-    /// Pierna de entrada de la transferencia actual (si existe), localizada por `groupId`.
-    private func piernaEntrada(_ movimiento: Movimiento) -> Movimiento? {
-        guard let groupId = movimiento.groupId else { return nil }
-        return (try? modelContext.fetch(
-            FetchDescriptor<Movimiento>(
-                predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == "transferenciaEntrada" }
-            )
-        ))?.first
-    }
-
     func adjustCantidades() {
         if cantidadCryptoSalida > cryptoDisponible {
             cantidadCryptoSalida = cryptoDisponible
@@ -106,6 +110,7 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
 
     func setMaxCantidadSalida() {
         cantidadCryptoSalida = cryptoDisponible
+        cantidadCryptoEntrada = cantidadCryptoSalida
         adjustCantidades()
     }
 
@@ -131,53 +136,30 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         uiState = .loading
 
         do {
-            try await transactionRunner.run { context in
-                if let existingMovimiento = self.movimiento {
-                    // Actualizar el par de movimientos existente: revertir los efectos
-                    // anteriores sobre los holdings y aplicar los nuevos.
-                    let previousSalida = self.holdingService.snapshot(of: existingMovimiento)
-                    let entrada = self.piernaEntrada(existingMovimiento)
-                    let previousEntrada = entrada.map { self.holdingService.snapshot(of: $0) }
-
-                    existingMovimiento.fecha = fecha
-                    existingMovimiento.cantidadCryptoSalida = cantidadCryptoSalida
-                    existingMovimiento.cantidadCryptoEntrada = cantidadCryptoEntrada
-                    existingMovimiento.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
-                    existingMovimiento.carteraOrigen = carteraOrigen
-                    existingMovimiento.carteraDestino = carteraDestino
-                    existingMovimiento.cartera = carteraOrigen
-                    existingMovimiento.crypto = crypto
-
-                    if let entrada = entrada {
-                        entrada.fecha = fecha
-                        entrada.cantidadCryptoSalida = cantidadCryptoSalida
-                        entrada.cantidadCryptoEntrada = cantidadCryptoEntrada
-                        entrada.cantidadCryptoComision = cantidadCryptoSalida - cantidadCryptoEntrada
-                        entrada.carteraOrigen = carteraOrigen
-                        entrada.carteraDestino = carteraDestino
-                        entrada.cartera = carteraDestino
-                        entrada.crypto = crypto
-                    }
-
-                    try self.holdingService.updateHoldingForMovement(existingMovimiento, previous: previousSalida, in: context)
-                    if let entrada = entrada, let previousEntrada = previousEntrada {
-                        try self.holdingService.updateHoldingForMovement(entrada, previous: previousEntrada, in: context)
-                    }
-                } else {
-                    // Crear el par de movimientos (salida + entrada) con groupId compartido
-                    let par = Movimiento.transferencia(
+            if let existingMovimiento = movimiento {
+                try await editUseCase.execute(EditTransferMovementInput(
+                    salida: existingMovimiento,
+                    updated: EditTransferMovementValues(
                         fecha: fecha,
                         cantidadCryptoSalida: cantidadCryptoSalida,
                         cantidadCryptoEntrada: cantidadCryptoEntrada,
+                        crypto: crypto,
+                        carteraOrigen: carteraOrigen,
+                        carteraDestino: carteraDestino
+                    )
+                ))
+            } else {
+                _ = try await moveBetweenWalletsUseCase.execute(
+                    MoveBetweenWalletsInput(
+                        fecha: fecha,
+                        cantidadCryptoSalida: cantidadCryptoSalida,
+                        cantidadCryptoEntrada: cantidadCryptoEntrada,
+                        precioUSD: crypto.precio,
                         carteraOrigen: carteraOrigen,
                         carteraDestino: carteraDestino,
                         crypto: crypto
                     )
-                    context.insert(par.salida)
-                    context.insert(par.entrada)
-                    try self.holdingService.updateHoldingForMovement(par.salida, in: context)
-                    try self.holdingService.updateHoldingForMovement(par.entrada, in: context)
-                }
+                )
             }
             uiState = .success
 
@@ -196,15 +178,7 @@ final class MovimientoEntreCarterasViewModel: MovimientoViewModel {
         uiState = .loading
 
         do {
-            // Revertir holdings y eliminar ambas piernas del par en la misma transacción.
-            try await transactionRunner.run { context in
-                if let entrada = self.piernaEntrada(movimiento) {
-                    try self.holdingService.deleteHoldingForMovement(entrada, in: context)
-                    context.delete(entrada)
-                }
-                try self.holdingService.deleteHoldingForMovement(movimiento, in: context)
-                context.delete(movimiento)
-            }
+            try await deleteUseCase.delete(movimiento)
             uiState = .success
         } catch {
             uiState = .error(error.localizedDescription)

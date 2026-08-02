@@ -32,6 +32,25 @@ struct EditMovementInput {
     let updated: EditMovementValues
 }
 
+/// Values for editing an existing wallet-to-wallet transfer pair.
+struct EditTransferMovementValues {
+    let fecha: Date
+    let cantidadCryptoSalida: Decimal
+    let cantidadCryptoEntrada: Decimal
+    let crypto: Crypto
+    let carteraOrigen: Cartera
+    let carteraDestino: Cartera
+}
+
+/// Input for editing an existing transfer pair.
+///
+/// `salida` is the `.transferenciaSalida` leg; the use case resolves the paired
+/// `.transferenciaEntrada` by `groupId`.
+struct EditTransferMovementInput {
+    let salida: Movimiento
+    let updated: EditTransferMovementValues
+}
+
 // MARK: - Error
 
 /// Domain errors for entry/exit movement editing.
@@ -40,6 +59,8 @@ enum EditMovementError: Error, LocalizedError {
     case insufficientHoldings
     /// The use case only supports `.entrada` and `.salida` movements.
     case unsupportedMovementType
+    /// A transfer edit was requested but the paired leg could not be found.
+    case missingPairedMovement
 
     var errorDescription: String? {
         switch self {
@@ -47,6 +68,8 @@ enum EditMovementError: Error, LocalizedError {
             return "La edición dejaría la cartera con saldo negativo"
         case .unsupportedMovementType:
             return "Este tipo de movimiento no se puede editar como entrada o salida"
+        case .missingPairedMovement:
+            return "No se encontró la pierna de entrada emparejada de la transferencia"
         }
     }
 }
@@ -59,6 +82,10 @@ enum EditMovementError: Error, LocalizedError {
 /// movement.
 protocol EditMovementUseCaseProtocol {
     func execute(_ input: EditMovementInput) async throws
+
+    /// Edits an existing wallet-to-wallet transfer pair (`transferenciaSalida` +
+    /// `transferenciaEntrada`) atomically, adjusting both affected holdings.
+    func execute(_ input: EditTransferMovementInput) async throws
 }
 
 // MARK: - Implementation
@@ -84,6 +111,25 @@ struct EditMovementUseCase: EditMovementUseCaseProtocol {
         }
     }
 
+    func execute(_ input: EditTransferMovementInput) async throws {
+        let previousSalida = holdingService.snapshot(of: input.salida)
+        try await transactionRunner.run { context in
+            guard let entrada = try pairedEntrada(for: input.salida, in: context) else {
+                throw EditMovementError.missingPairedMovement
+            }
+            let previousEntrada = self.holdingService.snapshot(of: entrada)
+            try validateTransferEdit(
+                salida: input.salida,
+                entrada: entrada,
+                updated: input.updated,
+                in: context
+            )
+            apply(input.updated, to: input.salida, entrada: entrada)
+            try self.holdingService.updateHoldingForMovement(input.salida, previous: previousSalida, in: context)
+            try self.holdingService.updateHoldingForMovement(entrada, previous: previousEntrada, in: context)
+        }
+    }
+
     // MARK: - Mutation
 
     private func apply(_ values: EditMovementValues, to movement: Movimiento) {
@@ -97,6 +143,28 @@ struct EditMovementUseCase: EditMovementUseCaseProtocol {
         movement.cartera = values.cartera
         movement.crypto = values.crypto
         movement.fiatAlterno = values.fiatAlterno
+    }
+
+    private func apply(_ values: EditTransferMovementValues, to salida: Movimiento, entrada: Movimiento) {
+        let comision = values.cantidadCryptoSalida - values.cantidadCryptoEntrada
+
+        salida.fecha = values.fecha
+        salida.cantidadCryptoSalida = values.cantidadCryptoSalida
+        salida.cantidadCryptoEntrada = values.cantidadCryptoEntrada
+        salida.cantidadCryptoComision = comision
+        salida.crypto = values.crypto
+        salida.cartera = values.carteraOrigen
+        salida.carteraOrigen = values.carteraOrigen
+        salida.carteraDestino = values.carteraDestino
+
+        entrada.fecha = values.fecha
+        entrada.cantidadCryptoSalida = values.cantidadCryptoSalida
+        entrada.cantidadCryptoEntrada = values.cantidadCryptoEntrada
+        entrada.cantidadCryptoComision = comision
+        entrada.crypto = values.crypto
+        entrada.cartera = values.carteraDestino
+        entrada.carteraOrigen = values.carteraOrigen
+        entrada.carteraDestino = values.carteraDestino
     }
 
     // MARK: - Validation
@@ -187,6 +255,97 @@ struct EditMovementUseCase: EditMovementUseCaseProtocol {
         }
     }
 
+    // MARK: - Transfer validation
+
+    /// Projects the balance for every affected `(portfolio, cartera, crypto)` key
+    /// after reverting the old transfer pair and applying the new one. Fails fast
+    /// if any key would go negative.
+    private func validateTransferEdit(
+        salida: Movimiento,
+        entrada: Movimiento,
+        updated: EditTransferMovementValues,
+        in context: ModelContext
+    ) throws {
+        let keys = affectedKeys(salida: salida, entrada: entrada, updated: updated)
+        for key in keys {
+            try validateProjectedBalance(
+                key: key,
+                salida: salida,
+                entrada: entrada,
+                updated: updated,
+                in: context
+            )
+        }
+    }
+
+    private func affectedKeys(
+        salida: Movimiento,
+        entrada: Movimiento,
+        updated: EditTransferMovementValues
+    ) -> Set<HoldingKey> {
+        var keys: Set<HoldingKey> = []
+        if let origin = salida.carteraOrigen, let crypto = salida.crypto {
+            keys.insert(HoldingKey(carteraId: origin.id, cryptoId: crypto.id))
+        }
+        if let destination = entrada.carteraDestino, let crypto = entrada.crypto {
+            keys.insert(HoldingKey(carteraId: destination.id, cryptoId: crypto.id))
+        }
+        keys.insert(HoldingKey(carteraId: updated.carteraOrigen.id, cryptoId: updated.crypto.id))
+        keys.insert(HoldingKey(carteraId: updated.carteraDestino.id, cryptoId: updated.crypto.id))
+        return keys
+    }
+
+    private func validateProjectedBalance(
+        key: HoldingKey,
+        salida: Movimiento,
+        entrada: Movimiento,
+        updated: EditTransferMovementValues,
+        in context: ModelContext
+    ) throws {
+        guard let portfolio = portfolio(for: key, in: context),
+              let cartera = try fetchCartera(id: key.carteraId, in: context),
+              let crypto = try fetchCrypto(id: key.cryptoId, in: context) else {
+            // Legacy wallets without a portfolio cannot own a materialized holding row.
+            return
+        }
+
+        let holdingKey = Holding.makeId(portfolio: portfolio, cartera: cartera, crypto: crypto)
+        let current = try context.fetch(
+            FetchDescriptor<Holding>(predicate: #Predicate { $0.id == holdingKey })
+        ).first?.cantidad ?? 0
+
+        var delta: Decimal = 0
+
+        // Revert old salida.
+        if salida.carteraOrigen?.id == key.carteraId && salida.crypto?.id == key.cryptoId {
+            delta += salida.cantidadCryptoSalida
+        }
+        // Revert old entrada.
+        if entrada.carteraDestino?.id == key.carteraId && entrada.crypto?.id == key.cryptoId {
+            delta -= entrada.cantidadCryptoEntrada
+        }
+        // Apply new salida.
+        if updated.carteraOrigen.id == key.carteraId && updated.crypto.id == key.cryptoId {
+            delta -= updated.cantidadCryptoSalida
+        }
+        // Apply new entrada.
+        if updated.carteraDestino.id == key.carteraId && updated.crypto.id == key.cryptoId {
+            delta += updated.cantidadCryptoEntrada
+        }
+
+        guard current + delta >= 0 else {
+            throw EditMovementError.insufficientHoldings
+        }
+    }
+
+    private func portfolio(for key: HoldingKey, in context: ModelContext) -> Portfolio? {
+        guard let cartera = try? fetchCartera(id: key.carteraId, in: context),
+              let portfolio = cartera.portfolio ?? PortfolioQueries.defaultPortfolio(in: context) else {
+            return nil
+        }
+        return portfolio
+    }
+
     // MARK: - Lookups
 
     private func fetchCartera(id: UUID?, in context: ModelContext) throws -> Cartera? {
@@ -197,6 +356,20 @@ struct EditMovementUseCase: EditMovementUseCaseProtocol {
     private func fetchCrypto(id: UUID?, in context: ModelContext) throws -> Crypto? {
         guard let id else { return nil }
         return try context.fetch(FetchDescriptor<Crypto>(predicate: #Predicate { $0.id == id })).first
+    }
+
+    private func pairedEntrada(for salida: Movimiento, in context: ModelContext) throws -> Movimiento? {
+        guard let groupId = salida.groupId else { return nil }
+        return try context.fetch(
+            FetchDescriptor<Movimiento>(
+                predicate: #Predicate { $0.groupId == groupId && $0.tipoRaw == "transferenciaEntrada" }
+            )
+        ).first
+    }
+
+    private struct HoldingKey: Hashable {
+        let carteraId: UUID
+        let cryptoId: UUID
     }
 }
 

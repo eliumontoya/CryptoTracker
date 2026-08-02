@@ -127,8 +127,9 @@ class AppDependencyContainer {
         MovimientoEntreCarterasViewModel(
             modelContext: modelContext,
             movimiento: movimiento,
-            transactionRunner: transactionRunner,
-            holdingService: holdingService
+            moveBetweenWalletsUseCase: moveBetweenWalletsUseCase,
+            editUseCase: editMovementUseCase,
+            deleteUseCase: deleteMovementUseCase
         )
     }
     
