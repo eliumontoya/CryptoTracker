@@ -191,16 +191,212 @@ struct EditMovementUseCaseTests {
         #expect(entrada.precioUSD == 50_000)
     }
 
+    // MARK: - Salida editing
+
+    @Test func editSalidaQuantityReducesExitAndHolding() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // 5 BTC in, 2 BTC out → holding = 3.
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(cantidadCrypto: 1, precioUSD: 50_000, crypto: btc, cartera: wallet)
+        ))
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 4)
+        #expect(salida.cantidadCrypto == 1)
+        #expect(salida.valorTotalUSD == 50_000)
+    }
+
+    @Test func editSalidaQuantityIncreasesExitWithinFunds() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // 5 BTC in, 1 BTC out → holding = 4.
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 1, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 4)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(cantidadCrypto: 3, precioUSD: 50_000, crypto: btc, cartera: wallet)
+        ))
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 2)
+        #expect(salida.cantidadCrypto == 3)
+    }
+
+    @Test func editSalidaPriceDoesNotTouchHolding() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(cantidadCrypto: 2, precioUSD: 60_000, crypto: btc, cartera: wallet)
+        ))
+
+        #expect(salida.precioUSD == 60_000)
+        #expect(salida.valorTotalUSD == 120_000)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+    }
+
+    @Test func editSalidaToSameValuesIsNoOp() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(
+                cantidadCrypto: 2,
+                precioUSD: 50_000,
+                crypto: btc,
+                cartera: wallet,
+                fecha: salida.fecha
+            )
+        ))
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+        #expect(salida.cantidadCrypto == 2)
+        #expect(salida.precioUSD == 50_000)
+    }
+
+    @Test func editSalidaExceedingAvailableFundsThrows() async throws {
+        let (context, portfolio, wallet, _, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // 5 BTC in, 2 BTC out → holding = 3.
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+
+        // Editing exit 2 → 6: revert makes holding 5, but the new exit needs 6,
+        // so it fails before mutation.
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditMovementInput(
+                movement: salida,
+                updated: values(cantidadCrypto: 6, precioUSD: 50_000, crypto: btc, cartera: wallet)
+            ))
+        }
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+        #expect(salida.cantidadCrypto == 2)
+        #expect(salida.precioUSD == 50_000)
+    }
+
+    @Test func editSalidaToNewWalletWithInsufficientFundsThrows() async throws {
+        let (context, portfolio, walletA, walletB, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // Wallet A: 5 BTC in, 2 BTC out → holding A = 3.
+        // Wallet B: no BTC holding.
+        try await seedEntrada(in: context, cantidad: 5, wallet: walletA, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: walletA, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletA, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletB, crypto: btc) == nil)
+
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditMovementInput(
+                movement: salida,
+                updated: values(cantidadCrypto: 1, precioUSD: 50_000, crypto: btc, cartera: walletB)
+            ))
+        }
+
+        // Origin revert and destination application must both roll back.
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletA, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletB, crypto: btc) == nil)
+        #expect(salida.cartera?.id == walletA.id)
+    }
+
+    @Test func editSalidaToNewWalletWithEnoughFundsApplies() async throws {
+        let (context, portfolio, walletA, walletB, btc, _) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // Wallet A: 5 BTC in, 2 BTC out → holding A = 3.
+        // Wallet B: 5 BTC in → holding B = 5.
+        try await seedEntrada(in: context, cantidad: 5, wallet: walletA, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: walletA, crypto: btc)
+        try await seedEntrada(in: context, cantidad: 5, wallet: walletB, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletA, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletB, crypto: btc)?.cantidad == 5)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(cantidadCrypto: 4, precioUSD: 50_000, crypto: btc, cartera: walletB)
+        ))
+
+        // A: reverted 2 → 5. B: 5 - 4 = 1.
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletA, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: walletB, crypto: btc)?.cantidad == 1)
+        #expect(salida.cartera?.id == walletB.id)
+        #expect(salida.cantidadCrypto == 4)
+    }
+
+    @Test func editSalidaToNewCryptoWithEnoughFundsApplies() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        // BTC: 5 in, 2 out → holding BTC = 3.
+        // ETH: 10 in → holding ETH = 10.
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        try await seedEntrada(in: context, cantidad: 10, wallet: wallet, crypto: eth)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 10)
+
+        try await useCase.execute(EditMovementInput(
+            movement: salida,
+            updated: values(cantidadCrypto: 4, precioUSD: 3_000, crypto: eth, cartera: wallet)
+        ))
+
+        // BTC: reverted 2 → 5. ETH: 10 - 4 = 6.
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 5)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth)?.cantidad == 6)
+        #expect(salida.crypto?.id == eth.id)
+        #expect(salida.cantidadCrypto == 4)
+    }
+
+    @Test func editSalidaToNewCryptoWithInsufficientFundsThrows() async throws {
+        let (context, portfolio, wallet, _, btc, eth) = try makeContext()
+        let useCase = makeUseCase(context: context)
+        try await seedEntrada(in: context, cantidad: 5, wallet: wallet, crypto: btc)
+        let salida = try await seedSalida(in: context, cantidad: 2, wallet: wallet, crypto: btc)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth) == nil)
+
+        await #expect(throws: EditMovementError.insufficientHoldings) {
+            try await useCase.execute(EditMovementInput(
+                movement: salida,
+                updated: values(cantidadCrypto: 1, precioUSD: 3_000, crypto: eth, cartera: wallet)
+            ))
+        }
+
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: btc)?.cantidad == 3)
+        #expect(try holding(in: context, portfolio: portfolio, wallet: wallet, crypto: eth) == nil)
+        #expect(salida.crypto?.id == btc.id)
+    }
+
     // MARK: - Unsupported movement type
 
     @Test func nonEntradaMovementThrowsUnsupportedType() async throws {
         let (context, _, wallet, _, btc, _) = try makeContext()
         let useCase = makeUseCase(context: context)
-        let salida = Movimiento.salida(fecha: Date(), cantidadCrypto: 1, precioUSD: 50_000, cartera: wallet, crypto: btc)
+        let ajuste = Movimiento(
+            tipo: .ajuste,
+            fecha: Date(),
+            cantidadCrypto: 1,
+            precioUSD: 50_000,
+            valorTotalUSD: 50_000,
+            cartera: wallet,
+            crypto: btc
+        )
 
         await #expect(throws: EditMovementError.unsupportedMovementType) {
             try await useCase.execute(EditMovementInput(
-                movement: salida,
+                movement: ajuste,
                 updated: values(cantidadCrypto: 2, precioUSD: 50_000, crypto: btc, cartera: wallet)
             ))
         }
