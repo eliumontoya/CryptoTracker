@@ -211,9 +211,49 @@ final class AdminCarterasViewModelTests: XCTestCase {
     func testToggleIsMainWithoutPortfolioDoesNothing() throws {
         viewModel.addCartera(nombre: "Orphan", simbolo: "ORP")
         let cartera = viewModel.carteras.first!
-        
+
         viewModel.toggleIsMain(cartera)
-        
+
+        XCTAssertFalse(cartera.isMain)
+    }
+
+    func testAddCarteraWithIsMainSetsMainWallet() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: true)
+        modelContext.insert(portfolio)
+
+        viewModel.addCartera(nombre: "Wallet", simbolo: "WAL", isMain: true, portfolio: portfolio)
+
+        XCTAssertTrue(viewModel.carteras.first?.isMain ?? false)
+    }
+
+    func testAddCarteraWithIsMainWithoutPortfolioDoesNotSetMain() throws {
+        viewModel.addCartera(nombre: "Orphan", simbolo: "ORP", isMain: true)
+
+        XCTAssertFalse(viewModel.carteras.first?.isMain ?? true)
+    }
+
+    func testUpdateCarteraWithIsMainSetsMainWalletAndUnsetsOthers() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: true)
+        modelContext.insert(portfolio)
+        viewModel.addCartera(nombre: "First", simbolo: "FST", isMain: true, portfolio: portfolio)
+        viewModel.addCartera(nombre: "Second", simbolo: "SND", portfolio: portfolio)
+        let first = viewModel.carteras.first { $0.nombre == "First" }!
+        let second = viewModel.carteras.first { $0.nombre == "Second" }!
+
+        viewModel.updateCartera(second, nombre: "Second", simbolo: "SND", isMain: true, portfolio: portfolio)
+
+        XCTAssertFalse(first.isMain)
+        XCTAssertTrue(second.isMain)
+    }
+
+    func testUpdateCarteraWithIsMainFalseUnsetsMainWallet() throws {
+        let portfolio = Portfolio(nombre: "Main Portfolio", descripcion: "", isDefault: true)
+        modelContext.insert(portfolio)
+        viewModel.addCartera(nombre: "Wallet", simbolo: "WAL", isMain: true, portfolio: portfolio)
+        let cartera = viewModel.carteras.first!
+
+        viewModel.updateCartera(cartera, nombre: "Wallet", simbolo: "WAL", isMain: false, portfolio: portfolio)
+
         XCTAssertFalse(cartera.isMain)
     }
 }

@@ -51,12 +51,12 @@ struct AdminCarterasView: View {
                     CarteraFormView(
                         formState: formState,
                         portfolios: viewModel.portfolios
-                    ) { nombre, simbolo, portfolio in
+                    ) { nombre, simbolo, isMain, portfolio in
                         switch formState {
                         case .add:
-                            viewModel.addCartera(nombre: nombre, simbolo: simbolo, portfolio: portfolio)
+                            viewModel.addCartera(nombre: nombre, simbolo: simbolo, isMain: isMain, portfolio: portfolio)
                         case .edit(let cartera):
-                            viewModel.updateCartera(cartera, nombre: nombre, simbolo: simbolo, portfolio: portfolio)
+                            viewModel.updateCartera(cartera, nombre: nombre, simbolo: simbolo, isMain: isMain, portfolio: portfolio)
                         }
                         viewModel.closeForm()
                     }
@@ -145,16 +145,21 @@ struct CarteraFormView: View {
     @Environment(\.dismiss) private var dismiss
     let formState: CarteraFormState
     let portfolios: [Portfolio]
-    let onSave: (String, String, Portfolio?) -> Void
-    
+    let onSave: (String, String, Bool, Portfolio?) -> Void
+
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
+    @State private var isMain: Bool = false
     @State private var selectedPortfolioID: UUID?
-    
+
     private var selectedPortfolio: Portfolio? {
         portfolios.first { $0.id == selectedPortfolioID }
     }
-    
+
+    private var canBeMain: Bool {
+        selectedPortfolio != nil
+    }
+
     var title: String {
         switch formState {
         case .add:
@@ -163,14 +168,14 @@ struct CarteraFormView: View {
             return "Editar Cartera"
         }
     }
-    
+
     var body: some View {
         VStack(spacing: 16) {
             TextField("Nombre", text: $nombre)
                 .textFieldStyle(.roundedBorder)
             TextField("Símbolo", text: $simbolo)
                 .textFieldStyle(.roundedBorder)
-            
+
             Picker("Portfolio", selection: $selectedPortfolioID) {
                 Text("None")
                     .tag(UUID?.none)
@@ -180,11 +185,19 @@ struct CarteraFormView: View {
                 }
             }
             .pickerStyle(.menu)
-            
+
+            Toggle("Main Wallet", isOn: $isMain)
+                .disabled(!canBeMain)
+                .onChange(of: selectedPortfolioID) { _ in
+                    if !canBeMain {
+                        isMain = false
+                    }
+                }
+
             Spacer()
         }
         .padding()
-        .adaptiveSheetFrame(minWidth: 300, minHeight: 240)
+        .adaptiveSheetFrame(minWidth: 300, minHeight: 260)
         .navigationTitle(title)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -194,7 +207,7 @@ struct CarteraFormView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
-                    onSave(nombre, simbolo, selectedPortfolio)
+                    onSave(nombre, simbolo, isMain, selectedPortfolio)
                     dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
@@ -204,6 +217,7 @@ struct CarteraFormView: View {
             if case .edit(let cartera) = formState {
                 nombre = cartera.nombre
                 simbolo = cartera.simbolo
+                isMain = cartera.isMain
                 selectedPortfolioID = cartera.portfolio?.id
             }
         }
