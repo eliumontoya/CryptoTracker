@@ -19,6 +19,7 @@ enum CarteraFormState: Identifiable {
 @MainActor
 class AdminCarterasViewModel: ObservableObject {
     @Published private(set) var carteras: [Cartera] = []
+    @Published private(set) var portfolios: [Portfolio] = []
     @Published var formState: CarteraFormState?
     @Published var showingDeleteAlert = false
     @Published var selectedCartera: Cartera?
@@ -29,6 +30,7 @@ class AdminCarterasViewModel: ObservableObject {
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         loadCarteras()
+        loadPortfolios()
     }
     
     func loadCarteras() {
@@ -36,23 +38,61 @@ class AdminCarterasViewModel: ObservableObject {
         carteras = (try? modelContext.fetch(descriptor)) ?? []
     }
     
-    func addCartera(nombre: String, simbolo: String) {
-        let newCartera = Cartera(nombre: nombre, simbolo: simbolo)
+    func loadPortfolios() {
+        let descriptor = FetchDescriptor<Portfolio>(sortBy: [SortDescriptor(\.nombre)])
+        portfolios = (try? modelContext.fetch(descriptor)) ?? []
+    }
+    
+    func addCartera(nombre: String, simbolo: String, isMain: Bool = false, portfolio: Portfolio? = nil) {
+        let newCartera = Cartera(nombre: nombre, simbolo: simbolo, isMain: isMain && portfolio != nil, portfolio: portfolio)
         modelContext.insert(newCartera)
+        if isMain, let portfolio = portfolio {
+            unsetOtherMainWallets(in: portfolio, excluding: newCartera)
+        }
         saveContext()
         carteras.append(newCartera)
         carteras.sort { $0.nombre < $1.nombre }
     }
-    
-    func updateCartera(_ cartera: Cartera, nombre: String, simbolo: String) {
+
+    func updateCartera(_ cartera: Cartera, nombre: String, simbolo: String, isMain: Bool = false, portfolio: Portfolio? = nil) {
         cartera.nombre = nombre
         cartera.simbolo = simbolo
+        cartera.portfolio = portfolio
+        if isMain, let portfolio = portfolio {
+            unsetOtherMainWallets(in: portfolio, excluding: cartera)
+            cartera.isMain = true
+        } else {
+            cartera.isMain = false
+        }
         saveContext()
         if let index = carteras.firstIndex(where: { $0.id == cartera.id }) {
             carteras[index] = cartera
         }
         carteras.sort { $0.nombre < $1.nombre }
         calculosCache.removeValue(forKey: cartera.id)
+    }
+
+    func toggleIsMain(_ cartera: Cartera) {
+        guard let portfolio = cartera.portfolio else { return }
+        let newValue = !cartera.isMain
+        if newValue {
+            unsetOtherMainWallets(in: portfolio, excluding: cartera)
+        }
+        cartera.isMain = newValue
+        saveContext()
+        calculosCache.removeValue(forKey: cartera.id)
+        if let index = carteras.firstIndex(where: { $0.id == cartera.id }) {
+            carteras[index] = cartera
+        }
+    }
+
+    private func unsetOtherMainWallets(in portfolio: Portfolio, excluding cartera: Cartera) {
+        for wallet in portfolio.carteras where wallet.isMain && wallet.id != cartera.id {
+            wallet.isMain = false
+            if let index = carteras.firstIndex(where: { $0.id == wallet.id }) {
+                carteras[index] = wallet
+            }
+        }
     }
     
     func deleteCartera(_ cartera: Cartera) {

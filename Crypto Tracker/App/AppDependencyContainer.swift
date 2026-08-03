@@ -33,6 +33,7 @@ class AppDependencyContainer {
     let adminCarterasViewModel: AdminCarterasViewModel
     let adminCryptosViewModel: AdminCryptosViewModel
     let adminFiatViewModel: AdminFiatViewModel
+    let adminPortfoliosViewModel: AdminPortfoliosViewModel
     let cryptoSyncViewModel: CryptoSyncViewModel
     let cargaCatalogosViewModel: CargaCatalogosViewModel
     let cargaMovimientosViewModel: CargaMovimientosViewModel
@@ -102,6 +103,7 @@ class AppDependencyContainer {
         self.adminCarterasViewModel = AdminCarterasViewModel(modelContext: modelContext)
         self.adminCryptosViewModel = AdminCryptosViewModel(modelContext: modelContext)
         self.adminFiatViewModel = AdminFiatViewModel(modelContext: modelContext)
+        self.adminPortfoliosViewModel = AdminPortfoliosViewModel(modelContext: modelContext)
         self.cryptoSyncViewModel = CryptoSyncViewModel(modelContext: modelContext, priceService: priceService)
         
         // Setup inicial
@@ -256,6 +258,10 @@ class AppDependencyContainer {
     
     func makeAdminFiatView() -> AdminFiatView {
         AdminFiatView(viewModel: adminFiatViewModel)
+    }
+    
+    func makeAdminPortfoliosView() -> AdminPortfoliosView {
+        AdminPortfoliosView(viewModel: adminPortfoliosViewModel)
     }
     
     func makeCryptoSyncView() -> CryptoSyncView {
