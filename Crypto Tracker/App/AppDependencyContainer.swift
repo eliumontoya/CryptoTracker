@@ -10,7 +10,9 @@ class AppDependencyContainer {
     // Servicios
     let transactionRunner: TransactionRunner
     let holdingService: HoldingServiceProtocol
-    let priceService: PriceServiceProtocol
+    let priceService: PriceService
+    let snapshotService: SnapshotService
+    let backupService: BackupService
     let registerMovementUseCase: RegisterMovementUseCaseProtocol
     
     // Use cases
@@ -28,6 +30,7 @@ class AppDependencyContainer {
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
+    let portfolioViewModel: PortfolioViewModel
     let portfolioPorCryptosViewModel: PortfolioPorCryptosViewModel
     let portfolioDetalleViewModel: PortfolioDetalleViewModel
     let adminCarterasViewModel: AdminCarterasViewModel
@@ -38,6 +41,7 @@ class AppDependencyContainer {
     let cargaCatalogosViewModel: CargaCatalogosViewModel
     let cargaMovimientosViewModel: CargaMovimientosViewModel
     let eliminarDataViewModel: EliminarDataViewModel
+    let backupViewModel: BackupViewModel
     
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -45,7 +49,9 @@ class AppDependencyContainer {
         // Inicializar servicios
         self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
         self.holdingService = HoldingService()
-        self.priceService = PriceService()
+        self.priceService = CoinGeckoPriceService()
+        self.snapshotService = SwiftDataSnapshotService()
+        self.backupService = JSONBackupService()
         self.registerMovementUseCase = RegisterMovementUseCase(
             transactionRunner: transactionRunner,
             holdingService: holdingService
@@ -89,6 +95,10 @@ class AppDependencyContainer {
         )
         
         // Portfolio
+        self.portfolioViewModel = PortfolioViewModel(
+            modelContext: modelContext,
+            snapshotService: snapshotService
+        )
         self.portfolioPorCryptosViewModel = PortfolioPorCryptosViewModel(
             modelContext: modelContext,
             registerUseCase: registerMovementUseCase,
@@ -110,6 +120,10 @@ class AppDependencyContainer {
         self.cargaCatalogosViewModel = CargaCatalogosViewModel(modelContext: modelContext)
         self.cargaMovimientosViewModel = CargaMovimientosViewModel(modelContext: modelContext)
         self.eliminarDataViewModel = EliminarDataViewModel(modelContext: modelContext)
+        self.backupViewModel = BackupViewModel(
+            modelContext: modelContext,
+            backupService: backupService
+        )
     }
     
     // MARK: - ViewModel Factories
@@ -169,7 +183,7 @@ class AppDependencyContainer {
     // MARK: - View Factories (Portfolio)
     
     func makePortfolioView() -> PortfolioView {
-        PortfolioView()
+        PortfolioView(viewModel: portfolioViewModel)
     }
     
     func makePortfolioPorCryptosView() -> PortfolioPorCryptosView {
@@ -278,6 +292,10 @@ class AppDependencyContainer {
     
     func makeEliminarDataView() -> EliminarDataView {
         EliminarDataView(dependencies: self)
+    }
+    
+    func makeBackupView() -> BackupView {
+        BackupView(viewModel: backupViewModel)
     }
     
     func makeCargaMovimientosInicialesView() -> CargaMovimientosInicialesView {

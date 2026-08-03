@@ -27,6 +27,7 @@ final class AppDependencyContainerTests: XCTestCase {
     func testSharedViewModelsAreInstantiated() {
         XCTAssertNotNil(dependencies.movimientoEntradaViewModel)
         XCTAssertNotNil(dependencies.movimientosEntradaListViewModel)
+        XCTAssertNotNil(dependencies.portfolioViewModel)
         XCTAssertNotNil(dependencies.portfolioPorCryptosViewModel)
         XCTAssertNotNil(dependencies.portfolioDetalleViewModel)
         XCTAssertNotNil(dependencies.adminCarterasViewModel)
@@ -52,6 +53,9 @@ final class AppDependencyContainerTests: XCTestCase {
     func testTransactionServicesAreInjectedIntoMovimientoViewModels() {
         XCTAssertNotNil(dependencies.transactionRunner)
         XCTAssertNotNil(dependencies.holdingService)
+        XCTAssertNotNil(dependencies.priceService)
+        XCTAssertNotNil(dependencies.snapshotService)
+        XCTAssertNotNil(dependencies.backupService)
         XCTAssertNotNil(dependencies.deleteMovementUseCase)
         XCTAssertNotNil(dependencies.registerMovementUseCase)
         XCTAssertNotNil(dependencies.movimientosEntradaListViewModel.entradaViewModel)
@@ -125,6 +129,7 @@ final class AppDependencyContainerTests: XCTestCase {
         XCTAssertNotNil(dependencies.makePortfolioView())
         XCTAssertNotNil(dependencies.makePortfolioPorCryptosView())
         XCTAssertNotNil(dependencies.makePortfolioDetalleView())
+        XCTAssertNotNil(dependencies.makeBackupView())
         XCTAssertNotNil(dependencies.makeMovimientosEntradaView())
         XCTAssertNotNil(dependencies.makeMovimientosSalidaView())
         XCTAssertNotNil(dependencies.makeMovimientosEntreCarterasView())

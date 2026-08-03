@@ -15,6 +15,7 @@ enum AdminMenuOption {
     case fiat
     case portfolios
     case sync
+    case backup
     case setup  //  caso para Setup Inicial
 }
 
@@ -160,6 +161,13 @@ struct ContentView: View {
                         ) {
                             Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
                         }
+                        NavigationLink(
+                            destination: dependencies.makeBackupView(),
+                            tag: .backup,
+                            selection: $selectedAdminMenu
+                        ) {
+                            Label("Backup", systemImage: "arrow.clockwise.icloud")
+                        }
                         // Setup Inicial
                         NavigationLink(
                             destination: dependencies.makeSetupInicialView(),
@@ -273,7 +281,13 @@ struct ContentView: View {
                     } label: {
                         Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
                     }
-                    
+
+                    NavigationLink {
+                        dependencies.makeBackupView()
+                    } label: {
+                        Label("Backup", systemImage: "arrow.clockwise.icloud")
+                    }
+
                     NavigationLink {
                         dependencies.makeSetupInicialView()
                     } label: {

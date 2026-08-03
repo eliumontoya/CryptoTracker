@@ -18,8 +18,9 @@ struct CryptoTrackerApp: App {
                 Holding.self,
                 Movimiento.self,
                 PrecioHistorico.self,
+                PortfolioSnapshot.self,
                 CryptoSyncConfig.self
-            ], version: .init(5, 0, 0))
+            ], version: .init(5, 1, 0))
             
             // Configuración del modelo
             let modelConfiguration = ModelConfiguration(

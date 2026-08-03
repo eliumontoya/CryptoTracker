@@ -6,12 +6,12 @@ struct CryptoSyncRowView: View {
     let crypto: Crypto
     let syncConfig: CryptoSyncConfig?
     let onSave: (String, Decimal) -> Void
-    
-    @State private var syncUrl: String = ""
+
+    @State private var coingeckoId: String = ""
     @State private var defaultPrice: Decimal = 0
     @State private var isEditing = false
     @State private var showingHistory = false
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Crypto info
@@ -26,46 +26,42 @@ struct CryptoSyncRowView: View {
                         .foregroundStyle(isEditing ? .green : .blue)
                 }
             }
-            
+
             if isEditing {
                 // Campos de edición
-                TextField("URL de Sincronización", text: $syncUrl)
+                TextField("CoinGecko ID", text: $coingeckoId)
                     .textFieldStyle(.roundedBorder)
-                
+
                 TextField("Precio por Default", value: $defaultPrice, format: .currency(code: "USD"))
                     .textFieldStyle(.roundedBorder)
- 
+
                 Button("Guardar") {
-                    onSave(syncUrl, defaultPrice)
+                    onSave(coingeckoId, defaultPrice)
                     isEditing = false
                 }
                 .buttonStyle(.bordered)
-                .disabled(syncUrl.isEmpty || defaultPrice <= 0)
+                .disabled(coingeckoId.isEmpty || defaultPrice <= 0)
             } else {
                 // Vista de solo lectura
-                if let config = syncConfig {
-                    HStack {
-                        VStack(alignment: .leading) {
-                            Text("URL: \(config.syncUrl)")
-                                .font(.caption)
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text("CoinGecko ID: \(crypto.coingeckoId ?? "-")")
+                            .font(.caption)
+                        if let config = syncConfig {
                             Text("Precio Default: \(Format.usd(config.defaultPrice))")
                                 .font(.caption)
                         }
-                        Spacer()
-                        CryptoHistoryButton(crypto: crypto, showingHistory: $showingHistory)
-                            .font(.caption)
                     }
-                } else {
-                    Text("Sin configuración")
+                    Spacer()
+                    CryptoHistoryButton(crypto: crypto, showingHistory: $showingHistory)
                         .font(.caption)
-                        .foregroundStyle(.secondary)
                 }
             }
         }
         .padding(.vertical, 4)
         .onAppear {
+            coingeckoId = crypto.coingeckoId ?? ""
             if let config = syncConfig {
-                syncUrl = config.syncUrl
                 defaultPrice = config.defaultPrice
             }
         }

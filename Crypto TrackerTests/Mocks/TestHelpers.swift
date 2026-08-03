@@ -15,6 +15,7 @@ class TestSetup {
             FIAT.self,
             Movimiento.self,
             PrecioHistorico.self,
+            PortfolioSnapshot.self,
             CryptoSyncConfig.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
