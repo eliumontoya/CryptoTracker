@@ -34,10 +34,12 @@ final class BackupViewModel: ObservableObject {
 
     func handleImport(url: URL) {
         do {
-            guard url.startAccessingSecurityScopedResource() else {
-                throw BackupError.unsupportedVersion
+            let isSecurityScoped = url.startAccessingSecurityScopedResource()
+            defer {
+                if isSecurityScoped {
+                    url.stopAccessingSecurityScopedResource()
+                }
             }
-            defer { url.stopAccessingSecurityScopedResource() }
 
             let data = try Data(contentsOf: url)
             try backupService.restore(from: data, in: modelContext)

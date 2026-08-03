@@ -27,7 +27,7 @@ struct PortfolioView: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 24) {
+            VStack(spacing: DesignSystem.Spacing.large) {
                 // Header
                 MainPortfolioHeaderView()
 
@@ -55,6 +55,7 @@ struct PortfolioView: View {
             }
             .padding()
         }
+        .accessibilityIdentifier("portfolio-view")
         .onAppear {
             viewModel.loadPortfolio()
         }
