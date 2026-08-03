@@ -24,6 +24,7 @@ enum MovimientosMenuOption {
     case salida
     case entreCarteras
     case swaps
+    case search
 }
 
 struct ContentView: View {
@@ -125,6 +126,15 @@ struct ContentView: View {
                             Label(String(localized: "menu_movements_swaps"), systemImage: "arrow.triangle.2.circlepath")
                         }
                         .accessibilityIdentifier("main-menu-movements-swaps")
+
+                        NavigationLink(
+                            destination: dependencies.makeMovimientosSearchFilterView(),
+                            tag: .search,
+                            selection: $selectedMovimientosMenu
+                        ) {
+                            Label(String(localized: "menu_movements_search"), systemImage: "magnifyingglass")
+                        }
+                        .accessibilityIdentifier("main-menu-movements-search")
                     },
                     label: {
                         Label(String(localized: "menu_movements"), systemImage: "arrow.left.arrow.right")
@@ -264,6 +274,12 @@ struct ContentView: View {
                         dependencies.makeMovimientosSwapsView()
                     } label: {
                         Label(String(localized: "menu_movements_swaps"), systemImage: "arrow.triangle.2.circlepath")
+                    }
+
+                    NavigationLink {
+                        dependencies.makeMovimientosSearchFilterView()
+                    } label: {
+                        Label(String(localized: "menu_movements_search"), systemImage: "magnifyingglass")
                     }
                 }
                 .navigationTitle(String(localized: "tab_movements"))

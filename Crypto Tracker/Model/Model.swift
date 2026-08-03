@@ -489,4 +489,25 @@ class Movimiento {
         )
         return (salida, entrada)
     }
+
+    /// Movimiento de ajuste manual de holding (tipo `.ajuste`).
+    /// `cantidadCrypto` es el valor absoluto objetivo del holding.
+    static func ajuste(
+        fecha: Date,
+        cantidadCrypto: Decimal,
+        cartera: Cartera,
+        crypto: Crypto,
+        motivo: String? = nil
+    ) -> Movimiento {
+        let precioUSD = crypto.precio
+        return Movimiento(
+            tipo: .ajuste,
+            fecha: fecha,
+            cantidadCrypto: cantidadCrypto,
+            precioUSD: precioUSD,
+            valorTotalUSD: cantidadCrypto * precioUSD,
+            cartera: cartera,
+            crypto: crypto
+        )
+    }
 }
