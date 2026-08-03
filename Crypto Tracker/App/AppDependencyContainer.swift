@@ -27,6 +27,9 @@ class AppDependencyContainer {
     // Use cases
     let swapMovementUseCase: SwapMovementUseCaseProtocol
     
+    // Use cases
+    let adjustHoldingUseCase: AdjustHoldingUseCaseProtocol
+    
     // ViewModels compartidos
     let movimientoEntradaViewModel: MovimientoEntradaViewModel
     let movimientosEntradaListViewModel: MovimientosEntradaListViewModel
@@ -77,6 +80,12 @@ class AppDependencyContainer {
         
         // Inicializar use cases
         self.swapMovementUseCase = SwapMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: holdingService
+        )
+        
+        // Inicializar use cases
+        self.adjustHoldingUseCase = AdjustHoldingUseCase(
             transactionRunner: transactionRunner,
             holdingService: holdingService
         )
@@ -254,6 +263,10 @@ class AppDependencyContainer {
     
     func makeMovimientosSwapsView() -> MovimientosSwapsView {
         MovimientosSwapsView(dependencies: self)
+    }
+
+    func makeMovimientosSearchFilterView() -> MovimientosSearchFilterView {
+        MovimientosSearchFilterView(dependencies: self)
     }
     
     func makeMovimientoSearchView(movimientoDetalle: MovimientoDetalle) -> MovimientoSearchView {
