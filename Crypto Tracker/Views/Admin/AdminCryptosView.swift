@@ -97,13 +97,15 @@ struct CryptoFormView: View {
     @State private var nombre: String = ""
     @State private var simbolo: String = ""
     @State private var precio: Decimal = 0.0
-    
+    @State private var coingeckoId: String = ""
+
     init(viewModel: AdminCryptosViewModel, crypto: Crypto? = nil) {
         self.viewModel = viewModel
         self.crypto = crypto
         _nombre = State(initialValue: crypto?.nombre ?? "")
         _simbolo = State(initialValue: crypto?.simbolo ?? "")
         _precio = State(initialValue: crypto?.precio ?? 0.0)
+        _coingeckoId = State(initialValue: crypto?.coingeckoId ?? "")
     }
     
     var title: String {
@@ -118,7 +120,10 @@ struct CryptoFormView: View {
                 .textFieldStyle(.roundedBorder)
             TextField("Precio", value: $precio, format: .currency(code: "USD"))
                 .textFieldStyle(.roundedBorder)
-            
+
+            TextField("CoinGecko ID", text: $coingeckoId)
+                .textFieldStyle(.roundedBorder)
+
             Spacer()
         }
         .padding()
@@ -134,9 +139,9 @@ struct CryptoFormView: View {
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
                     if let crypto = crypto {
-                        viewModel.updateCrypto(crypto, nombre: nombre, simbolo: simbolo, precio: precio)
+                        viewModel.updateCrypto(crypto, nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
                     } else {
-                        viewModel.addCrypto(nombre: nombre, simbolo: simbolo, precio: precio)
+                        viewModel.addCrypto(nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
                     }
                     viewModel.closeForm()
                     dismiss()

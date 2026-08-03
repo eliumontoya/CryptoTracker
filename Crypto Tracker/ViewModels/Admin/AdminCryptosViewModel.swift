@@ -56,15 +56,15 @@ class AdminCryptosViewModel: ObservableObject {
         cryptos = (try? modelContext.fetch(descriptor)) ?? []
     }
     
-    func addCrypto(nombre: String, simbolo: String, precio: Decimal) {
-        let newCrypto = Crypto(nombre: nombre, simbolo: simbolo, precio: precio)
+    func addCrypto(nombre: String, simbolo: String, precio: Decimal, coingeckoId: String? = nil) {
+        let newCrypto = Crypto(nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId)
         modelContext.insert(newCrypto)
         saveContext()
         cryptos.append(newCrypto)
         cryptos.sort { $0.nombre < $1.nombre }
     }
-    
-    func updateCrypto(_ crypto: Crypto, nombre: String, simbolo: String, precio: Decimal) {
+
+    func updateCrypto(_ crypto: Crypto, nombre: String, simbolo: String, precio: Decimal, coingeckoId: String? = nil) {
         // Guardar el precio anterior en el histórico
         let precioHistorico = PrecioHistorico(
             crypto: crypto,
@@ -72,15 +72,16 @@ class AdminCryptosViewModel: ObservableObject {
             fecha: crypto.ultimaActualizacion
         )
         modelContext.insert(precioHistorico)
-        
+
         // Actualizar la crypto
         crypto.nombre = nombre
         crypto.simbolo = simbolo
         crypto.precio = precio
+        crypto.coingeckoId = coingeckoId
         crypto.ultimaActualizacion = Date()
-        
+
         saveContext()
-        
+
         if let index = cryptos.firstIndex(where: { $0.id == crypto.id }) {
             cryptos[index] = crypto
         }

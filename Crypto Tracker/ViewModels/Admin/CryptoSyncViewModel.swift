@@ -6,45 +6,43 @@ import Foundation
 class CryptoSyncViewModel: ObservableObject {
     @Published private(set) var state = CryptoSyncState()
     let modelContext: ModelContext
-    private let priceService: PriceServiceProtocol
-    
-    // Actor para manejar las tareas de forma thread-safe
+    private let priceService: PriceService
+
     private actor TaskManager {
         private var tasks: Set<Task<Void, Never>> = []
-        
+
         func add(_ task: Task<Void, Never>) {
             tasks.insert(task)
         }
-        
+
         func cancelAll() {
             tasks.forEach { $0.cancel() }
             tasks.removeAll()
         }
     }
-    
+
     private let taskManager = TaskManager()
-    
-    // Cache para evitar lecturas innecesarias
+
     private var syncConfigCache: [UUID: CryptoSyncConfig] = [:]
     private var lastFetchTime: Date?
-    private let cacheValidityInterval: TimeInterval = 300 // 5 minutos
-    
-    init(modelContext: ModelContext, priceService: PriceServiceProtocol = PriceService()) {
+    private let cacheValidityInterval: TimeInterval = 300
+
+    init(modelContext: ModelContext, priceService: PriceService = CoinGeckoPriceService()) {
         self.modelContext = modelContext
         self.priceService = priceService
         setupInitialState()
     }
-    
+
     private func setupInitialState() {
         loadData()
     }
-    
-    func loadData() {
-        guard shouldRefreshCache() else { return }
-        
+
+    func loadData(force: Bool = false) {
+        guard force || shouldRefreshCache() else { return }
+
         let cryptoDescriptor = FetchDescriptor<Crypto>(sortBy: [SortDescriptor(\.nombre)])
         let configDescriptor = FetchDescriptor<CryptoSyncConfig>(sortBy: [SortDescriptor(\.syncUrl)])
-        
+
         do {
             state.cryptos = try modelContext.fetch(cryptoDescriptor)
             state.syncConfigs = try modelContext.fetch(configDescriptor)
@@ -54,12 +52,12 @@ class CryptoSyncViewModel: ObservableObject {
             addLogEntry(cryptoSymbol: "Sistema", message: "Error cargando datos: \(error.localizedDescription)", isError: true)
         }
     }
-    
+
     private func shouldRefreshCache() -> Bool {
         guard let lastFetch = lastFetchTime else { return true }
         return Date().timeIntervalSince(lastFetch) > cacheValidityInterval
     }
-    
+
     private func updateSyncConfigCache() {
         syncConfigCache = Dictionary(
             uniqueKeysWithValues: state.syncConfigs.compactMap { config in
@@ -68,8 +66,10 @@ class CryptoSyncViewModel: ObservableObject {
             }
         )
     }
-    
+
     func saveSyncConfig(for crypto: Crypto, url: String, defaultPrice: Decimal) {
+        crypto.coingeckoId = url
+
         if let existingConfig = getSyncConfig(for: crypto.id) {
             existingConfig.syncUrl = url
             existingConfig.defaultPrice = defaultPrice
@@ -79,73 +79,75 @@ class CryptoSyncViewModel: ObservableObject {
             state.syncConfigs.append(newConfig)
             syncConfigCache[crypto.id] = newConfig
         }
-        
+
         do {
             try modelContext.save()
         } catch {
             addLogEntry(cryptoSymbol: crypto.simbolo, message: "Error guardando configuración: \(error.localizedDescription)", isError: true)
         }
     }
-    
+
     func getSyncConfig(for cryptoId: UUID) -> CryptoSyncConfig? {
         syncConfigCache[cryptoId] ?? state.syncConfigs.first { $0.crypto?.id == cryptoId }
     }
-    
+
     func startSync() {
         guard !state.isSyncing else { return }
-        
-        state.isSyncing = true
-        state.logEntries.removeAll()
-        addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
-        
+
         let syncTask = Task {
-            do {
-                for config in state.syncConfigs {
-                    guard let crypto = config.crypto else { continue }
-                    if Task.isCancelled { break }
-                    try await syncCrypto(crypto, with: config)
-                }
-            } catch {
-                addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida", isError: true)
-            }
-            
-            await MainActor.run {
-                self.state.isSyncing = false
-                addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización completada", isError: false)
-            }
+            await syncPrices()
         }
-        
+
         Task {
             await taskManager.add(syncTask)
         }
     }
-    
-    private func syncCrypto(_ crypto: Crypto, with config: CryptoSyncConfig) async throws {
+
+    func syncPrices() async {
+        loadData(force: true)
+        state.isSyncing = true
+        state.logEntries.removeAll()
+        addLogEntry(cryptoSymbol: "Sistema", message: "Iniciando sincronización...", isError: false)
+
         do {
-            let price = try await priceService.fetchPrice(from: config.syncUrl)
-            await updateCryptoPrice(crypto, newPrice: price)
+            let queries = state.cryptos.compactMap { crypto -> PriceQuery? in
+                guard let coingeckoId = crypto.coingeckoId, !coingeckoId.isEmpty else { return nil }
+                return PriceQuery(cryptoId: crypto.id, coingeckoId: coingeckoId)
+            }
+            let prices = try await priceService.fetchPrices(for: queries)
+            for crypto in state.cryptos {
+                if Task.isCancelled { break }
+                if let price = prices[crypto.id] {
+                    await updateCryptoPrice(crypto, newPrice: price)
+                } else {
+                    await handleMissingPrice(crypto: crypto)
+                }
+            }
         } catch {
-            await handleSyncError(crypto: crypto, config: config, error: error)
+            addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización interrumpida: \(error.localizedDescription)", isError: true)
         }
+
+        state.isSyncing = false
+        addLogEntry(cryptoSymbol: "Sistema", message: "Sincronización completada", isError: false)
     }
-    
-    private func updateCryptoPrice(_ crypto: Crypto, newPrice: Double) async {
+
+    private func updateCryptoPrice(_ crypto: Crypto, newPrice: Decimal) async {
         let oldPrice = crypto.precio
         let precioHistorico = PrecioHistorico(
             crypto: crypto,
             precio: oldPrice,
             fecha: crypto.ultimaActualizacion
         )
-        
+
         modelContext.insert(precioHistorico)
-        crypto.precio = Decimal(newPrice)
+        crypto.precio = newPrice
         crypto.ultimaActualizacion = Date()
-        
+
         do {
             try modelContext.save()
             addLogEntry(
                 cryptoSymbol: crypto.simbolo,
-                message: "Precio actualizado: $\(newPrice) (anterior: $\(oldPrice))",
+                message: "Precio actualizado: \(Format.usd(newPrice)) (anterior: \(Format.usd(oldPrice)))",
                 isError: false
             )
         } catch {
@@ -156,48 +158,24 @@ class CryptoSyncViewModel: ObservableObject {
             )
         }
     }
-    
-    private func handleSyncError(crypto: Crypto, config: CryptoSyncConfig, error: Error) async {
-        let errorMessage = formatErrorMessage(error)
-        crypto.precio = config.defaultPrice
-        crypto.ultimaActualizacion = Date()
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("Error saving context: \(error)")
-        }
-        
-        addLogEntry(
-            cryptoSymbol: crypto.simbolo,
-            message: "\(errorMessage). Usando precio por defecto (\(config.defaultPrice))",
-            isError: true
-        )
-    }
-    
-    private func formatErrorMessage(_ error: Error) -> String {
-        switch error {
-        case URLError.secureConnectionFailed:
-            return "Error de conexión segura - Verifica que la URL use HTTPS"
-        case URLError.serverCertificateUntrusted:
-            return "Certificado del servidor no confiable"
-        case URLError.networkConnectionLost:
-            return "Se perdió la conexión de red"
-        case URLError.badURL:
-            return "URL inválida"
-        case URLError.cannotConnectToHost:
-            return "No se puede conectar al servidor"
-        case URLError.timedOut:
-            return "Tiempo de espera agotado después de 30 segundos"
-        case URLError.notConnectedToInternet:
-            return "No hay conexión a internet"
-        case let decodingError as DecodingError:
-            return "Error al procesar respuesta: \(decodingError.localizedDescription)"
-        default:
-            return "Error inesperado: \(error.localizedDescription)"
+
+    private func handleMissingPrice(crypto: Crypto) async {
+        if let config = getSyncConfig(for: crypto.id), config.defaultPrice > 0 {
+            await updateCryptoPrice(crypto, newPrice: config.defaultPrice)
+            addLogEntry(
+                cryptoSymbol: crypto.simbolo,
+                message: "Precio no disponible. Usando precio por defecto \(Format.usd(config.defaultPrice))",
+                isError: true
+            )
+        } else {
+            addLogEntry(
+                cryptoSymbol: crypto.simbolo,
+                message: "Precio no disponible: configure un CoinGecko ID y precio por defecto",
+                isError: true
+            )
         }
     }
-    
+
     private func addLogEntry(cryptoSymbol: String, message: String, isError: Bool) {
         let entry = SyncLogEntry(
             timestamp: Date(),
@@ -207,7 +185,7 @@ class CryptoSyncViewModel: ObservableObject {
         )
         state.logEntries.insert(entry, at: 0)
     }
-    
+
     func cleanup() async {
         await taskManager.cancelAll()
         await MainActor.run { [weak self] in

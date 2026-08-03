@@ -17,6 +17,7 @@ class PreviewContainer {
             Holding.self,
             Movimiento.self,
             PrecioHistorico.self,
+            PortfolioSnapshot.self,
             CryptoSyncConfig.self
         ])
         
@@ -45,9 +46,9 @@ class PreviewContainer {
         let mxn = FIAT(nombre: "Peso Mexicano", simbolo: "MXN", precioUSD: 0.058)
         
         // Crear Cryptos
-        let btc = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 43000.0)
-        let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 2250.0)
-        let sol = Crypto(nombre: "Solana", simbolo: "SOL", precio: 98.0)
+        let btc = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 43000.0, coingeckoId: "bitcoin")
+        let eth = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 2250.0, coingeckoId: "ethereum")
+        let sol = Crypto(nombre: "Solana", simbolo: "SOL", precio: 98.0, coingeckoId: "solana")
         
         // Crear Portfolio por defecto
         let portfolio = Portfolio(nombre: "Portafolio Principal", descripcion: "Portafolio de ejemplo", isDefault: true)

@@ -95,6 +95,9 @@ class Crypto {
     var simbolo: String {
         didSet { simbolo = simbolo.validated(maxLength: 10) }
     }
+    var coingeckoId: String? {
+        didSet { coingeckoId = coingeckoId?.validated(maxLength: 50) }
+    }
     var precio: Decimal
     var ultimaActualizacion: Date
 
@@ -103,10 +106,11 @@ class Crypto {
     @Relationship(inverse: \Movimiento.cryptoDestino) var movimientosComoCryptoDestino: [Movimiento] = []
     @Relationship(inverse: \PrecioHistorico.crypto) var historicosPrecios: [PrecioHistorico] = []
 
-    init(nombre: String, simbolo: String, precio: Decimal) {
+    init(nombre: String, simbolo: String, precio: Decimal, coingeckoId: String? = nil) {
         self.id = UUID()
         self.nombre = nombre.validated(maxLength: 20)
         self.simbolo = simbolo.validated(maxLength: 10)
+        self.coingeckoId = coingeckoId?.validated(maxLength: 50)
         self.precio = precio
         self.ultimaActualizacion = Date()
         self.movimientos = []
@@ -141,6 +145,22 @@ class PrecioHistorico {
         self.crypto = crypto
         self.precio = precio
         self.fecha = fecha
+    }
+}
+
+// MARK: - Entidad PortfolioSnapshot
+@Model
+class PortfolioSnapshot {
+    @Attribute(.unique) var id: UUID
+    var date: Date
+    var totalUSD: Decimal
+    var portfolioId: UUID
+
+    init(date: Date, totalUSD: Decimal, portfolioId: UUID) {
+        self.id = UUID()
+        self.date = date
+        self.totalUSD = totalUSD
+        self.portfolioId = portfolioId
     }
 }
 

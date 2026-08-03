@@ -1,80 +1,82 @@
 import Foundation
 
-// MARK: - Protocol
+// MARK: - Price Query
 
-protocol PriceServiceProtocol {
-    func fetchPrice(from urlString: String) async throws -> Double
-    func fetchPrices(from urlStrings: [String]) async throws -> [String: Double]
+/// Lightweight, Sendable description of the data needed to fetch a price.
+/// Keeps the price-service boundary independent of the SwiftData model.
+struct PriceQuery: Sendable {
+    let cryptoId: UUID
+    let coingeckoId: String
 }
 
-// MARK: - Implementation
+// MARK: - Protocol
 
-actor PriceService: PriceServiceProtocol {
+protocol PriceService: AnyObject {
+    func fetchPrices(for queries: [PriceQuery]) async throws -> [UUID: Decimal]
+}
+
+// MARK: - CoinGecko Implementation
+
+actor CoinGeckoPriceService: PriceService {
     private struct CachedPrice {
-        let value: Double
+        let price: Decimal
         let date: Date
+
+        func isValid(validity: TimeInterval) -> Bool {
+            Date().timeIntervalSince(date) < validity
+        }
     }
 
     private let urlSession: URLSession
-    private let minimumRequestInterval: TimeInterval
+    private let baseURL: URL
     private let cacheValidityInterval: TimeInterval
-    private let maxRetries: Int
+    private let minimumRequestInterval: TimeInterval
 
+    private var cache: [UUID: CachedPrice] = [:]
     private var lastRequestDate: Date?
-    private var priceCache: [String: CachedPrice] = [:]
 
     init(
-        timeoutInterval: TimeInterval = 30,
-        minimumRequestInterval: TimeInterval = 0.5,
-        cacheValidityInterval: TimeInterval = 60,
-        maxRetries: Int = 1
+        urlSession: URLSession = URLSession.shared,
+        baseURL: URL = URL(string: "https://api.coingecko.com/api/v3/simple/price")!,
+        cacheValidityInterval: TimeInterval = 30,
+        minimumRequestInterval: TimeInterval = 2
     ) {
-        let configuration = URLSessionConfiguration.default
-        configuration.timeoutIntervalForRequest = timeoutInterval
-        configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
-
-        self.urlSession = URLSession(configuration: configuration)
-        self.minimumRequestInterval = minimumRequestInterval
+        self.urlSession = urlSession
+        self.baseURL = baseURL
         self.cacheValidityInterval = cacheValidityInterval
-        self.maxRetries = maxRetries
+        self.minimumRequestInterval = minimumRequestInterval
     }
 
-    func fetchPrice(from urlString: String) async throws -> Double {
-        if let cached = priceCache[urlString], isCacheValid(cached.date) {
-            return cached.value
-        }
+    func fetchPrices(for queries: [PriceQuery]) async throws -> [UUID: Decimal] {
+        guard !queries.isEmpty else { return [:] }
 
-        var lastError: Error?
-        for attempt in 0...maxRetries {
-            do {
-                await enforceRateLimit()
-                let price = try await performRequest(from: urlString)
-                priceCache[urlString] = CachedPrice(value: price, date: Date())
-                return price
-            } catch {
-                lastError = error
-                if attempt < maxRetries, isRetryable(error) {
-                    try? await Task.sleep(nanoseconds: 500_000_000)
-                } else {
-                    throw error
-                }
+        let requested = queries.map { ($0.cryptoId, $0.coingeckoId) }
+
+        var result: [UUID: Decimal] = [:]
+        var missing: [(UUID, String)] = []
+
+        for (cryptoId, coingeckoId) in requested {
+            if let cached = cache[cryptoId], cached.isValid(validity: cacheValidityInterval) {
+                result[cryptoId] = cached.price
+            } else {
+                missing.append((cryptoId, coingeckoId))
             }
         }
-        throw lastError ?? URLError(.badServerResponse)
-    }
 
-    func fetchPrices(from urlStrings: [String]) async throws -> [String: Double] {
-        var prices: [String: Double] = [:]
-        for urlString in urlStrings {
-            prices[urlString] = try await fetchPrice(from: urlString)
-        }
-        return prices
-    }
+        guard !missing.isEmpty else { return result }
 
-    private func performRequest(from urlString: String) async throws -> Double {
-        guard let url = URL(string: urlString) else {
+        let idsParam = missing.map { $0.1 }.joined(separator: ",")
+        var components = URLComponents(url: baseURL, resolvingAgainstBaseURL: true)!
+        components.queryItems = [
+            URLQueryItem(name: "ids", value: idsParam),
+            URLQueryItem(name: "vs_currencies", value: "usd")
+        ]
+
+        guard let url = components.url else {
             throw URLError(.badURL)
         }
+
+        await enforceRateLimit()
 
         let (data, response) = try await urlSession.data(from: url)
 
@@ -83,30 +85,24 @@ actor PriceService: PriceServiceProtocol {
             throw URLError(.badServerResponse)
         }
 
-        return try JSONDecoder().decode(PriceResponse.self, from: data).price
+        let decoded = try JSONDecoder().decode([String: [String: Double]].self, from: data)
+
+        for (cryptoId, coingeckoId) in missing {
+            if let price = decoded[coingeckoId]?["usd"] {
+                let decimalPrice = Decimal(price)
+                result[cryptoId] = decimalPrice
+                cache[cryptoId] = CachedPrice(price: decimalPrice, date: Date())
+            }
+        }
+
+        return result
     }
 
     private func enforceRateLimit() async {
         guard let lastRequestDate else { return }
-        let elapsed = Date().timeIntervalSince(lastRequestDate)
-        let remaining = minimumRequestInterval - elapsed
+        let remaining = minimumRequestInterval - Date().timeIntervalSince(lastRequestDate)
         if remaining > 0 {
             try? await Task.sleep(nanoseconds: UInt64(remaining * 1_000_000_000))
-        }
-    }
-
-    private func isCacheValid(_ date: Date) -> Bool {
-        Date().timeIntervalSince(date) < cacheValidityInterval
-    }
-
-    private func isRetryable(_ error: Error) -> Bool {
-        guard let urlError = error as? URLError else { return false }
-        switch urlError.code {
-        case .timedOut, .networkConnectionLost, .cannotConnectToHost,
-             .cannotFindHost, .notConnectedToInternet:
-            return true
-        default:
-            return false
         }
     }
 }
