@@ -58,28 +58,34 @@ struct ContentView: View {
             List {
                 // Opción Home
                 NavigationLink(
-                    destination: dependencies.makePortfolioView(),
+                    destination: dependencies.makePortfolioView()
+                        .accessibilityIdentifier("portfolio-view"),
                     tag: MainMenuOption.home,
                     selection: $selectedMainMenu
                 ) {
-                    Label("Portafolio", systemImage: "chart.pie.fill")
+                    Label(String(localized: "menu_portfolio"), systemImage: "chart.pie.fill")
                 }
+                .accessibilityIdentifier("main-menu-portfolio")
                 
                 NavigationLink(
-                    destination: dependencies.makePortfolioPorCryptosView(),
+                    destination: dependencies.makePortfolioPorCryptosView()
+                        .accessibilityIdentifier("portfolio-cryptos-view"),
                     tag: MainMenuOption.portfolioCryptos,
                     selection: $selectedMainMenu
                 ) {
-                    Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
+                    Label(String(localized: "menu_portfolio_by_cryptos"), systemImage: "bitcoinsign.square.fill")
                 }
+                .accessibilityIdentifier("main-menu-portfolio-by-cryptos")
                 
                 NavigationLink(
-                    destination: dependencies.makePortfolioDetalleView(),
+                    destination: dependencies.makePortfolioDetalleView()
+                        .accessibilityIdentifier("portfolio-detail-view"),
                     tag: MainMenuOption.portfolioDetalle,
                     selection: $selectedMainMenu
                 ) {
-                    Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
+                    Label(String(localized: "menu_portfolio_by_wallets"), systemImage: "list.bullet.rectangle.portrait")
                 }
+                .accessibilityIdentifier("main-menu-portfolio-by-wallets")
                 
                 // Menú Movimientos
                 DisclosureGroup(
@@ -89,37 +95,42 @@ struct ContentView: View {
                             tag: .entrada,
                             selection: $selectedMovimientosMenu
                         ) {
-                            Label("Entrada", systemImage: "arrow.down.circle")
+                            Label(String(localized: "menu_movements_entry"), systemImage: "arrow.down.circle")
                         }
+                        .accessibilityIdentifier("main-menu-movements-entry")
                         
                         NavigationLink(
                             destination: dependencies.makeMovimientosSalidaView(),
                             tag: .salida,
                             selection: $selectedMovimientosMenu
                         ) {
-                            Label("Salida", systemImage: "arrow.up.circle")
+                            Label(String(localized: "menu_movements_exit"), systemImage: "arrow.up.circle")
                         }
+                        .accessibilityIdentifier("main-menu-movements-exit")
                         
                         NavigationLink(
                             destination: dependencies.makeMovimientosEntreCarterasView(),
                             tag: .entreCarteras,
                             selection: $selectedMovimientosMenu
                         ) {
-                            Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
+                            Label(String(localized: "menu_movements_between_wallets"), systemImage: "arrow.left.arrow.right")
                         }
+                        .accessibilityIdentifier("main-menu-movements-between-wallets")
                         
                         NavigationLink(
                             destination: dependencies.makeMovimientosSwapsView(),
                             tag: .swaps,
                             selection: $selectedMovimientosMenu
                         ) {
-                            Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
+                            Label(String(localized: "menu_movements_swaps"), systemImage: "arrow.triangle.2.circlepath")
                         }
+                        .accessibilityIdentifier("main-menu-movements-swaps")
                     },
                     label: {
-                        Label("Movimientos", systemImage: "arrow.left.right")
+                        Label(String(localized: "menu_movements"), systemImage: "arrow.left.arrow.right")
                     }
                 )
+                .accessibilityIdentifier("main-menu-movements")
                 
                 // Menú Administración
                 DisclosureGroup(
@@ -129,63 +140,73 @@ struct ContentView: View {
                             tag: .cryptos,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Cryptos", systemImage: "bitcoinsign.circle")
+                            Label(String(localized: "menu_admin_cryptos"), systemImage: "bitcoinsign.circle")
                         }
+                        .accessibilityIdentifier("main-menu-admin-cryptos")
                         
                         NavigationLink(
                             destination: dependencies.makeAdminCarterasView(),
                             tag: .carteras,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Carteras", systemImage: "folder")
+                            Label(String(localized: "menu_admin_wallets"), systemImage: "folder")
                         }
+                        .accessibilityIdentifier("main-menu-admin-wallets")
                         
                         NavigationLink(
                             destination: dependencies.makeAdminFiatView(),
                             tag: .fiat,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("FIAT", systemImage: "dollarsign.circle")
+                            Label(String(localized: "menu_admin_fiat"), systemImage: "dollarsign.circle")
                         }
+                        .accessibilityIdentifier("main-menu-admin-fiat")
                         NavigationLink(
                             destination: dependencies.makeAdminPortfoliosView(),
                             tag: .portfolios,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Portfolios", systemImage: "briefcase")
+                            Label(String(localized: "menu_admin_portfolios"), systemImage: "briefcase")
                         }
+                        .accessibilityIdentifier("main-menu-admin-portfolios")
                         NavigationLink(
                             destination: dependencies.makeCryptoSyncView(),
                             tag: .sync,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
+                            Label(String(localized: "menu_admin_sync"), systemImage: "arrow.triangle.2.circlepath")
                         }
+                        .accessibilityIdentifier("main-menu-admin-sync")
                         NavigationLink(
                             destination: dependencies.makeBackupView(),
                             tag: .backup,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Backup", systemImage: "arrow.clockwise.icloud")
+                            Label(String(localized: "menu_admin_backup"), systemImage: "arrow.clockwise.icloud")
                         }
+                        .accessibilityIdentifier("main-menu-admin-backup")
                         // Setup Inicial
                         NavigationLink(
                             destination: dependencies.makeSetupInicialView(),
                             tag: .setup,
                             selection: $selectedAdminMenu
                         ) {
-                            Label("Setup Inicial", systemImage: "gearshape.circle.fill")
+                            Label(String(localized: "menu_admin_setup"), systemImage: "gearshape.circle.fill")
                         }
+                        .accessibilityIdentifier("main-menu-admin-setup")
                     },
                     label: {
-                        Label("Administración", systemImage: "gear")
+                        Label(String(localized: "menu_admin"), systemImage: "gear")
                     }
                 )
+                .accessibilityIdentifier("main-menu-admin")
             }
             .listStyle(SidebarListStyle())
-            .navigationTitle("Crypto Tracker")
+            .accessibilityIdentifier("main-sidebar")
+            .navigationTitle(String(localized: "app_title"))
         } detail: {
             dependencies.makePortfolioView()
+                .accessibilityIdentifier("portfolio-view")
         }
     }
     
@@ -197,108 +218,112 @@ struct ContentView: View {
                     NavigationLink {
                         dependencies.makePortfolioView()
                     } label: {
-                        Label("Portafolio", systemImage: "chart.pie.fill")
+                        Label(String(localized: "menu_portfolio"), systemImage: "chart.pie.fill")
                     }
                     
                     NavigationLink {
                         dependencies.makePortfolioPorCryptosView()
                     } label: {
-                        Label("Portafolio por Cryptos", systemImage: "bitcoinsign.square.fill")
+                        Label(String(localized: "menu_portfolio_by_cryptos"), systemImage: "bitcoinsign.square.fill")
                     }
                     
                     NavigationLink {
                         dependencies.makePortfolioDetalleView()
                     } label: {
-                        Label("Desglose por Carteras", systemImage: "list.bullet.rectangle.portrait")
+                        Label(String(localized: "menu_portfolio_by_wallets"), systemImage: "list.bullet.rectangle.portrait")
                     }
                 }
-                .navigationTitle("Portfolio")
+                .navigationTitle(String(localized: "tab_portfolio"))
             }
             .tabItem {
-                Label("Portfolio", systemImage: "chart.pie.fill")
+                Label(String(localized: "tab_portfolio"), systemImage: "chart.pie.fill")
             }
+            .accessibilityIdentifier("tab-portfolio")
             
             NavigationStack {
                 List {
                     NavigationLink {
                         dependencies.makeMovimientosEntradaView()
                     } label: {
-                        Label("Entrada", systemImage: "arrow.down.circle")
+                        Label(String(localized: "menu_movements_entry"), systemImage: "arrow.down.circle")
                     }
                     
                     NavigationLink {
                         dependencies.makeMovimientosSalidaView()
                     } label: {
-                        Label("Salida", systemImage: "arrow.up.circle")
+                        Label(String(localized: "menu_movements_exit"), systemImage: "arrow.up.circle")
                     }
                     
                     NavigationLink {
                         dependencies.makeMovimientosEntreCarterasView()
                     } label: {
-                        Label("Entre Carteras", systemImage: "arrow.left.arrow.right")
+                        Label(String(localized: "menu_movements_between_wallets"), systemImage: "arrow.left.arrow.right")
                     }
                     
                     NavigationLink {
                         dependencies.makeMovimientosSwapsView()
                     } label: {
-                        Label("Swaps", systemImage: "arrow.triangle.2.circlepath")
+                        Label(String(localized: "menu_movements_swaps"), systemImage: "arrow.triangle.2.circlepath")
                     }
                 }
-                .navigationTitle("Movimientos")
+                .navigationTitle(String(localized: "tab_movements"))
             }
             .tabItem {
-                Label("Movimientos", systemImage: "arrow.left.right")
+                Label(String(localized: "tab_movements"), systemImage: "arrow.left.arrow.right")
             }
+            .accessibilityIdentifier("tab-movements")
             
             NavigationStack {
                 List {
                     NavigationLink {
                         dependencies.makeAdminCryptosView()
                     } label: {
-                        Label("Cryptos", systemImage: "bitcoinsign.circle")
+                        Label(String(localized: "menu_admin_cryptos"), systemImage: "bitcoinsign.circle")
                     }
                     
                     NavigationLink {
                         dependencies.makeAdminCarterasView()
                     } label: {
-                        Label("Carteras", systemImage: "folder")
+                        Label(String(localized: "menu_admin_wallets"), systemImage: "folder")
                     }
                     
                     NavigationLink {
                         dependencies.makeAdminFiatView()
                     } label: {
-                        Label("FIAT", systemImage: "dollarsign.circle")
+                        Label(String(localized: "menu_admin_fiat"), systemImage: "dollarsign.circle")
                     }
                     
                     NavigationLink {
                         dependencies.makeAdminPortfoliosView()
                     } label: {
-                        Label("Portfolios", systemImage: "briefcase")
+                        Label(String(localized: "menu_admin_portfolios"), systemImage: "briefcase")
                     }
                     
                     NavigationLink {
                         dependencies.makeCryptoSyncView()
                     } label: {
-                        Label("Sync Manual de Precios", systemImage: "arrow.triangle.2.circlepath")
+                        Label(String(localized: "menu_admin_sync"), systemImage: "arrow.triangle.2.circlepath")
                     }
 
                     NavigationLink {
                         dependencies.makeBackupView()
                     } label: {
-                        Label("Backup", systemImage: "arrow.clockwise.icloud")
+                        Label(String(localized: "menu_admin_backup"), systemImage: "arrow.clockwise.icloud")
                     }
 
                     NavigationLink {
                         dependencies.makeSetupInicialView()
                     } label: {
-                        Label("Setup Inicial", systemImage: "gearshape.circle.fill")
+                        Label(String(localized: "menu_admin_setup"), systemImage: "gearshape.circle.fill")
                     }
                 }
-                .navigationTitle("Admin")
+                .navigationTitle(String(localized: "tab_admin"))
             }
             .tabItem {
-                Label("Admin", systemImage: "gear")
+                Label(String(localized: "tab_admin"), systemImage: "gear")
             }
+            .accessibilityIdentifier("tab-admin")
         }
+        .mainTabStyle()
     }
 } 

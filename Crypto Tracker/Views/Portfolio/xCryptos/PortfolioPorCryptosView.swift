@@ -52,7 +52,8 @@ struct PortfolioPorCryptosView: View {
             }
             .padding()
         }
-        .navigationTitle("Portafolio por Cryptos")
+        .accessibilityIdentifier("portfolio-cryptos-view")
+        .navigationTitle(String(localized: "menu_portfolio_by_cryptos"))
         .onAppear {
             viewModel.actualizarPortfolio()
         }

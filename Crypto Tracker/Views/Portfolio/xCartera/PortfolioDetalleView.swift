@@ -18,7 +18,8 @@ struct PortfolioDetalleView: View {
                 contenidoPortfolio
             }
         }
-        .navigationTitle("Desglose por Carteras")
+        .accessibilityIdentifier("portfolio-detail-view")
+        .navigationTitle(String(localized: "menu_portfolio_by_wallets"))
         .onAppear {
             viewModel.actualizarPortfolio()
         }

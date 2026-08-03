@@ -83,4 +83,72 @@ final class BackupServiceTests: XCTestCase {
         XCTAssertEqual(movimientos.count, 1)
         XCTAssertEqual(snapshots.count, 1)
     }
+
+    func testRestoreClearsExistingData() throws {
+        try seedContext()
+        let data = try service.export(in: modelContext)
+
+        let extraCrypto = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 3000)
+        modelContext.insert(extraCrypto)
+        try modelContext.save()
+
+        try service.restore(from: data, in: modelContext)
+
+        let cryptos = try modelContext.fetch(FetchDescriptor<Crypto>())
+        XCTAssertEqual(cryptos.count, 1)
+        XCTAssertEqual(cryptos.first?.simbolo, "BTC")
+    }
+
+    func testRestoreThrowsForUnsupportedVersion() throws {
+        let container = [
+            "version": 999,
+            "exportedAt": ISO8601DateFormatter().string(from: Date()),
+            "portfolios": [],
+            "cryptos": [],
+            "fiats": [],
+            "carteras": [],
+            "holdings": [],
+            "movimientos": [],
+            "preciosHistoricos": [],
+            "snapshots": [],
+            "syncConfigs": []
+        ] as [String: Any]
+        let data = try JSONSerialization.data(withJSONObject: container)
+
+        do {
+            try service.restore(from: data, in: modelContext)
+            XCTFail("Expected unsupported version error")
+        } catch {
+            XCTAssertEqual(error as? BackupError, .unsupportedVersion)
+        }
+    }
+
+    func testExportPreservesFiatCurrencies() throws {
+        try seedContext()
+        let data = try service.export(in: modelContext)
+        let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let fiats = json?["fiats"] as? [[String: Any]]
+        XCTAssertEqual(fiats?.count, 1)
+        XCTAssertEqual(fiats?.first?["simbolo"] as? String, "USD")
+    }
+
+    func testRestorePreservesSnapshotPortfolioId() throws {
+        try seedContext()
+        let data = try service.export(in: modelContext)
+        let portfolioId = try modelContext.fetch(FetchDescriptor<Portfolio>()).first?.id
+
+        try service.restore(from: data, in: modelContext)
+
+        let snapshots = try modelContext.fetch(FetchDescriptor<PortfolioSnapshot>())
+        XCTAssertEqual(snapshots.first?.portfolioId, portfolioId)
+    }
+
+    func testRoundTripRestoresEmptyBackup() throws {
+        let data = try service.export(in: modelContext)
+        try service.restore(from: data, in: modelContext)
+
+        XCTAssertEqual(try modelContext.fetch(FetchDescriptor<Crypto>()).count, 0)
+        XCTAssertEqual(try modelContext.fetch(FetchDescriptor<Cartera>()).count, 0)
+        XCTAssertEqual(try modelContext.fetch(FetchDescriptor<Movimiento>()).count, 0)
+    }
 }

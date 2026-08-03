@@ -15,6 +15,11 @@ final class CoinGeckoPriceServiceTests: XCTestCase {
 
     override func tearDown() {
         urlSession = nil
+        MockCoinGeckoURLProtocol.mockData = try! JSONSerialization.data(withJSONObject: [
+            "bitcoin": ["usd": 43000],
+            "ethereum": ["usd": 2250]
+        ])
+        MockCoinGeckoURLProtocol.mockStatusCode = 200
         super.tearDown()
     }
 
@@ -52,6 +57,48 @@ final class CoinGeckoPriceServiceTests: XCTestCase {
         let prices = try await service.fetchPrices(for: [bitcoinQuery])
         XCTAssertEqual(prices[bitcoinQuery.cryptoId], Decimal(43000))
     }
+
+    func testFetchPricesReturnsEmptyForEmptyQueries() async throws {
+        let service = CoinGeckoPriceService(urlSession: urlSession)
+        let prices = try await service.fetchPrices(for: [])
+        XCTAssertTrue(prices.isEmpty)
+    }
+
+    func testFetchPricesThrowsBadServerResponse() async throws {
+        MockCoinGeckoURLProtocol.mockStatusCode = 500
+        let service = CoinGeckoPriceService(urlSession: urlSession)
+        let query = PriceQuery(cryptoId: UUID(), coingeckoId: "bitcoin")
+
+        do {
+            _ = try await service.fetchPrices(for: [query])
+            XCTFail("Expected error for 500 response")
+        } catch {
+            XCTAssertEqual((error as? URLError)?.code, .badServerResponse)
+        }
+    }
+
+    func testFetchPricesIgnoresMissingCoinsInResponse() async throws {
+        MockCoinGeckoURLProtocol.mockData = try JSONSerialization.data(withJSONObject: [
+            "bitcoin": ["usd": 43000]
+        ])
+        let service = CoinGeckoPriceService(urlSession: urlSession)
+        let bitcoinQuery = PriceQuery(cryptoId: UUID(), coingeckoId: "bitcoin")
+        let missingQuery = PriceQuery(cryptoId: UUID(), coingeckoId: "unknown")
+
+        let prices = try await service.fetchPrices(for: [bitcoinQuery, missingQuery])
+
+        XCTAssertEqual(prices[bitcoinQuery.cryptoId], Decimal(43000))
+        XCTAssertNil(prices[missingQuery.cryptoId])
+    }
+
+    func testFetchPricesUsesInjectedBaseURL() async throws {
+        let customBaseURL = URL(string: "https://custom.example.com/price")!
+        let service = CoinGeckoPriceService(urlSession: urlSession, baseURL: customBaseURL)
+        let query = PriceQuery(cryptoId: UUID(), coingeckoId: "bitcoin")
+
+        let prices = try await service.fetchPrices(for: [query])
+        XCTAssertEqual(prices[query.cryptoId], Decimal(43000))
+    }
 }
 
 final class MockCoinGeckoURLProtocol: URLProtocol {
@@ -61,6 +108,7 @@ final class MockCoinGeckoURLProtocol: URLProtocol {
             "ethereum": ["usd": 2250]
         ])
     }()
+    static var mockStatusCode: Int = 200
 
     override class func canInit(with request: URLRequest) -> Bool {
         true
@@ -73,7 +121,7 @@ final class MockCoinGeckoURLProtocol: URLProtocol {
     override func startLoading() {
         let response = HTTPURLResponse(
             url: request.url!,
-            statusCode: 200,
+            statusCode: Self.mockStatusCode,
             httpVersion: nil,
             headerFields: ["Content-Type": "application/json"]
         )!
