@@ -291,12 +291,12 @@ class Movimiento {
     // Nota: el inverse se declara SOLO en el lado de la colección
     // (Cartera/Crypto/FIAT), siguiendo el patrón del resto del modelo.
     @Relationship var cartera: Cartera?
-    @Relationship(deleteRule: .cascade) var crypto: Crypto?
+    @Relationship var crypto: Crypto?
     @Relationship var fiatAlterno: FIAT?
     @Relationship var carteraOrigen: Cartera?
     @Relationship var carteraDestino: Cartera?
-    @Relationship(deleteRule: .cascade) var cryptoOrigen: Crypto?
-    @Relationship(deleteRule: .cascade) var cryptoDestino: Crypto?
+    @Relationship var cryptoOrigen: Crypto?
+    @Relationship var cryptoDestino: Crypto?
 
     /// Tipo de movimiento (derivado de `tipoRaw`).
     var tipo: TipoMovimiento {

@@ -127,7 +127,7 @@ class AppDependencyContainer {
         
         // Setup inicial
         self.cargaCatalogosViewModel = CargaCatalogosViewModel(modelContext: modelContext)
-        self.cargaMovimientosViewModel = CargaMovimientosViewModel(modelContext: modelContext)
+        self.cargaMovimientosViewModel = CargaMovimientosViewModel(modelContext: modelContext, holdingService: holdingService)
         self.eliminarDataViewModel = EliminarDataViewModel(modelContext: modelContext)
         self.backupViewModel = BackupViewModel(
             modelContext: modelContext,

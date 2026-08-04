@@ -19,8 +19,9 @@ class CargaMovimientosViewModel: ObservableObject {
     
     // MARK: - Dependencies
     private let modelContext: ModelContext
+    private let holdingService: HoldingServiceProtocol
     private var cancellables = Set<AnyCancellable>()
-    
+
     // MARK: - Computed Properties
     var hayArchivosSeleccionados: Bool {
         movimientosEntradaURL != nil ||
@@ -28,32 +29,41 @@ class CargaMovimientosViewModel: ObservableObject {
         movimientosEntreCarterasURL != nil ||
         movimientosSwapURL != nil
     }
-    
+
     // MARK: - Fetch Descriptors
-    private lazy var cryptosDescriptor = FetchDescriptor<Crypto>(sortBy: [SortDescriptor(\.nombre)])
-    private lazy var carterasDescriptor = FetchDescriptor<Cartera>(sortBy: [SortDescriptor(\.nombre)])
-    private lazy var fiatsDescriptor = FetchDescriptor<FIAT>(sortBy: [SortDescriptor(\.nombre)])
+    private var cryptosDescriptor: FetchDescriptor<Crypto> {
+        FetchDescriptor<Crypto>(sortBy: [SortDescriptor(\.nombre)])
+    }
     
+    private var carterasDescriptor: FetchDescriptor<Cartera> {
+        FetchDescriptor<Cartera>(sortBy: [SortDescriptor(\.nombre)])
+    }
+    
+    private var fiatsDescriptor: FetchDescriptor<FIAT> {
+        FetchDescriptor<FIAT>(sortBy: [SortDescriptor(\.nombre)])
+    }
+
     // MARK: - Computed Catalogs
     var cryptos: [Crypto] {
         (try? modelContext.fetch(cryptosDescriptor)) ?? []
     }
-    
+
     var carteras: [Cartera] {
         (try? modelContext.fetch(carterasDescriptor)) ?? []
     }
-    
+
     var fiats: [FIAT] {
         (try? modelContext.fetch(fiatsDescriptor)) ?? []
     }
-    
+
     var hayCatalogosNecesarios: Bool {
         !cryptos.isEmpty && !carteras.isEmpty && !fiats.isEmpty
     }
-    
+
     // MARK: - Initializer
-    init(modelContext: ModelContext) {
+    init(modelContext: ModelContext, holdingService: HoldingServiceProtocol = HoldingService()) {
         self.modelContext = modelContext
+        self.holdingService = holdingService
     }
     
     // MARK: - Public Methods
@@ -130,9 +140,54 @@ class CargaMovimientosViewModel: ObservableObject {
                 }
             }
             
+            // Recrear Holdings desde los movimientos cargados
+            await rebuildHoldings()
+
             DispatchQueue.main.async {
                 self.isLoading = false
             }
+        }
+    }
+
+    // MARK: - Holdings Rebuild
+    /// Deletes all existing Holdings and recreates them from Movimientos.
+    /// This is needed after bulk import since movements are inserted directly
+    /// without going through HoldingService.
+    private func rebuildHoldings() async {
+        await MainActor.run {
+            self.didUpdateProgress("Reconstruyendo balances (Holdings)...")
+        }
+
+        // Delete all existing holdings
+        let existingHoldings = (try? modelContext.fetch(FetchDescriptor<Holding>())) ?? []
+        for holding in existingHoldings {
+            modelContext.delete(holding)
+        }
+
+        // Fetch all movements sorted by date
+        let movimientos = (try? modelContext.fetch(
+            FetchDescriptor<Movimiento>(sortBy: [SortDescriptor(\.fecha, order: .forward)])
+        )) ?? []
+
+        // Apply each movement through HoldingService
+        for (index, movimiento) in movimientos.enumerated() {
+            do {
+                try holdingService.updateHoldingForMovement(movimiento, in: modelContext)
+            } catch {
+                print("⚠️ Error applying holding for movement \(movimiento.id): \(error)")
+            }
+
+            if (index + 1) % 10 == 0 {
+                await MainActor.run {
+                    self.didUpdateProgress("Holdings: procesados \(index + 1) de \(movimientos.count)...")
+                }
+            }
+        }
+
+        try? modelContext.save()
+
+        await MainActor.run {
+            self.didUpdateProgress("✅ Holdings reconstruidos: \(existingHoldings.count) eliminados, \(movimientos.count) movimientos procesados")
         }
     }
     
