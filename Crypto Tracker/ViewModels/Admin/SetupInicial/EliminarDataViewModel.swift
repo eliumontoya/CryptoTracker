@@ -8,6 +8,7 @@ struct DeleteOptions {
     var fiats: Bool = false
     var movimientos: Bool = false
     var historicos: Bool = false
+    var holdings: Bool = false
     var all: Bool = false
     
     mutating func toggleAll() {
@@ -18,12 +19,14 @@ struct DeleteOptions {
             fiats = true
             movimientos = true
             historicos = true
+            holdings = true
         } else {
             cryptos = false
             carteras = false
             fiats = false
             movimientos = false
             historicos = false
+            holdings = false
         }
     }
 }
@@ -46,6 +49,7 @@ class EliminarDataViewModel: ObservableObject {
     private var movimientos: [Movimiento]
     private var preciosHistoricos: [PrecioHistorico]
     private var syncConfigs: [CryptoSyncConfig]
+    private var holdings: [Holding]
     
     var canDelete: Bool {
             deleteOptions.all ||
@@ -53,7 +57,8 @@ class EliminarDataViewModel: ObservableObject {
             deleteOptions.carteras ||
             deleteOptions.fiats ||
             deleteOptions.movimientos ||
-            deleteOptions.historicos
+            deleteOptions.historicos ||
+            deleteOptions.holdings
         }
     
     init(modelContext: ModelContext) {
@@ -66,6 +71,7 @@ class EliminarDataViewModel: ObservableObject {
         let movimientosDescriptor = FetchDescriptor<Movimiento>()
         let preciosDescriptor = FetchDescriptor<PrecioHistorico>()
         let syncConfigDescriptor = FetchDescriptor<CryptoSyncConfig>()
+        let holdingsDescriptor = FetchDescriptor<Holding>()
         
         do {
             self.cryptos = try modelContext.fetch(cryptoDescriptor)
@@ -74,6 +80,7 @@ class EliminarDataViewModel: ObservableObject {
             self.movimientos = try modelContext.fetch(movimientosDescriptor)
             self.preciosHistoricos = try modelContext.fetch(preciosDescriptor)
             self.syncConfigs = try modelContext.fetch(syncConfigDescriptor)
+            self.holdings = try modelContext.fetch(holdingsDescriptor)
         } catch {
             // Handle error - could use a more robust error handling mechanism
             print("Error fetching data: \(error)")
@@ -83,6 +90,7 @@ class EliminarDataViewModel: ObservableObject {
             self.movimientos = []
             self.preciosHistoricos = []
             self.syncConfigs = []
+            self.holdings = []
         }
     }
     
@@ -110,6 +118,12 @@ class EliminarDataViewModel: ObservableObject {
             
             agregarLog("Borrando configuraciones de sincronización...")
             syncConfigs.forEach { modelContext.delete($0) }
+        }
+
+        // borrando holdings (deben borrarse antes que cryptos y carteras)
+        if deleteOptions.all || deleteOptions.holdings {
+            agregarLog("Borrando holdings...")
+            holdings.forEach { modelContext.delete($0) }
         }
 
         // borrando carteras

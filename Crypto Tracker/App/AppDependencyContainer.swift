@@ -301,6 +301,11 @@ class AppDependencyContainer {
         adminCarterasViewModel.clearCache()
         adminCryptosViewModel.clearCache()
         adminFiatViewModel.clearCache()
+
+        // Limpiar portfolios para evitar referencias a objetos eliminados
+        portfolioPorCryptosViewModel.cryptoSummaries = []
+        portfolioDetalleViewModel.carterasDetail = []
+        portfolioViewModel.clear()
     }
     
     func makeCryptoSyncView() -> CryptoSyncView {

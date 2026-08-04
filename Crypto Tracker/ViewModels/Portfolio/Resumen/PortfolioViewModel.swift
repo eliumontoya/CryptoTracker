@@ -40,4 +40,10 @@ final class PortfolioViewModel: ObservableObject {
             }
         }
     }
+
+    func clear() {
+        summary = nil
+        distribution = []
+        snapshots = []
+    }
 }

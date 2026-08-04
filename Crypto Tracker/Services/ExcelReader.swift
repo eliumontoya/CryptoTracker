@@ -123,11 +123,18 @@ struct ExcelWorksheet {
 class ExcelReader {
     static func read(from url: URL) async throws -> ExcelWorksheet {
         print("📂 Iniciando lectura desde: \(url.lastPathComponent)")
-        
+
+        guard url.startAccessingSecurityScopedResource() else {
+            throw ExcelWorksheetError.fileNotFound("No se pudo acceder al archivo \"\(url.lastPathComponent)\". Seleccione el archivo nuevamente.")
+        }
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+
         guard let xlsxFile = XLSXFile(filepath: url.path) else {
             throw ExcelWorksheetError.invalidWorkbook("No se pudo abrir el archivo. Verifique que sea un archivo Excel válido (.xlsx)")
         }
-        
+
         do {
             return try ExcelWorksheet(xlsxFile: xlsxFile)
         } catch {

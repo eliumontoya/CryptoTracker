@@ -55,6 +55,11 @@ class CargaCatalogosViewModel: ObservableObject {
             }
 
             try modelContext.save()
+
+            // Asegurar que todas las carteras (incluidas las recién cargadas)
+            // estén vinculadas al portfolio activo.
+            _ = PortfolioMigration.apply(in: modelContext)
+
             cargaCompletada = true
             agregarLog("✅ Proceso de carga completado exitosamente")
         } catch {
@@ -70,10 +75,13 @@ class CargaCatalogosViewModel: ObservableObject {
     // Métodos de carga con acceso interno para pruebas
     internal func cargarCarteras(desde url: URL) async throws -> Int {
         agregarLog("Iniciando carga de Carteras...")
-        
+
+        // Asignar carteras al portfolio activo (o al primero disponible)
+        let portfolio = PortfolioQueries.defaultPortfolio(in: modelContext)
+
         let contenido = try leerContenido(desde: url)
         var total = 0
-        
+
         let lineas = contenido.components(separatedBy: .newlines)
         for linea in lineas where !linea.isEmpty {
             let campos = linea.components(separatedBy: ",")
@@ -82,19 +90,20 @@ class CargaCatalogosViewModel: ObservableObject {
                     NSLocalizedDescriptionKey: "Formato inválido en línea: \(linea)"
                 ])
             }
-            
+
             let cartera = Cartera(
                 nombre: campos[0].trimmingCharacters(in: .whitespaces),
-                simbolo: campos[1].trimmingCharacters(in: .whitespaces)
+                simbolo: campos[1].trimmingCharacters(in: .whitespaces),
+                portfolio: portfolio
             )
             modelContext.insert(cartera)
             total += 1
-            
+
             if total % 10 == 0 {
                 agregarLog("Procesadas \(total) carteras...")
             }
         }
-        
+
         agregarLog("Completada la carga de \(total) carteras")
         return total
     }
@@ -209,11 +218,13 @@ class CargaCatalogosViewModel: ObservableObject {
     
     // Métodos auxiliares
     private func leerContenido(desde url: URL) throws -> String {
-        let accesoIniciado = url.startAccessingSecurityScopedResource()
+        guard url.startAccessingSecurityScopedResource() else {
+            throw NSError(domain: "", code: -1, userInfo: [
+                NSLocalizedDescriptionKey: "No se pudo acceder al archivo \"\(url.lastPathComponent)\". Seleccione el archivo nuevamente."
+            ])
+        }
         defer {
-            if accesoIniciado {
-                url.stopAccessingSecurityScopedResource()
-            }
+            url.stopAccessingSecurityScopedResource()
         }
 
         return try String(contentsOf: url, encoding: .utf8)

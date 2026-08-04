@@ -5,7 +5,7 @@ import SwiftUI
 @Model
 class CryptoSyncConfig {
     @Attribute(.unique) var id: UUID
-    var crypto: Crypto?
+    @Relationship(deleteRule: .cascade) var crypto: Crypto?
     var syncUrl: String
     var defaultPrice: Decimal
     

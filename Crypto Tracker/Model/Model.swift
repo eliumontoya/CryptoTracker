@@ -138,7 +138,7 @@ class PrecioHistorico {
     var fecha: Date
     var precio: Decimal
 
-    @Relationship var crypto: Crypto?
+    @Relationship(deleteRule: .cascade) var crypto: Crypto?
 
     init(crypto: Crypto, precio: Decimal, fecha: Date) {
         self.id = UUID()
@@ -223,7 +223,7 @@ class Holding {
     @Attribute(.unique) var id: String
     var portfolio: Portfolio
     var cartera: Cartera
-    var crypto: Crypto
+    @Relationship(deleteRule: .cascade) var crypto: Crypto
     var cantidad: Decimal {
         didSet {
             if cantidad < 0 {
@@ -291,12 +291,12 @@ class Movimiento {
     // Nota: el inverse se declara SOLO en el lado de la colección
     // (Cartera/Crypto/FIAT), siguiendo el patrón del resto del modelo.
     @Relationship var cartera: Cartera?
-    @Relationship var crypto: Crypto?
+    @Relationship(deleteRule: .cascade) var crypto: Crypto?
     @Relationship var fiatAlterno: FIAT?
     @Relationship var carteraOrigen: Cartera?
     @Relationship var carteraDestino: Cartera?
-    @Relationship var cryptoOrigen: Crypto?
-    @Relationship var cryptoDestino: Crypto?
+    @Relationship(deleteRule: .cascade) var cryptoOrigen: Crypto?
+    @Relationship(deleteRule: .cascade) var cryptoDestino: Crypto?
 
     /// Tipo de movimiento (derivado de `tipoRaw`).
     var tipo: TipoMovimiento {

@@ -27,7 +27,8 @@ class MovimientoSalidaParser {
         worksheet: ExcelWorksheet,
         carteras: [Cartera],
         cryptos: [Crypto],
-        fiats: [FIAT]
+        fiats: [FIAT],
+        skipFundCheck: Bool = false
     ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo de salida...")
         try worksheet.validateHeaders(MovimientoSalidaHeaders.required)
@@ -47,7 +48,8 @@ class MovimientoSalidaParser {
                     headers: headers,
                     carteras: carteras,
                     cryptos: cryptos,
-                    fiats: fiats
+                    fiats: fiats,
+                    skipFundCheck: skipFundCheck
                 )
                 movimientos.append(movimiento)
                 print("✅ Fila \(currentRow) procesada correctamente")
@@ -67,7 +69,8 @@ class MovimientoSalidaParser {
         headers: [String: Int],
         carteras: [Cartera],
         cryptos: [Crypto],
-        fiats: [FIAT]
+        fiats: [FIAT],
+        skipFundCheck: Bool = false
     ) throws -> Movimiento {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoSalidaHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
@@ -101,9 +104,6 @@ class MovimientoSalidaParser {
                     throw MovimientosParserError.carteraNotFound(row: rowIndex, nombre: carteraId)
                 }
                 
-                // Verificar fondos disponibles
-                let disponible = cartera.getCryptoDisponible(crypto: crypto)
-                
                 // Cantidad
                 guard let cantidadStr = row[safe: headers[MovimientoSalidaHeaders.cantidad] ?? -1]?.trimmingCharacters(in: .whitespaces),
                       !cantidadStr.isEmpty else {
@@ -118,14 +118,17 @@ class MovimientoSalidaParser {
                     )
                 }
                 
-                // Verificar disponibilidad
-                if cantidadCrypto > disponible {
-                    throw MovimientosParserError.insufficientFunds(
-                        row: rowIndex,
-                        crypto: crypto.simbolo,
-                        requested: cantidadCrypto,
-                        available: disponible
-                    )
+                // Verificar disponibilidad (omitir durante carga inicial)
+                if !skipFundCheck {
+                    let disponible = cartera.getCryptoDisponible(crypto: crypto)
+                    if cantidadCrypto > disponible {
+                        throw MovimientosParserError.insufficientFunds(
+                            row: rowIndex,
+                            crypto: crypto.simbolo,
+                            requested: cantidadCrypto,
+                            available: disponible
+                        )
+                    }
                 }
                 
                 // Precio USD

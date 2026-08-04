@@ -30,11 +30,11 @@ class CargaMovimientosEntradaService {
             )
             
             // Insertar movimientos en la base de datos
-            for movimiento in movimientos {
+            for (index, movimiento) in movimientos.enumerated() {
                 modelContext.insert(movimiento)
                 
-                if movimientos.count % 10 == 0 {
-                    await MainActor.run { delegate?.didUpdateProgress("Procesados \(movimientos.count) movimientos...") }
+                if (index + 1) % 10 == 0 {
+                    await MainActor.run { delegate?.didUpdateProgress("Procesados \(index + 1) movimientos...") }
                 }
             }
             

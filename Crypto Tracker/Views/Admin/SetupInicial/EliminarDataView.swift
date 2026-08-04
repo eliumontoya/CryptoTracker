@@ -61,6 +61,7 @@ struct EliminarDataView: View {
                                 VStack(alignment: .leading, spacing: 8) {
                                     Toggle("Cryptos", isOn: $viewModel.deleteOptions.cryptos)
                                     Toggle("Carteras", isOn: $viewModel.deleteOptions.carteras)
+                                    Toggle("Holdings (Balances)", isOn: $viewModel.deleteOptions.holdings)
                                     Toggle("Monedas FIAT", isOn: $viewModel.deleteOptions.fiats)
                                     Toggle("Todos los Movimientos", isOn: $viewModel.deleteOptions.movimientos)
                                     Toggle("Precios Históricos", isOn: $viewModel.deleteOptions.historicos)

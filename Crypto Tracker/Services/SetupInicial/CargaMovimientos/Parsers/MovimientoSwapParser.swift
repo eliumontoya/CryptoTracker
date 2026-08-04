@@ -27,7 +27,8 @@ class MovimientoSwapParser {
     static func parse(
         worksheet: ExcelWorksheet,
         carteras: [Cartera],
-        cryptos: [Crypto]
+        cryptos: [Crypto],
+        skipFundCheck: Bool = false
     ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo de swaps...")
         try worksheet.validateHeaders(MovimientoSwapHeaders.required)
@@ -46,7 +47,8 @@ class MovimientoSwapParser {
                     rowIndex: currentRow,
                     headers: headers,
                     carteras: carteras,
-                    cryptos: cryptos
+                    cryptos: cryptos,
+                    skipFundCheck: skipFundCheck
                 )
                 movimientos.append(par.salida)
                 movimientos.append(par.entrada)
@@ -66,7 +68,8 @@ class MovimientoSwapParser {
         rowIndex: Int,
         headers: [String: Int],
         carteras: [Cartera],
-        cryptos: [Crypto]
+        cryptos: [Crypto],
+        skipFundCheck: Bool = false
     ) throws -> (salida: Movimiento, entrada: Movimiento) {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoSwapHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
@@ -170,15 +173,17 @@ class MovimientoSwapParser {
             )
         }
         
-        // Verificar fondos disponibles
-        let disponible = cartera.getCryptoDisponible(crypto: cryptoOrigen)
-        if montoOrigen > disponible {
-            throw MovimientosParserError.insufficientFunds(
-                row: rowIndex,
-                crypto: cryptoOrigen.simbolo,
-                requested: montoOrigen,
-                available: disponible
-            )
+        // Verificar fondos disponibles (omitir durante carga inicial)
+        if !skipFundCheck {
+            let disponible = cartera.getCryptoDisponible(crypto: cryptoOrigen)
+            if montoOrigen > disponible {
+                throw MovimientosParserError.insufficientFunds(
+                    row: rowIndex,
+                    crypto: cryptoOrigen.simbolo,
+                    requested: montoOrigen,
+                    available: disponible
+                )
+            }
         }
         
         return Movimiento.swap(

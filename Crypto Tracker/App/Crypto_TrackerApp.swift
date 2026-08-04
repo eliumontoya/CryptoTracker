@@ -34,7 +34,12 @@ struct CryptoTrackerApp: App {
                 for: schema,
                 configurations: [modelConfiguration]
             )
-            
+
+            // Limpieza de registros huérfanos (Holdings, Movimientos, etc. que
+            // referencian Cryptos eliminados). Debe correr ANTES de cualquier
+            // acceso a datos para evitar crashes por relaciones invalidadas.
+            OrphanCleanupMigration.apply(in: container.mainContext)
+
             // Migración de datos v2 → v3: carteras huérfanas al portafolio por defecto
             PortfolioMigration.apply(in: container.mainContext)
 

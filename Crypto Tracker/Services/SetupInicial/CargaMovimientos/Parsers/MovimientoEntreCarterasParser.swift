@@ -25,7 +25,8 @@ class MovimientoEntreCarterasParser {
     static func parse(
         worksheet: ExcelWorksheet,
         carteras: [Cartera],
-        cryptos: [Crypto]
+        cryptos: [Crypto],
+        skipFundCheck: Bool = false
     ) throws -> [Movimiento] {
         print("🔍 Validando encabezados del archivo de transferencias entre carteras...")
         try worksheet.validateHeaders(MovimientoEntreCarterasHeaders.required)
@@ -44,7 +45,8 @@ class MovimientoEntreCarterasParser {
                     rowIndex: currentRow,
                     headers: headers,
                     carteras: carteras,
-                    cryptos: cryptos
+                    cryptos: cryptos,
+                    skipFundCheck: skipFundCheck
                 )
                 movimientos.append(par.salida)
                 movimientos.append(par.entrada)
@@ -64,7 +66,8 @@ class MovimientoEntreCarterasParser {
         rowIndex: Int,
         headers: [String: Int],
         carteras: [Cartera],
-        cryptos: [Crypto]
+        cryptos: [Crypto],
+        skipFundCheck: Bool = false
     ) throws -> (salida: Movimiento, entrada: Movimiento) {
         // Fecha
         guard let fechaStr = row[safe: headers[MovimientoEntreCarterasHeaders.fecha] ?? -1]?.trimmingCharacters(in: .whitespaces),
@@ -150,15 +153,17 @@ class MovimientoEntreCarterasParser {
             )
         }
         
-        // Verificar fondos disponibles
-        let disponible = carteraOrigen.getCryptoDisponible(crypto: crypto)
-        if montoEnvio > disponible {
-            throw MovimientosParserError.insufficientFunds(
-                row: rowIndex,
-                crypto: crypto.simbolo,
-                requested: montoEnvio,
-                available: disponible
-            )
+        // Verificar fondos disponibles (omitir durante carga inicial)
+        if !skipFundCheck {
+            let disponible = carteraOrigen.getCryptoDisponible(crypto: crypto)
+            if montoEnvio > disponible {
+                throw MovimientosParserError.insufficientFunds(
+                    row: rowIndex,
+                    crypto: crypto.simbolo,
+                    requested: montoEnvio,
+                    available: disponible
+                )
+            }
         }
         
         return Movimiento.transferencia(
