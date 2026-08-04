@@ -10,6 +10,7 @@ class CargaCatalogosViewModel: ObservableObject {
     @Published var totalCargados: [String: Int] = [:]
     @Published var errorMessage: String = ""
     @Published var showError = false
+    @Published private(set) var cargaCompletada = false
     
     private let modelContext: ModelContext
     
@@ -25,57 +26,52 @@ class CargaCatalogosViewModel: ObservableObject {
         syncURL: URL?
     ) async {
         isLoading = true
+        cargaCompletada = false
         totalCargados.removeAll()
         
         do {
             // Cargar carteras si existe el archivo
             if let url = carterasURL {
                 let total = try await cargarCarteras(desde: url)
-                DispatchQueue.main.async {
-                    self.totalCargados["Carteras"] = total
-                }
+                totalCargados["Carteras"] = total
             }
             
             // Cargar cryptos si existe el archivo
             if let url = cryptosURL {
                 let total = try await cargarCryptos(desde: url)
-                DispatchQueue.main.async {
-                    self.totalCargados["Cryptos"] = total
-                }
+                totalCargados["Cryptos"] = total
             }
             
             // Cargar FIAT si existe el archivo
             if let url = fiatURL {
                 let total = try await cargarFIAT(desde: url)
-                DispatchQueue.main.async {
-                    self.totalCargados["FIAT"] = total
-                }
+                totalCargados["FIAT"] = total
             }
             
             // Cargar configuraciones de sync si existe el archivo
             if let url = syncURL {
                 let total = try await cargarSyncConfig(desde: url)
-                DispatchQueue.main.async {
-                    self.totalCargados["Sync"] = total
-                }
+                totalCargados["Sync"] = total
             }
-            
+
+            try modelContext.save()
+            cargaCompletada = true
             agregarLog("✅ Proceso de carga completado exitosamente")
         } catch {
+            modelContext.rollback()
+            totalCargados.removeAll()
             mostrarError("Error durante la carga: \(error.localizedDescription)")
             agregarLog("❌ Error: \(error.localizedDescription)")
         }
         
-        DispatchQueue.main.async {
-            self.isLoading = false
-        }
+        isLoading = false
     }
     
     // Métodos de carga con acceso interno para pruebas
     internal func cargarCarteras(desde url: URL) async throws -> Int {
         agregarLog("Iniciando carga de Carteras...")
         
-        let contenido = try String(contentsOf: url, encoding: .utf8)
+        let contenido = try leerContenido(desde: url)
         var total = 0
         
         let lineas = contenido.components(separatedBy: .newlines)
@@ -106,7 +102,7 @@ class CargaCatalogosViewModel: ObservableObject {
     internal func cargarCryptos(desde url: URL) async throws -> Int {
         agregarLog("Iniciando carga de Cryptos...")
         
-        let contenido = try String(contentsOf: url, encoding: .utf8)
+        let contenido = try leerContenido(desde: url)
         var total = 0
         
         let lineas = contenido.components(separatedBy: .newlines)
@@ -138,7 +134,7 @@ class CargaCatalogosViewModel: ObservableObject {
     internal func cargarFIAT(desde url: URL) async throws -> Int {
         agregarLog("Iniciando carga de FIAT...")
         
-        let contenido = try String(contentsOf: url, encoding: .utf8)
+        let contenido = try leerContenido(desde: url)
         var total = 0
         
         let lineas = contenido.components(separatedBy: .newlines)
@@ -171,7 +167,7 @@ class CargaCatalogosViewModel: ObservableObject {
     internal func cargarSyncConfig(desde url: URL) async throws -> Int {
         agregarLog("Iniciando carga de configuraciones de Sync...")
         
-        let contenido = try String(contentsOf: url, encoding: .utf8)
+        let contenido = try leerContenido(desde: url)
         var total = 0
         
         // Obtener todas las cryptos para buscar coincidencias
@@ -212,16 +208,23 @@ class CargaCatalogosViewModel: ObservableObject {
     }
     
     // Métodos auxiliares
-    private func agregarLog(_ mensaje: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
+    private func leerContenido(desde url: URL) throws -> String {
+        let accesoIniciado = url.startAccessingSecurityScopedResource()
+        defer {
+            if accesoIniciado {
+                url.stopAccessingSecurityScopedResource()
+            }
         }
+
+        return try String(contentsOf: url, encoding: .utf8)
     }
-    
+
+    private func agregarLog(_ mensaje: String) {
+        logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
+    }
+
     private func mostrarError(_ error: String) {
-        DispatchQueue.main.async { [weak self] in
-            self?.errorMessage = error
-            self?.showError = true
-        }
+        errorMessage = error
+        showError = true
     }
 }

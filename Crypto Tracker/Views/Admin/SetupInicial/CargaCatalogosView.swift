@@ -12,12 +12,14 @@ struct CargaCatalogosView: View {
     
     // ViewModel
     @StateObject private var viewModel: CargaCatalogosViewModel
+    private let dependencies: AppDependencyContainer
     
     // Tipos de archivo permitidos
     let csvType = UTType(filenameExtension: "csv")!
 
     // Inicializador con inyección de dependencias
     init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _viewModel = StateObject(wrappedValue: dependencies.cargaCatalogosViewModel)
     }
     
@@ -80,6 +82,9 @@ struct CargaCatalogosView: View {
                             fiatURL: fiatURL,
                             syncURL: syncURL
                         )
+                        if viewModel.cargaCompletada {
+                            dependencies.recargarCatalogosAdmin()
+                        }
                     }
                 }) {
                     if viewModel.isLoading {

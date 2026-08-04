@@ -87,32 +87,19 @@ class EliminarDataViewModel: ObservableObject {
     }
     
     func agregarLog(_ mensaje: String) {
-        // Condición para pruebas: detectar si se está ejecutando en un contexto de pruebas
-               #if DEBUG
-               if ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil {
-                   // Para pruebas, agregar el log de manera síncrona
-                   logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
-                   return
-               }
-               #endif
-               
-               // Comportamiento normal para la app
-               DispatchQueue.main.async { [weak self] in
-                   self?.logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
-               }
-        
-         
+        logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(mensaje)")
     }
     
     func borrarDatos() async {
         isDeleting = true
+        deleteCompleted = false
         
         
         agregarLog("Iniciando borrado de datos...")
         
         // Borrando movimientos
         if deleteOptions.all || deleteOptions.movimientos {
-            agregarLog("Borrando movimientos...")
+            agregarLog("Borrando movimientos de ingreso y salida...")
             movimientos.forEach { modelContext.delete($0) }
         }
 
@@ -147,15 +134,12 @@ class EliminarDataViewModel: ObservableObject {
         do {
             try modelContext.save()
             agregarLog("✅ Borrado completado exitosamente")
-            DispatchQueue.main.async { [weak self] in
-                self?.deleteCompleted = true
-                self?.isDeleting = false
-            }
+            deleteCompleted = true
+            isDeleting = false
         } catch {
+            modelContext.rollback()
             agregarLog("❌ Error al guardar cambios: \(error.localizedDescription)")
-            DispatchQueue.main.async { [weak self] in
-                self?.isDeleting = false
-            }
+            isDeleting = false
         }
         
     }

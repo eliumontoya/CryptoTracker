@@ -194,5 +194,28 @@ final class CargaCatalogosViewModelTests: XCTestCase {
         // Verificar estados finales
         XCTAssertFalse(viewModel.isLoading, "La carga debe haber terminado")
         XCTAssertTrue(viewModel.logs.contains(where: { $0.contains("Proceso de carga completado exitosamente") }), "Debe haber un log de carga exitosa")
+        XCTAssertTrue(viewModel.cargaCompletada)
+
+        let persistedContext = ModelContext(modelContainer)
+        XCTAssertEqual(try persistedContext.fetch(FetchDescriptor<Cartera>()).count, 2)
+        XCTAssertEqual(try persistedContext.fetch(FetchDescriptor<Crypto>()).count, 2)
+        XCTAssertEqual(try persistedContext.fetch(FetchDescriptor<FIAT>()).count, 2)
+        XCTAssertEqual(try persistedContext.fetch(FetchDescriptor<CryptoSyncConfig>()).count, 1)
+    }
+
+    func testCargaCompletaHaceRollbackAnteError() async throws {
+        let carterasURL = try crearArchivoTemporal(contenido: "Binance,BNCE")
+        let fiatURL = try crearArchivoTemporal(contenido: "Formato invalido")
+
+        await viewModel.cargarArchivos(
+            carterasURL: carterasURL,
+            cryptosURL: nil,
+            fiatURL: fiatURL,
+            syncURL: nil
+        )
+
+        XCTAssertFalse(viewModel.cargaCompletada)
+        XCTAssertTrue(try modelContext.fetch(FetchDescriptor<Cartera>()).isEmpty)
+        XCTAssertTrue(try modelContext.fetch(FetchDescriptor<FIAT>()).isEmpty)
     }
 }

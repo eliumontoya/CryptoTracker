@@ -5,9 +5,11 @@ struct EliminarDataView: View {
     @Environment(\.dismiss) private var dismiss
     
     @StateObject private var viewModel: EliminarDataViewModel
+    private let dependencies: AppDependencyContainer
 
     
     init(dependencies: AppDependencyContainer) {
+        self.dependencies = dependencies
         _viewModel = StateObject(wrappedValue: dependencies.eliminarDataViewModel)
     }
     
@@ -147,14 +149,16 @@ struct EliminarDataView: View {
         .alert("Confirmar Eliminación", isPresented: $showingConfirmation) {
             Button("Cancelar", role: .cancel) { }
             Button("Sí, Borrar Todo", role: .destructive) {
-                Task {
-                    await viewModel.borrarDatos()
-                }
+                    Task {
+                        await viewModel.borrarDatos()
+                        if viewModel.deleteCompleted {
+                            dependencies.recargarCatalogosAdmin()
+                        }
+                    }
             }
         } message: {
             Text("¿Está completamente seguro que desea eliminar todos los datos? Esta acción no se puede deshacer.")
         }
     }
 }
-
 

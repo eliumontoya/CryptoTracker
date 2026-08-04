@@ -122,6 +122,7 @@ final class EliminarDataViewModelTests: XCTestCase {
         XCTAssertFalse(movEgresosAntes.isEmpty, "Debe haber movimientos de egreso antes del borrado")
         
         // Ejecutar borrado
+        viewModel.deleteOptions.all = true
         await viewModel.borrarDatos()
         
         // Verificar que los datos se borraron
@@ -145,6 +146,7 @@ final class EliminarDataViewModelTests: XCTestCase {
     // Prueba de logs
     func testLogsGeneradosEnBorrado() async throws {
         // Borrar datos
+        viewModel.deleteOptions.all = true
         await viewModel.borrarDatos()
         
         // Verificar logs

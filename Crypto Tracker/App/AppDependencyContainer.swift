@@ -290,6 +290,18 @@ class AppDependencyContainer {
     func makeAdminPortfoliosView() -> AdminPortfoliosView {
         AdminPortfoliosView(viewModel: adminPortfoliosViewModel)
     }
+
+    func recargarCatalogosAdmin() {
+        adminCarterasViewModel.loadCarteras()
+        adminCarterasViewModel.loadPortfolios()
+        adminCryptosViewModel.loadCryptos()
+        adminFiatViewModel.loadFiats()
+        adminPortfoliosViewModel.loadPortfolios()
+
+        adminCarterasViewModel.clearCache()
+        adminCryptosViewModel.clearCache()
+        adminFiatViewModel.clearCache()
+    }
     
     func makeCryptoSyncView() -> CryptoSyncView {
         CryptoSyncView(viewModel: cryptoSyncViewModel)

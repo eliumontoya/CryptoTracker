@@ -50,6 +50,25 @@ final class AppDependencyContainerTests: XCTestCase {
         XCTAssertTrue(dependencies.portfolioDetalleViewModel.carterasDetail.isEmpty)
     }
 
+    func testRecargarCatalogosAdminRefreshesSharedLists() throws {
+        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 1)
+        let cartera = Cartera(nombre: "Binance", simbolo: "BNCE")
+        let fiat = FIAT(nombre: "Dolar", simbolo: "USD", precioUSD: 1)
+        let portfolio = Portfolio(nombre: "Principal", descripcion: "", isDefault: true)
+        modelContext.insert(crypto)
+        modelContext.insert(cartera)
+        modelContext.insert(fiat)
+        modelContext.insert(portfolio)
+        try modelContext.save()
+
+        dependencies.recargarCatalogosAdmin()
+
+        XCTAssertEqual(dependencies.adminCryptosViewModel.cryptos.map(\.id), [crypto.id])
+        XCTAssertEqual(dependencies.adminCarterasViewModel.carteras.map(\.id), [cartera.id])
+        XCTAssertEqual(dependencies.adminFiatViewModel.fiats.map(\.id), [fiat.id])
+        XCTAssertEqual(dependencies.adminPortfoliosViewModel.portfolios.map(\.id), [portfolio.id])
+    }
+
     func testTransactionServicesAreInjectedIntoMovimientoViewModels() {
         XCTAssertNotNil(dependencies.transactionRunner)
         XCTAssertNotNil(dependencies.holdingService)
