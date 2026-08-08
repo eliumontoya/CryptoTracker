@@ -58,6 +58,7 @@ struct MoveBetweenWalletsResult {
 /// (`.transferenciaSalida` and `.transferenciaEntrada`) that share a `groupId`,
 /// validates the origin wallet has enough funds, and applies the signed holding
 /// deltas inside a single `TransactionRunner` block.
+@MainActor
 protocol MoveBetweenWalletsUseCaseProtocol {
     @discardableResult
     func execute(_ input: MoveBetweenWalletsInput) async throws -> MoveBetweenWalletsResult
@@ -65,6 +66,7 @@ protocol MoveBetweenWalletsUseCaseProtocol {
 
 // MARK: - Implementation
 
+@MainActor
 struct MoveBetweenWalletsUseCase: MoveBetweenWalletsUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

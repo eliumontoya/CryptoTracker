@@ -12,10 +12,10 @@ final class PortfolioViewModel: ObservableObject {
 
     init(
         modelContext: ModelContext,
-        snapshotService: SnapshotService = SwiftDataSnapshotService()
+        snapshotService: SnapshotService? = nil
     ) {
         self.modelContext = modelContext
-        self.snapshotService = snapshotService
+        self.snapshotService = snapshotService ?? SwiftDataSnapshotService()
     }
 
     func loadPortfolio() {

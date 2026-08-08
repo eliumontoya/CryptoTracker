@@ -101,6 +101,7 @@ enum EditMovementError: Error, LocalizedError {
 /// in one atomic transaction: the previous holding effect is reverted and the
 /// new one applied, so the materialized `Holding` rows stay in sync with the
 /// movement.
+@MainActor
 protocol EditMovementUseCaseProtocol {
     func execute(_ input: EditMovementInput) async throws
 
@@ -115,6 +116,7 @@ protocol EditMovementUseCaseProtocol {
 
 // MARK: - Implementation
 
+@MainActor
 struct EditMovementUseCase: EditMovementUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

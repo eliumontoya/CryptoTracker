@@ -234,6 +234,33 @@ final class MovimientoSwapViewModelTests: XCTestCase {
         }
     }
 
+    func testDeleteFailurePublishesAlertFeedback() async {
+        let movimiento = Movimiento.swap(
+            fecha: Date(),
+            cantidadOrigen: 1,
+            cantidadDestino: 10,
+            precioUSDOrigen: mockCryptoOrigen.precio,
+            precioUSDDestino: mockCryptoDestino.precio,
+            cartera: mockCartera,
+            cryptoOrigen: mockCryptoOrigen,
+            cryptoDestino: mockCryptoDestino
+        ).salida
+        viewModel = MovimientoSwapViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            deleteUseCase: ThrowingDeleteMovementUseCaseStub()
+        )
+
+        do {
+            try await viewModel.delete()
+            XCTFail("Delete should throw")
+        } catch {
+            XCTAssertTrue(viewModel.hasError)
+            XCTAssertEqual(viewModel.errorMessage, TestDeletionError.forced.localizedDescription)
+            XCTAssertNotNil(viewModel.movimiento)
+        }
+    }
+
     // MARK: - Editing
     func testEdit_Success() async throws {
         let useCase = SwapMovementUseCase(

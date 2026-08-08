@@ -29,12 +29,14 @@ struct BackupView: View {
                         .frame(maxWidth: 300)
                 }
                 .buttonStyle(.borderedProminent)
+                .accessibilityIdentifier("backup-export")
 
                 Button(action: { viewModel.isImporting = true }) {
                     Label("Import Backup", systemImage: "square.and.arrow.down")
                         .frame(maxWidth: 300)
                 }
                 .buttonStyle(.bordered)
+                .accessibilityIdentifier("backup-import")
             }
 
             if let errorMessage = viewModel.errorMessage {
@@ -46,6 +48,7 @@ struct BackupView: View {
         }
         .padding()
         .navigationTitle("Backup")
+        .accessibilityIdentifier("admin-backup-view")
         .fileExporter(
             isPresented: $viewModel.isExporting,
             document: viewModel.exportData,

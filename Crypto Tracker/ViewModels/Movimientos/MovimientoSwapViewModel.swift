@@ -174,6 +174,8 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
 
         } catch {
             uiState = .error(error.localizedDescription)
+            errorMessage = error.localizedDescription
+            hasError = true
             isLoading = false
             throw error
         }
@@ -191,6 +193,8 @@ final class MovimientoSwapViewModel: MovimientoViewModel {
             uiState = .success
         } catch {
             uiState = .error(error.localizedDescription)
+            errorMessage = error.localizedDescription
+            hasError = true
             isLoading = false
             throw error
         }

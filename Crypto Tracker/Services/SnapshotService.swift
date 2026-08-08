@@ -3,6 +3,7 @@ import SwiftData
 
 // MARK: - Protocol
 
+@MainActor
 protocol SnapshotService: AnyObject {
     func recordDailySnapshot(for portfolioId: UUID, in context: ModelContext) async throws
     func fetchSnapshots(for portfolioId: UUID, in context: ModelContext) -> [PortfolioSnapshot]
@@ -10,6 +11,7 @@ protocol SnapshotService: AnyObject {
 
 // MARK: - SwiftData Implementation
 
+@MainActor
 final class SwiftDataSnapshotService: SnapshotService {
     func recordDailySnapshot(for portfolioId: UUID, in context: ModelContext) async throws {
         let today = Calendar.current.startOfDay(for: Date())

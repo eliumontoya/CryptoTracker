@@ -16,6 +16,14 @@ struct TransactionRunnerTests {
         #expect(value == 42)
     }
 
+    @Test func runExecutesPersistenceBlockOnMainActor() async throws {
+        let runner = makeRunner()
+
+        try await runner.run { _ in
+            #expect(Thread.isMainThread)
+        }
+    }
+
     @Test func runPersistsMutationsOnSuccess() async throws {
         let runner = makeRunner()
         let crypto = Crypto.mock(precio: 50_000)

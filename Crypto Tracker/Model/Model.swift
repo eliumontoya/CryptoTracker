@@ -223,7 +223,7 @@ class Holding {
     @Attribute(.unique) var id: String
     var portfolio: Portfolio
     var cartera: Cartera
-    @Relationship(deleteRule: .cascade) var crypto: Crypto
+    @Relationship var crypto: Crypto
     var cantidad: Decimal {
         didSet {
             if cantidad < 0 {

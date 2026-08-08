@@ -72,13 +72,16 @@ struct ExcelWorksheet {
         if let rows = worksheet.data?.rows {
             print("✓ Encontradas \(rows.count) filas")
             allRows = rows.map { row in
-                row.cells.map { cell in
-                    if let sharedStrings = sharedStrings {
-                        return cell.stringValue(sharedStrings) ?? ""
+                let valuesByColumn = Dictionary(uniqueKeysWithValues: row.cells.map { cell in
+                    let value: String
+                    if let sharedStrings {
+                        value = cell.stringValue(sharedStrings) ?? ""
                     } else {
-                        return cell.value ?? ""
+                        value = cell.value ?? ""
                     }
-                }
+                    return (cell.reference.column.description, value)
+                })
+                return Self.alignedRow(valuesByColumn: valuesByColumn)
             }
             print("✓ Procesadas \(allRows.count) filas")
         } else {
@@ -91,11 +94,17 @@ struct ExcelWorksheet {
         
         // Procesar encabezados
         print("🏷 Procesando encabezados...")
-        self.headerRow = allRows[0].map { $0.trimmingCharacters(in: .whitespaces) }
-        print("✓ Encabezados encontrados: \(self.headerRow.joined(separator: ", "))")
+        let headerRow = allRows[0].map { $0.trimmingCharacters(in: .whitespaces) }
+        self.headerRow = headerRow
+        print("✓ Encabezados encontrados: \(headerRow.joined(separator: ", "))")
         
         // Procesar datos
-        self.rows = Array(allRows.dropFirst())
+        self.rows = allRows.dropFirst().map { row in
+            if row.count >= headerRow.count {
+                return Array(row.prefix(headerRow.count))
+            }
+            return row + Array(repeating: "", count: headerRow.count - row.count)
+        }
         print("✅ Lectura completada. Total filas de datos: \(self.rows.count)")
     }
     
@@ -117,6 +126,30 @@ struct ExcelWorksheet {
     func columnIndex(for header: String) -> Int? {
         return headerRow.firstIndex(of: header)
     }
+
+    static func alignedRow(valuesByColumn: [String: String]) -> [String] {
+        let indexedValues = valuesByColumn.compactMap { column, value -> (Int, String)? in
+            guard let index = columnIndex(for: column) else { return nil }
+            return (index, value)
+        }
+        guard let lastIndex = indexedValues.map(\.0).max() else { return [] }
+
+        var values = Array(repeating: "", count: lastIndex + 1)
+        for (index, value) in indexedValues {
+            values[index] = value
+        }
+        return values
+    }
+
+    private static func columnIndex(for reference: String) -> Int? {
+        guard !reference.isEmpty else { return nil }
+        var result = 0
+        for scalar in reference.uppercased().unicodeScalars {
+            guard scalar.value >= 65, scalar.value <= 90 else { return nil }
+            result = result * 26 + Int(scalar.value - 64)
+        }
+        return result - 1
+    }
 }
 
 // MARK: - ExcelReader
@@ -124,12 +157,13 @@ class ExcelReader {
     static func read(from url: URL) async throws -> ExcelWorksheet {
         print("📂 Iniciando lectura desde: \(url.lastPathComponent)")
 
-        guard url.startAccessingSecurityScopedResource() else {
+        let accessedSecurityScope = url.startAccessingSecurityScopedResource()
+        guard accessedSecurityScope || FileManager.default.isReadableFile(atPath: url.path) else {
             throw ExcelWorksheetError.fileNotFound("No se pudo acceder al archivo \"\(url.lastPathComponent)\". Seleccione el archivo nuevamente.")
         }
-        defer {
+        defer { if accessedSecurityScope {
             url.stopAccessingSecurityScopedResource()
-        }
+        } }
 
         guard let xlsxFile = XLSXFile(filepath: url.path) else {
             throw ExcelWorksheetError.invalidWorkbook("No se pudo abrir el archivo. Verifique que sea un archivo Excel válido (.xlsx)")

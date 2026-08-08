@@ -264,6 +264,33 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
         XCTAssertEqual(movimientos.count, 0)
     }
 
+    func testDeleteFailurePublishesAlertFeedback() async {
+        let movimiento = Movimiento.salida(
+            fecha: Date(),
+            cantidadCrypto: 1,
+            precioUSD: 1000,
+            usaFiatAlterno: false,
+            cartera: mockCartera,
+            crypto: mockCrypto
+        )
+        viewModel = MovimientoSalidaViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            registerUseCase: registerUseCase,
+            editUseCase: editUseCase,
+            deleteUseCase: ThrowingDeleteMovementUseCaseStub()
+        )
+
+        do {
+            try await viewModel.delete()
+            XCTFail("Delete should throw")
+        } catch {
+            XCTAssertTrue(viewModel.hasError)
+            XCTAssertEqual(viewModel.errorMessage, TestDeletionError.forced.localizedDescription)
+            XCTAssertNotNil(viewModel.movimiento)
+        }
+    }
+
     // MARK: - Edge Cases
 
     func testEdgeCase_VerySmallQuantityIsValid() {
@@ -291,5 +318,19 @@ final class MovimientoSalidaViewModelTests: XCTestCase {
         viewModel.precioUSD = 1000
 
         XCTAssertTrue(viewModel.formIsValid)
+    }
+}
+
+struct ThrowingDeleteMovementUseCaseStub: DeleteMovementUseCaseProtocol {
+    func delete(_ movement: Movimiento) async throws {
+        throw TestDeletionError.forced
+    }
+}
+
+enum TestDeletionError: LocalizedError {
+    case forced
+
+    var errorDescription: String? {
+        "Forced deletion failure"
     }
 }

@@ -52,8 +52,8 @@ struct SetupInicialView: View {
                 title: "Realizar y Cargar Backup",
                 icon: "externaldrive.badge.checkmark",
                 description: "Realiza copias de seguridad o restaura datos desde un backup",
-                createDestination: {
-                    AnyView(EmptyView())
+                createDestination: { [dependencies] in
+                    AnyView(SetupBackupView(dependencies: dependencies))
                 }
             )
         ])
@@ -67,6 +67,7 @@ struct SetupInicialView: View {
             }
         }
         .navigationTitle("Configuración Inicial")
+        .accessibilityIdentifier("admin-setup-view")
         .sheet(isPresented: $showingDestination) {
             sheetDestinationView
         }
@@ -86,11 +87,14 @@ struct SetupInicialView: View {
     private var optionsGridView: some View {
         LazyVGrid(columns: columns, spacing: 20) {
             ForEach(setupOptions) { option in
-                SetupOptionCard(option: option)
-                    .onTapGesture {
+                Button {
                         selectedOption = option
                         showingDestination = true
-                    }
+                } label: {
+                    SetupOptionCard(option: option)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier("setup-option-\(setupOptionIdentifier(option))")
             }
         }
         .padding(.horizontal)
@@ -103,6 +107,32 @@ struct SetupInicialView: View {
             } else {
                 EmptyView()
             }
+        }
+    }
+
+    private func setupOptionIdentifier(_ option: SetupOption) -> String {
+        switch option.title {
+        case "Eliminar Datos Existentes": "delete-data"
+        case "Carga de Catálogos Iniciales": "load-catalogs"
+        case "Carga de Movimientos Iniciales": "load-movements"
+        default: "backup"
+        }
+    }
+}
+
+private struct SetupBackupView: View {
+    @Environment(\.dismiss) private var dismiss
+    let dependencies: AppDependencyContainer
+
+    var body: some View {
+        NavigationStack {
+            dependencies.makeBackupView()
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cerrar") { dismiss() }
+                            .accessibilityIdentifier("setup-backup-close")
+                    }
+                }
         }
     }
 }

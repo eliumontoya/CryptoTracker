@@ -12,7 +12,7 @@ struct MovimientoSalidaHeaders {
     static let fiatSimbolo = "FIAT_Simbolo"
     
     static let required = [
-        fecha, crypto, cartera, cantidad, precioUSD, valorTotalUSD
+        fecha, crypto, cartera, cantidad, precioUSD
     ]
 }
 
@@ -144,6 +144,14 @@ class MovimientoSalidaParser {
                         value: precioUSDStr
                     )
                 }
+
+                let valorCalculadoUSD = cantidadCrypto * precioUSD
+                let valorTotalUSD = try parseValorTotalUSD(
+                    row: row,
+                    headers: headers,
+                    rowIndex: rowIndex,
+                    valorCalculado: valorCalculadoUSD
+                )
                 
                 // FIAT opcional
                 let (usaFiatAlterno, fiatAlterno, valorTotalFiatAlterno) = try parseFiatOpcional(
@@ -154,7 +162,7 @@ class MovimientoSalidaParser {
                     cantidadCrypto: cantidadCrypto
                 )
                 
-                return Movimiento.salida(
+                let movimiento = Movimiento.salida(
                     fecha: fecha,
                     cantidadCrypto: cantidadCrypto,
                     precioUSD: precioUSD,
@@ -165,6 +173,37 @@ class MovimientoSalidaParser {
                     crypto: crypto,
                     fiatAlterno: fiatAlterno
                 )
+                movimiento.valorTotalUSD = valorTotalUSD
+                return movimiento
+            }
+
+            private static func parseValorTotalUSD(
+                row: [String],
+                headers: [String: Int],
+                rowIndex: Int,
+                valorCalculado: Decimal
+            ) throws -> Decimal {
+                guard let columnIndex = headers[MovimientoSalidaHeaders.valorTotalUSD] else {
+                    return valorCalculado
+                }
+                let rawValue = row[safe: columnIndex]?.trimmingCharacters(in: .whitespaces) ?? ""
+                guard !rawValue.isEmpty else { return valorCalculado }
+                guard let valorProvisto = Decimal(string: rawValue) else {
+                    throw MovimientosParserError.invalidNumber(
+                        row: rowIndex,
+                        field: MovimientoSalidaHeaders.valorTotalUSD,
+                        value: rawValue
+                    )
+                }
+
+                let diferencia = abs(valorProvisto - valorCalculado)
+                let tolerancia = max(Decimal(string: "0.01")!, abs(valorCalculado) * Decimal(string: "0.0001")!)
+                guard diferencia <= tolerancia else {
+                    throw MovimientosParserError.invalidFormat(
+                        "Fila \(rowIndex): '\(MovimientoSalidaHeaders.valorTotalUSD)' (\(valorProvisto)) no coincide con cantidad × precio (\(valorCalculado))"
+                    )
+                }
+                return valorProvisto
             }
             
             private static func parseFiatOpcional(

@@ -39,6 +39,7 @@ enum RegisterMovementError: Error, LocalizedError, Equatable {
 /// Registers an entry or exit movement and its holding effect atomically: the `Movimiento`
 /// insert and the materialized `Holding` update persist (or roll back) together
 /// inside a single `TransactionRunner` block.
+@MainActor
 protocol RegisterMovementUseCaseProtocol {
     @discardableResult
     func register(_ input: RegisterMovementInput) async throws -> Movimiento
@@ -53,6 +54,7 @@ protocol RegisterMovementUseCaseProtocol {
 /// inserts it, applies the signed holding delta, and stamps `holding.updatedAt` with the
 /// movement's `fecha`. Never calls `save()` directly — the injected `TransactionRunner`
 /// owns persistence.
+@MainActor
 struct RegisterMovementUseCase: RegisterMovementUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

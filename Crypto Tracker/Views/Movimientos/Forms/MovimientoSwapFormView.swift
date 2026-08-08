@@ -105,14 +105,19 @@ struct MovimientoSwapFormView: View {
             Button("Cancelar") {
                 dismiss()
             }
+            .accessibilityIdentifier("movement-swap-cancel")
         }
         
         if viewModel.movimiento != nil {
             ToolbarItem(placement: .automatic) {
                 Button(role: .destructive) {
                     Task {
-                        try? await viewModel.delete()
-                        dismiss()
+                        do {
+                            try await viewModel.delete()
+                            dismiss()
+                        } catch {
+                            // The ViewModel publishes the error for the alert.
+                        }
                     }
                 } label: {
                     Text("Eliminar")
@@ -132,6 +137,7 @@ struct MovimientoSwapFormView: View {
                 }
             }
             .disabled(!viewModel.formIsValid)
+            .accessibilityIdentifier("movement-swap-save")
         }
     }
 }

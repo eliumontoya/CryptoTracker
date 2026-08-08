@@ -33,6 +33,7 @@ struct CryptoSyncView: View {
                 }
             }
             .disabled(viewModel.state.isSyncing)
+            .accessibilityIdentifier("sync-start")
             .buttonStyle(.borderedProminent)
             .padding()
             
@@ -41,6 +42,7 @@ struct CryptoSyncView: View {
         }
         .padding()
         .navigationTitle("Sync Manual de Precios")
+        .accessibilityIdentifier("admin-sync-view")
         .onAppear {
             viewModel.loadData()
         }

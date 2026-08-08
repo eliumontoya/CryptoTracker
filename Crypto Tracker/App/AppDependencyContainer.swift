@@ -100,7 +100,9 @@ class AppDependencyContainer {
         
         // Inicializar ViewModel de lista
         self.movimientosEntradaListViewModel = MovimientosEntradaListViewModel(
-            modelContext: modelContext
+            modelContext: modelContext,
+            entradaViewModel: movimientoEntradaViewModel,
+            deleteUseCase: deleteMovementUseCase
         )
         
         // Portfolio

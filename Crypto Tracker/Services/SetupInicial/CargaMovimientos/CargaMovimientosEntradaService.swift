@@ -1,13 +1,22 @@
 import Foundation
 import SwiftData
 
+@MainActor
 class CargaMovimientosEntradaService {
+    typealias WorksheetReader = (URL) async throws -> ExcelWorksheet
+
     private let modelContext: ModelContext
     private var delegate: CargaMovimientosDelegate?
+    private let readWorksheet: WorksheetReader
     
-    init(modelContext: ModelContext, delegate: CargaMovimientosDelegate? = nil) {
+    init(
+        modelContext: ModelContext,
+        delegate: CargaMovimientosDelegate? = nil,
+        readWorksheet: @escaping WorksheetReader = ExcelReader.read
+    ) {
         self.modelContext = modelContext
         self.delegate = delegate
+        self.readWorksheet = readWorksheet
     }
     
     func cargarMovimientos(
@@ -19,7 +28,7 @@ class CargaMovimientosEntradaService {
             await MainActor.run { delegate?.didUpdateProgress("Iniciando carga de Movimientos de Entrada...") }
             
             // Leer archivo Excel
-            let worksheet = try await ExcelReader.read(from: url)
+            let worksheet = try await readWorksheet(url)
             
             // Procesar movimientos
             let movimientos = try MovimientoEntradaParser.parse(
