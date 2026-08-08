@@ -48,14 +48,19 @@ struct MovimientoEntreCarterasFormView: View {
                 Button("Cancelar") {
                     dismiss()
                 }
+                .accessibilityIdentifier("movement-transfer-cancel")
             }
             
             if viewModel.movimiento != nil {
                 ToolbarItem(placement: .automatic) {
                     Button(role: .destructive) {
                         Task {
-                            try? await viewModel.delete()
-                            dismiss()
+                            do {
+                                try await viewModel.delete()
+                                dismiss()
+                            } catch {
+                                // The ViewModel publishes the error for the alert.
+                            }
                         }
                     } label: {
                         Text("Eliminar")
@@ -75,6 +80,7 @@ struct MovimientoEntreCarterasFormView: View {
                     }
                 }
                 .disabled(!viewModel.formIsValid)
+                .accessibilityIdentifier("movement-transfer-save")
             }
         }
         .alert("Error", isPresented: $viewModel.hasError) {

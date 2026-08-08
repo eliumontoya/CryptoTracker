@@ -56,14 +56,19 @@ struct MovimientoEntradaFormView: View {
                 Button("Cancelar") {
                     dismiss()
                 }
+                .accessibilityIdentifier("movement-entry-cancel")
             }
             
             if viewModel.movimiento != nil {
                 ToolbarItem(placement: .automatic) {
                     Button(role: .destructive) {
                         Task {
-                            try? await viewModel.delete()
-                            dismiss()
+                            do {
+                                try await viewModel.delete()
+                                dismiss()
+                            } catch {
+                                // The ViewModel publishes the error for the alert.
+                            }
                         }
                     } label: {
                         Text("Eliminar")
@@ -83,6 +88,7 @@ struct MovimientoEntradaFormView: View {
                     }
                 }
                 .disabled(!viewModel.formIsValid || viewModel.isLoading)
+                .accessibilityIdentifier("movement-entry-save")
             }
         }
         .alert("Error", isPresented: $viewModel.hasError) {

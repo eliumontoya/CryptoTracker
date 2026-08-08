@@ -6,6 +6,7 @@ struct MovimientosSwapsView: View {
     @Query(sort: \Movimiento.fecha, order: .reverse) private var todos: [Movimiento]
     @State private var showingAddSheet = false
     @State private var selectedMovimiento: Movimiento?
+    @State private var errorMessage: String?
 
     init(dependencies: AppDependencyContainer) {
         self.dependencies = dependencies
@@ -41,6 +42,7 @@ struct MovimientosSwapsView: View {
                 Button(action: { showingAddSheet = true }) {
                     Label("Nuevo Movimiento", systemImage: "plus")
                 }
+                .accessibilityIdentifier("movement-swap-add")
             }
         }
         #if os(iOS)
@@ -68,19 +70,33 @@ struct MovimientosSwapsView: View {
             .adaptiveSheetFrame()
         }
         #endif
+        .accessibilityIdentifier("movements-swaps-view")
+        .alert("Error", isPresented: errorBinding) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
 
     private func deleteMovimientos(at offsets: IndexSet) {
+        let selectedMovimientos = offsets.map { swaps[$0].salida }
         Task {
-            for index in offsets {
-                let par = swaps[index]
-                if let entrada = par.entrada {
-                    dependencies.modelContext.delete(entrada)
+            do {
+                for movimiento in selectedMovimientos {
+                    let viewModel = dependencies.makeMovimientoSwapViewModel(movimiento: movimiento)
+                    try await viewModel.delete()
                 }
-                dependencies.modelContext.delete(par.salida)
+            } catch {
+                errorMessage = error.localizedDescription
             }
-            try? dependencies.modelContext.save()
         }
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )
     }
 }
 

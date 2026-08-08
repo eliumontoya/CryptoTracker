@@ -238,6 +238,9 @@ struct MoveBetweenWalletsUseCaseTests {
 
         #expect(try holding(in: context, portfolio: portfolio, cartera: origin, crypto: btc) == nil)
         #expect(try holding(in: context, portfolio: portfolio, cartera: destination, crypto: btc)?.cantidad == 2)
+        #expect(try context.fetchCount(FetchDescriptor<Crypto>()) == 1)
+        #expect(try context.fetch(FetchDescriptor<Crypto>()).first?.id == btc.id)
+        #expect(try context.fetch(FetchDescriptor<Movimiento>()).allSatisfy { $0.crypto?.id == btc.id })
     }
 
     // MARK: - Validation errors

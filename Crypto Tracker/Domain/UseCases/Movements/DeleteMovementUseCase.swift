@@ -26,6 +26,7 @@ enum DeleteMovementError: LocalizedError, Equatable {
 
 /// Physically deletes an entry, exit, wallet-transfer, or swap movement and reverts
 /// its holding effect atomically. For paired movements, both legs are deleted together.
+@MainActor
 protocol DeleteMovementUseCaseProtocol {
     func delete(_ movement: Movimiento) async throws
 }
@@ -42,6 +43,7 @@ protocol DeleteMovementUseCaseProtocol {
 /// same transaction.
 ///
 /// Any failure rolls back the whole block, so movement + holding stay consistent.
+@MainActor
 struct DeleteMovementUseCase: DeleteMovementUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

@@ -22,6 +22,8 @@ struct MovimientoSalidaFormView: View {
                 usdFieldsSection
                 
                 // FIAT Alterno
+                fiatAlternoToggle
+
                 if viewModel.usaFiatAlterno {
                     fiatAlternoSection
                 }
@@ -45,14 +47,19 @@ struct MovimientoSalidaFormView: View {
                 Button("Cancelar") {
                     dismiss()
                 }
+                .accessibilityIdentifier("movement-exit-cancel")
             }
             
             if viewModel.movimiento != nil {
                 ToolbarItem(placement: .automatic) {
                     Button(role: .destructive) {
                         Task {
-                            try? await viewModel.delete()
-                            dismiss()
+                            do {
+                                try await viewModel.delete()
+                                dismiss()
+                            } catch {
+                                // The ViewModel publishes the error for the alert.
+                            }
                         }
                     } label: {
                         Text("Eliminar")
@@ -72,6 +79,7 @@ struct MovimientoSalidaFormView: View {
                     }
                 }
                 .disabled(!viewModel.formIsValid)
+                .accessibilityIdentifier("movement-exit-save")
             }
         }
         .alert("Error", isPresented: $viewModel.hasError) {
@@ -157,10 +165,6 @@ struct MovimientoSalidaFormView: View {
     
     private var fiatAlternoSection: some View {
         Group {
-            Toggle("FIAT Recibido en Venta", isOn: $viewModel.usaFiatAlterno)
-                .font(.headline)
-                .frame(maxWidth: .infinity)
-            
             Picker("FIAT Alterno", selection: $viewModel.selectedFiatAlterno) {
                 Text("Seleccionar FIAT").tag(Optional<FIAT>.none)
                 ForEach(fiats.filter { $0.simbolo != "USD" }) { fiat in
@@ -189,5 +193,12 @@ struct MovimientoSalidaFormView: View {
                 .frame(maxWidth: .infinity)
             }
         }
+    }
+
+    private var fiatAlternoToggle: some View {
+        Toggle("FIAT Recibido en Venta", isOn: $viewModel.usaFiatAlterno)
+            .font(.headline)
+            .frame(maxWidth: .infinity)
+            .accessibilityIdentifier("movement-exit-alternate-fiat")
     }
 }

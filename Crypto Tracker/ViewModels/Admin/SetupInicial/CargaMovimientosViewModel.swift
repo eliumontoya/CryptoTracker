@@ -20,6 +20,7 @@ class CargaMovimientosViewModel: ObservableObject {
     // MARK: - Dependencies
     private let modelContext: ModelContext
     private let holdingService: HoldingServiceProtocol
+    private let readWorksheet: CargaMovimientosBatchService.WorksheetReader
     private var cancellables = Set<AnyCancellable>()
 
     // MARK: - Computed Properties
@@ -61,9 +62,14 @@ class CargaMovimientosViewModel: ObservableObject {
     }
 
     // MARK: - Initializer
-    init(modelContext: ModelContext, holdingService: HoldingServiceProtocol = HoldingService()) {
+    init(
+        modelContext: ModelContext,
+        holdingService: HoldingServiceProtocol = HoldingService(),
+        readWorksheet: @escaping CargaMovimientosBatchService.WorksheetReader = ExcelReader.read
+    ) {
         self.modelContext = modelContext
         self.holdingService = holdingService
+        self.readWorksheet = readWorksheet
     }
     
     // MARK: - Public Methods
@@ -71,225 +77,56 @@ class CargaMovimientosViewModel: ObservableObject {
         isLoading = true
         totalCargados.removeAll()
         logs.removeAll()
-        
-        // Obtener los catálogos una sola vez
-        let cryptosActuales = cryptos
-        let carterasActuales = carteras
-        let fiatsActuales = fiats
-        
+
         Task {
             do {
-                // Cargar movimientos de entrada si existe el archivo
-                if let url = movimientosEntradaURL {
-                    let total = try await cargarMovimientosEntrada(
-                        desde: url,
-                        cryptos: cryptosActuales,
-                        carteras: carterasActuales,
-                        fiats: fiatsActuales
-                    )
-                    
-                    DispatchQueue.main.async {
-                        self.totalCargados["Movimientos de Entrada"] = total
-                    }
-                }
-                
-                // Cargar movimientos de salida si existe el archivo
-                if let url = movimientosSalidaURL {
-                    let total = try await cargarMovimientosSalida(
-                        desde: url,
-                        cryptos: cryptosActuales,
-                        carteras: carterasActuales,
-                        fiats: fiatsActuales
-                    )
-                    
-                    DispatchQueue.main.async {
-                        self.totalCargados["Movimientos de Salida"] = total
-                    }
-                }
-                
-                // Cargar movimientos entre carteras si existe el archivo
-                if let url = movimientosEntreCarterasURL {
-                    let total = try await cargarMovimientosEntreCarteras(
-                        desde: url,
-                        cryptos: cryptosActuales,
-                        carteras: carterasActuales
-                    )
-                    
-                    DispatchQueue.main.async {
-                        self.totalCargados["Movimientos Entre Carteras"] = total
-                    }
-                }
-                
-                // Cargar movimientos swap si existe el archivo
-                if let url = movimientosSwapURL {
-                    let total = try await cargarMovimientosSwap(
-                        desde: url,
-                        cryptos: cryptosActuales,
-                        carteras: carterasActuales
-                    )
-                    
-                    DispatchQueue.main.async {
-                        self.totalCargados["Movimientos Swap"] = total
-                    }
-                }
-                
+                let service = CargaMovimientosBatchService(
+                    modelContext: modelContext,
+                    holdingService: holdingService,
+                    readWorksheet: readWorksheet,
+                    progress: didUpdateProgress
+                )
+                totalCargados = try await service.cargar(
+                    archivos: CargaMovimientosFileSelection(
+                        entrada: movimientosEntradaURL,
+                        salida: movimientosSalidaURL,
+                        entreCarteras: movimientosEntreCarterasURL,
+                        swap: movimientosSwapURL
+                    ),
+                    cryptos: cryptos,
+                    carteras: carteras,
+                    fiats: fiats
+                )
+                didUpdateProgress("Carga completada correctamente")
             } catch {
-                DispatchQueue.main.async {
-                    self.errorMessage = error.localizedDescription
-                    self.showError = true
-                }
+                errorMessage = error.localizedDescription
+                showError = true
+                logs.append("❌ ERROR: \(errorMessage). No se guardó ningún movimiento de esta carga.")
             }
-            
-            // Recrear Holdings desde los movimientos cargados
-            await rebuildHoldings()
-
-            DispatchQueue.main.async {
-                self.isLoading = false
-            }
+            isLoading = false
         }
-    }
-
-    // MARK: - Holdings Rebuild
-    /// Deletes all existing Holdings and recreates them from Movimientos.
-    /// This is needed after bulk import since movements are inserted directly
-    /// without going through HoldingService.
-    private func rebuildHoldings() async {
-        await MainActor.run {
-            self.didUpdateProgress("Reconstruyendo balances (Holdings)...")
-        }
-
-        // Delete all existing holdings
-        let existingHoldings = (try? modelContext.fetch(FetchDescriptor<Holding>())) ?? []
-        for holding in existingHoldings {
-            modelContext.delete(holding)
-        }
-
-        // Fetch all movements sorted by date
-        let movimientos = (try? modelContext.fetch(
-            FetchDescriptor<Movimiento>(sortBy: [SortDescriptor(\.fecha, order: .forward)])
-        )) ?? []
-
-        // Apply each movement through HoldingService
-        for (index, movimiento) in movimientos.enumerated() {
-            do {
-                try holdingService.updateHoldingForMovement(movimiento, in: modelContext)
-            } catch {
-                print("⚠️ Error applying holding for movement \(movimiento.id): \(error)")
-            }
-
-            if (index + 1) % 10 == 0 {
-                await MainActor.run {
-                    self.didUpdateProgress("Holdings: procesados \(index + 1) de \(movimientos.count)...")
-                }
-            }
-        }
-
-        try? modelContext.save()
-
-        await MainActor.run {
-            self.didUpdateProgress("✅ Holdings reconstruidos: \(existingHoldings.count) eliminados, \(movimientos.count) movimientos procesados")
-        }
-    }
-    
-    // MARK: - Private Loading Methods
-    private func cargarMovimientosEntrada(
-        desde url: URL,
-        cryptos: [Crypto],
-        carteras: [Cartera],
-        fiats: [FIAT]
-    ) async throws -> Int {
-        let service = CargaMovimientosEntradaService(
-            modelContext: modelContext,
-            delegate: self
-        )
-        
-        return try await service.cargarMovimientos(
-            desde: url,
-            cryptos: cryptos,
-            carteras: carteras,
-            fiats: fiats
-        )
-    }
-    
-    private func cargarMovimientosSalida(
-        desde url: URL,
-        cryptos: [Crypto],
-        carteras: [Cartera],
-        fiats: [FIAT]
-    ) async throws -> Int {
-        let service = CargaMovimientosSalidaService(
-            modelContext: modelContext,
-            delegate: self
-        )
-        
-        return try await service.cargarMovimientos(
-            desde: url,
-            cryptos: cryptos,
-            carteras: carteras,
-            fiats: fiats
-        )
-    }
-    
-    private func cargarMovimientosEntreCarteras(
-        desde url: URL,
-        cryptos: [Crypto],
-        carteras: [Cartera]
-    ) async throws -> Int {
-        let service = CargaMovimientosEntreCarterasService(
-            modelContext: modelContext,
-            delegate: self
-        )
-        
-        return try await service.cargarMovimientos(
-            desde: url,
-            cryptos: cryptos,
-            carteras: carteras
-        )
-    }
-    
-    private func cargarMovimientosSwap(
-        desde url: URL,
-        cryptos: [Crypto],
-        carteras: [Cartera]
-    ) async throws -> Int {
-        let service = CargaMovimientosSwapService(
-            modelContext: modelContext,
-            delegate: self
-        )
-        
-        return try await service.cargarMovimientos(
-            desde: url,
-            cryptos: cryptos,
-            carteras: carteras
-        )
     }
 }
 
 // MARK: - CargaMovimientosDelegate Implementation
 extension CargaMovimientosViewModel: CargaMovimientosDelegate {
     func didUpdateProgress(_ message: String) {
-        DispatchQueue.main.async {
-            self.logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
-        }
+        logs.append("[\(Date().formatted(date: .omitted, time: .standard))] \(message)")
     }
     
     func didCompleteTask(_ type: String, total: Int) {
-        DispatchQueue.main.async {
-            self.totalCargados[type] = total
-            self.isLoading = false
-        }
+        totalCargados[type] = total
+        isLoading = false
     }
     
     func didEncounterError(_ error: Error) {
-        DispatchQueue.main.async {
-            if let excelError = error as? ExcelWorksheetError {
-                self.errorMessage = excelError.errorDescription ?? "Error desconocido"
-            } else {
-                self.errorMessage = error.localizedDescription
-            }
-            self.showError = true
-            self.isLoading = false
-            self.logs.append("❌ ERROR: \(self.errorMessage)")
+        if let excelError = error as? ExcelWorksheetError {
+            errorMessage = excelError.errorDescription ?? "Error desconocido"
+        } else {
+            errorMessage = error.localizedDescription
         }
+        showError = true
+        isLoading = false
+        logs.append("❌ ERROR: \(errorMessage)")
     }
 }

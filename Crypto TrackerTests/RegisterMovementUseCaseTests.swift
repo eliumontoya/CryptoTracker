@@ -279,6 +279,9 @@ struct RegisterMovementUseCaseTests {
 
         _ = try await useCase.registerSalida(input(cantidadCrypto: 2, cartera: cartera, crypto: btc))
         #expect(try holding(in: context, portfolio: portfolio, cartera: cartera, crypto: btc) == nil)
+        #expect(try context.fetchCount(FetchDescriptor<Crypto>()) == 1)
+        #expect(try context.fetch(FetchDescriptor<Crypto>()).first?.id == btc.id)
+        #expect(try context.fetch(FetchDescriptor<Movimiento>()).allSatisfy { $0.crypto?.id == btc.id })
     }
 
     @Test func registerSalidaThrowsWhenHoldingIsMissing() async throws {

@@ -20,7 +20,25 @@ final class CargaMovimientosViewModelTests: XCTestCase {
         let expectation = XCTestExpectation(description: "Context Setup")
         Task { @MainActor in
             mockModelContext = ModelContext(container)
-            viewModel = CargaMovimientosViewModel(modelContext: mockModelContext)
+            viewModel = CargaMovimientosViewModel(
+                modelContext: mockModelContext,
+                readWorksheet: { url in
+                    let headers: [String]
+                    switch url.lastPathComponent {
+                    case "entrada.xlsx":
+                        headers = MovimientoEntradaHeaders.required
+                    case "salida.xlsx":
+                        headers = MovimientoSalidaHeaders.required
+                    case "entreCarteras.xlsx":
+                        headers = MovimientoEntreCarterasHeaders.required
+                    case "swap.xlsx":
+                        headers = MovimientoSwapHeaders.required
+                    default:
+                        throw ExcelWorksheetError.fileNotFound(url.lastPathComponent)
+                    }
+                    return ExcelWorksheet(testHeaderRow: headers, testRows: [])
+                }
+            )
             expectation.fulfill()
         }
         
@@ -184,6 +202,7 @@ final class CargaMovimientosViewModelTests: XCTestCase {
         // Observe changes
         var cancellables = Set<AnyCancellable>()
         viewModel.$isLoading
+            .dropFirst()
             .sink { isLoading in
                 if !isLoading {
                     expectation.fulfill()
@@ -205,7 +224,7 @@ final class CargaMovimientosViewModelTests: XCTestCase {
     // MARK: - Performance Tests
     
     /// Measures performance of file loading process
-    func testCargarArchivosPerformance() {
+    func testCargarArchivosPerformance() async throws {
         // Prepare test by populating catalogs
         let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000.00)
         let cartera = Cartera(nombre: "Test Wallet", simbolo: "TESTWALLET")
@@ -221,19 +240,20 @@ final class CargaMovimientosViewModelTests: XCTestCase {
         viewModel.movimientosEntreCarterasURL = URL(fileURLWithPath: "/mock/entreCarteras.xlsx")
         viewModel.movimientosSwapURL = URL(fileURLWithPath: "/mock/swap.xlsx")
         
-        // Measure performance
-        measure {
-            let expectation = XCTestExpectation(description: "Performance Test")
-            
-            viewModel.cargarArchivos()
-            
-            // Simple wait mechanism (in real scenarios, use more robust async testing)
-            DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-                expectation.fulfill()
-            }
-            
-            wait(for: [expectation], timeout: 3.0)
+        let clock = ContinuousClock()
+        let start = clock.now
+
+        viewModel.cargarArchivos()
+        while viewModel.isLoading {
+            try await Task.sleep(for: .milliseconds(10))
         }
+
+        XCTAssertLessThan(
+            start.duration(to: clock.now),
+            .seconds(2),
+            "An empty four-file batch should complete promptly"
+        )
+        XCTAssertEqual(viewModel.totalCargados.count, 4)
     }
     
     // MARK: - Boundary Condition Tests

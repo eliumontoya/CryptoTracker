@@ -44,6 +44,7 @@ struct AdminCarterasView: View {
                     Button(action: { viewModel.showAddForm() }) {
                         Label("Agregar Cartera", systemImage: "plus")
                     }
+                    .accessibilityIdentifier("admin-wallets-add")
                 }
             }
             .sheet(item: $viewModel.formState) { formState in
@@ -64,18 +65,15 @@ struct AdminCarterasView: View {
                 .presentationDetents([.medium])
                 .presentationDragIndicator(.visible)
             }
-            .alert("¿Eliminar cartera?", isPresented: $viewModel.showingDeleteAlert) {
-                Button("Cancelar", role: .cancel) { }
-                Button("Eliminar", role: .destructive) {
-                    if let cartera = viewModel.selectedCartera {
-                        viewModel.deleteCartera(cartera)
-                        viewModel.selectedCartera = nil
-                    }
+            .alert("No se puede eliminar la cartera", isPresented: $viewModel.showingDeleteAlert) {
+                Button("OK", role: .cancel) {
+                    viewModel.selectedCartera = nil
                 }
             } message: {
-                Text("Esta acción no se puede deshacer. ¿Está seguro de eliminar esta cartera?")
+                Text("La cartera tiene movimientos asociados. Elimínelos antes de borrar la cartera.")
             }
         }
+        .accessibilityIdentifier("admin-wallets-view")
         .onDisappear {
             viewModel.clearCache()
         }
@@ -204,6 +202,7 @@ struct CarteraFormView: View {
                 Button("Cancelar") {
                     dismiss()
                 }
+                .accessibilityIdentifier("admin-wallet-form-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
@@ -211,6 +210,7 @@ struct CarteraFormView: View {
                     dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
+                .accessibilityIdentifier("admin-wallet-form-save")
             }
         }
         .onAppear {

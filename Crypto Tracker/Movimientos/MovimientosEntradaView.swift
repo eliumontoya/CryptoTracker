@@ -53,6 +53,7 @@ struct MovimientosEntradaView: View {
                 Label("Agregar", systemImage: "plus")
             }
             .disabled(viewModel.isLoading)
+            .accessibilityIdentifier("movement-entry-add")
         }
         #if os(iOS)
         .fullScreenCover(isPresented: $showingAddSheet) {
@@ -110,6 +111,7 @@ struct MovimientosEntradaView: View {
         } message: {
             Text(viewModel.errorMessage)
         }
+        .accessibilityIdentifier("movements-entry-view")
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {

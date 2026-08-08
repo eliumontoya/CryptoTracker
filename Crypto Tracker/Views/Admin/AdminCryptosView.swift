@@ -20,9 +20,8 @@ struct AdminCryptosView: View {
                         }
                 }
                 .onDelete { offsets in
-                    offsets.forEach { index in
-                        viewModel.deleteCrypto(viewModel.cryptos[index])
-                    }
+                    let candidates = offsets.map { viewModel.cryptos[$0] }
+                    viewModel.requestDeletion(of: candidates)
                 }
             }
             .navigationTitle("Cryptos")
@@ -31,6 +30,7 @@ struct AdminCryptosView: View {
                     Button(action: { viewModel.showAddForm() }) {
                         Label("Agregar Crypto", systemImage: "plus")
                     }
+                    .accessibilityIdentifier("admin-cryptos-add")
                 }
             }
             .sheet(item: $viewModel.formState) { formState in
@@ -43,16 +43,20 @@ struct AdminCryptosView: View {
                     }
                 }
             }
-            .alert("¿Eliminar crypto?", isPresented: $viewModel.showingDeleteAlert) {
-                Button("Cancelar", role: .cancel) { }
-                Button("Eliminar", role: .destructive) {
-                    if let crypto = viewModel.selectedCrypto {
-                        viewModel.deleteCrypto(crypto)
-                        viewModel.selectedCrypto = nil
+            .alert(viewModel.deleteAlertTitle, isPresented: $viewModel.showingDeleteAlert) {
+                Button("Cancelar", role: .cancel) {
+                    viewModel.cancelDeletion()
+                }
+                if viewModel.deleteRequiresConfirmation {
+                    Button("Eliminar", role: .destructive) {
+                        viewModel.confirmDeletion()
                     }
                 }
+            } message: {
+                Text(viewModel.deleteAlertMessage)
             }
         }
+        .accessibilityIdentifier("admin-cryptos-view")
     }
 }
 
@@ -135,20 +139,32 @@ struct CryptoFormView: View {
                     viewModel.closeForm()
                     dismiss()
                 }
+                .accessibilityIdentifier("admin-crypto-form-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
+                    let didSave: Bool
                     if let crypto = crypto {
-                        viewModel.updateCrypto(crypto, nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
+                        didSave = viewModel.updateCrypto(crypto, nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
                     } else {
-                        viewModel.addCrypto(nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
+                        didSave = viewModel.addCrypto(nombre: nombre, simbolo: simbolo, precio: precio, coingeckoId: coingeckoId.isEmpty ? nil : coingeckoId)
                     }
-                    viewModel.closeForm()
-                    dismiss()
+                    if didSave {
+                        viewModel.closeForm()
+                        dismiss()
+                    }
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty)
+                .accessibilityIdentifier("admin-crypto-form-save")
             }
+        }
+        .alert("No se pudo guardar", isPresented: Binding(
+            get: { viewModel.formErrorMessage != nil },
+            set: { if !$0 { viewModel.clearFormError() } }
+        )) {
+            Button("Aceptar") { viewModel.clearFormError() }
+        } message: {
+            Text(viewModel.formErrorMessage ?? "Error desconocido")
         }
     }
 }
-

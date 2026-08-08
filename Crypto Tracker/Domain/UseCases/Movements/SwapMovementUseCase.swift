@@ -50,6 +50,7 @@ struct SwapMovementResult {
 /// (`.swapSalida` and `.swapEntrada`) that share a `groupId`, validates the origin
 /// wallet holds enough of the origin crypto, and applies the signed holding deltas
 /// inside a single `TransactionRunner` block.
+@MainActor
 protocol SwapMovementUseCaseProtocol {
     @discardableResult
     func execute(_ input: SwapMovementInput) async throws -> SwapMovementResult
@@ -57,6 +58,7 @@ protocol SwapMovementUseCaseProtocol {
 
 // MARK: - Implementation
 
+@MainActor
 struct SwapMovementUseCase: SwapMovementUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

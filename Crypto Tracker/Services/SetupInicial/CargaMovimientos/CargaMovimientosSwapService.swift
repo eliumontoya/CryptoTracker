@@ -1,13 +1,22 @@
 import Foundation
 import SwiftData
 
+@MainActor
 class CargaMovimientosSwapService {
+    typealias WorksheetReader = (URL) async throws -> ExcelWorksheet
+
     private let modelContext: ModelContext
     private var delegate: CargaMovimientosDelegate?
+    private let readWorksheet: WorksheetReader
     
-    init(modelContext: ModelContext, delegate: CargaMovimientosDelegate? = nil) {
+    init(
+        modelContext: ModelContext,
+        delegate: CargaMovimientosDelegate? = nil,
+        readWorksheet: @escaping WorksheetReader = ExcelReader.read
+    ) {
         self.modelContext = modelContext
         self.delegate = delegate
+        self.readWorksheet = readWorksheet
     }
     
     func cargarMovimientos(
@@ -18,7 +27,7 @@ class CargaMovimientosSwapService {
         await MainActor.run { delegate?.didUpdateProgress("Iniciando carga de Movimientos Swap...") }
         
         // Leer archivo Excel
-        let worksheet = try await ExcelReader.read(from: url)
+        let worksheet = try await readWorksheet(url)
         
         // Procesar movimientos (skipFundCheck: true porque es carga inicial sin movimientos previos)
         let movimientos = try MovimientoSwapParser.parse(

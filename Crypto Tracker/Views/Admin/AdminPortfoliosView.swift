@@ -36,6 +36,7 @@ struct AdminPortfoliosView: View {
                 Button(action: { viewModel.showAddForm() }) {
                     Label("Add Portfolio", systemImage: "plus")
                 }
+                .accessibilityIdentifier("admin-portfolios-add")
             }
         }
         .sheet(item: $viewModel.formState) { formState in
@@ -43,17 +44,14 @@ struct AdminPortfoliosView: View {
                 PortfolioFormView(viewModel: viewModel, mode: formState)
             }
         }
-        .alert("Delete Portfolio?", isPresented: $viewModel.showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { }
-            Button("Delete", role: .destructive) {
-                if let portfolio = viewModel.selectedPortfolio {
-                    viewModel.deletePortfolio(portfolio)
-                    viewModel.selectedPortfolio = nil
-                }
+        .alert("Portfolio cannot be deleted", isPresented: $viewModel.showingDeleteAlert) {
+            Button("OK", role: .cancel) {
+                viewModel.selectedPortfolio = nil
             }
         } message: {
             Text("This portfolio has wallets assigned. Remove them first.")
         }
+        .accessibilityIdentifier("admin-portfolios-view")
     }
 }
 
@@ -123,6 +121,7 @@ struct PortfolioFormView: View {
                     viewModel.closeForm()
                     dismiss()
                 }
+                .accessibilityIdentifier("admin-portfolio-form-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Save") {
@@ -131,6 +130,7 @@ struct PortfolioFormView: View {
                     dismiss()
                 }
                 .disabled(nombre.isEmpty)
+                .accessibilityIdentifier("admin-portfolio-form-save")
             }
         }
         .onAppear {

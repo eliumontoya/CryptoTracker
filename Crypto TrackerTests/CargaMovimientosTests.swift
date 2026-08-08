@@ -48,7 +48,13 @@ final class CargaMovimientosTests: XCTestCase {
     ///   - El delegado recibe las actualizaciones de progreso
     func testCargaMovimientosEntradaExitosa() async throws {
         // Arrange
-        let entradaService: CargaMovimientosEntradaService = CargaMovimientosEntradaService(modelContext: modelContext, delegate: mockDelegate)
+        let entradaService = CargaMovimientosEntradaService(
+            modelContext: modelContext,
+            delegate: mockDelegate,
+            readWorksheet: { _ in
+                ExcelWorksheet(testHeaderRow: MovimientoEntradaHeaders.required, testRows: [])
+            }
+        )
         let testData = crearDatosPrueba()
         let url = crearArchivoExcelTemporal(conDatos: testData)
         
@@ -81,7 +87,13 @@ final class CargaMovimientosTests: XCTestCase {
     ///   - El delegado recibe la notificación de error
     func testCargaMovimientosEntradaConDatosInvalidos() async {
         // Arrange
-        let entradaService: CargaMovimientosEntradaService = CargaMovimientosEntradaService(modelContext: modelContext, delegate: mockDelegate)
+        let entradaService = CargaMovimientosEntradaService(
+            modelContext: modelContext,
+            delegate: mockDelegate,
+            readWorksheet: { _ in
+                ExcelWorksheet(testHeaderRow: [MovimientoEntradaHeaders.fecha], testRows: [])
+            }
+        )
         let datosInvalidos = crearDatosInvalidos()
         let url = crearArchivoExcelTemporal(conDatos: datosInvalidos)
         
@@ -114,7 +126,13 @@ final class CargaMovimientosTests: XCTestCase {
     ///   - Se actualizan los balances de las carteras
     func testCargaMovimientosSalidaExitosa() async throws {
         // Arrange
-        let salidaService: CargaMovimientosSalidaService = CargaMovimientosSalidaService(modelContext: modelContext, delegate: mockDelegate)
+        let salidaService = CargaMovimientosSalidaService(
+            modelContext: modelContext,
+            delegate: mockDelegate,
+            readWorksheet: { _ in
+                ExcelWorksheet(testHeaderRow: MovimientoSalidaHeaders.required, testRows: [])
+            }
+        )
         let testData = crearDatosPrueba()
         let url = crearArchivoExcelTemporal(conDatos: testData)
         
@@ -144,7 +162,13 @@ final class CargaMovimientosTests: XCTestCase {
     ///   - Se calculan correctamente las comisiones
     func testCargaMovimientosEntreCarterasExitosa() async throws {
         // Arrange
-        let entreCarterasService: CargaMovimientosEntreCarterasService = CargaMovimientosEntreCarterasService(modelContext: modelContext, delegate: mockDelegate)
+        let entreCarterasService = CargaMovimientosEntreCarterasService(
+            modelContext: modelContext,
+            delegate: mockDelegate,
+            readWorksheet: { _ in
+                ExcelWorksheet(testHeaderRow: MovimientoEntreCarterasHeaders.required, testRows: [])
+            }
+        )
         let testData = crearDatosPrueba()
         let url = crearArchivoExcelTemporal(conDatos: testData)
         
@@ -177,7 +201,13 @@ final class CargaMovimientosTests: XCTestCase {
     ///   - Se actualizan correctamente los balances de cryptos
     func testCargaMovimientosSwapExitosa() async throws {
         // Arrange
-        let swapService: CargaMovimientosSwapService = CargaMovimientosSwapService(modelContext: modelContext, delegate: mockDelegate)
+        let swapService = CargaMovimientosSwapService(
+            modelContext: modelContext,
+            delegate: mockDelegate,
+            readWorksheet: { _ in
+                ExcelWorksheet(testHeaderRow: MovimientoSwapHeaders.required, testRows: [])
+            }
+        )
         let testData = crearDatosPrueba()
         let url = crearArchivoExcelTemporal(conDatos: testData)
         
@@ -224,8 +254,7 @@ final class CargaMovimientosTests: XCTestCase {
     }
     
     private func crearArchivoExcelTemporal(conDatos data: TestData) -> URL {
-        // Implementar creación de archivo Excel temporal
-        URL(fileURLWithPath: "")
+        URL(fileURLWithPath: "/fixture.xlsx")
     }
     
     private func verificarBalanceCartera(_ cartera: Cartera) -> Bool {
@@ -272,4 +301,3 @@ class MockCargaMovimientosDelegate: CargaMovimientosDelegate {
         didReceiveError = true
     }
 }
-

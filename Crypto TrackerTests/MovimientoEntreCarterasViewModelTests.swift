@@ -237,4 +237,29 @@ final class MovimientoEntreCarterasViewModelTests: XCTestCase {
         }
     }
 
+    func testDeleteFailurePublishesAlertFeedback() async {
+        let movimiento = Movimiento.transferencia(
+            fecha: Date(),
+            cantidadCryptoSalida: 1,
+            cantidadCryptoEntrada: 1,
+            carteraOrigen: mockCarteraOrigen,
+            carteraDestino: mockCarteraDestino,
+            crypto: mockCrypto
+        ).salida
+        viewModel = MovimientoEntreCarterasViewModel(
+            modelContext: modelContext,
+            movimiento: movimiento,
+            deleteUseCase: ThrowingDeleteMovementUseCaseStub()
+        )
+
+        do {
+            try await viewModel.delete()
+            XCTFail("Delete should throw")
+        } catch {
+            XCTAssertTrue(viewModel.hasError)
+            XCTAssertEqual(viewModel.errorMessage, TestDeletionError.forced.localizedDescription)
+            XCTAssertNotNil(viewModel.movimiento)
+        }
+    }
+
 }

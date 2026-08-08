@@ -7,6 +7,7 @@ struct MovimientosSalidaView: View {
            sort: \Movimiento.fecha, order: .reverse) private var movimientos: [Movimiento]
     @State private var showingAddSheet = false
     @State private var selectedMovimiento: Movimiento?
+    @State private var errorMessage: String?
     
     init(dependencies: AppDependencyContainer) {
         self.dependencies = dependencies
@@ -29,6 +30,7 @@ struct MovimientosSalidaView: View {
                 Button(action: { showingAddSheet = true }) {
                     Label("Nuevo Movimiento", systemImage: "plus")
                 }
+                .accessibilityIdentifier("movement-exit-add")
             }
         }
         #if os(iOS)
@@ -56,15 +58,33 @@ struct MovimientosSalidaView: View {
             .adaptiveSheetFrame()
         }
         #endif
+        .accessibilityIdentifier("movements-exit-view")
+        .alert("Error", isPresented: errorBinding) {
+            Button("OK", role: .cancel) { errorMessage = nil }
+        } message: {
+            Text(errorMessage ?? "")
+        }
     }
     
     private func deleteMovimientos(at offsets: IndexSet) {
+        let selectedMovimientos = offsets.map { movimientos[$0] }
         Task {
-            for index in offsets {
-                dependencies.modelContext.delete(movimientos[index])
+            do {
+                for movimiento in selectedMovimientos {
+                    let viewModel = dependencies.makeMovimientoSalidaViewModel(movimiento: movimiento)
+                    try await viewModel.delete()
+                }
+            } catch {
+                errorMessage = error.localizedDescription
             }
-            try? dependencies.modelContext.save()
         }
+    }
+
+    private var errorBinding: Binding<Bool> {
+        Binding(
+            get: { errorMessage != nil },
+            set: { if !$0 { errorMessage = nil } }
+        )
     }
 }
 

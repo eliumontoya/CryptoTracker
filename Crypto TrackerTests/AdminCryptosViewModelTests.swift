@@ -16,7 +16,17 @@ final class AdminCryptosViewModelTests: XCTestCase {
     
     override func setUpWithError() throws {
         try super.setUpWithError()
-        let schema = Schema([Crypto.self, PrecioHistorico.self])
+        let schema = Schema([
+            Crypto.self,
+            Cartera.self,
+            Portfolio.self,
+            Holding.self,
+            FIAT.self,
+            Movimiento.self,
+            PrecioHistorico.self,
+            PortfolioSnapshot.self,
+            CryptoSyncConfig.self
+        ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         modelContainer = try ModelContainer(for: schema, configurations: [modelConfiguration])
         modelContext = ModelContext(modelContainer)
@@ -94,10 +104,126 @@ final class AdminCryptosViewModelTests: XCTestCase {
         XCTAssertEqual(sut.cryptos.count, 1)
         
         // When
-        sut.deleteCrypto(crypto)
+        sut.requestDeletion(of: [crypto])
+        sut.confirmDeletion()
         
         // Then
         XCTAssertTrue(sut.cryptos.isEmpty)
+    }
+
+    func testRequestDeletionBlocksCryptoWithHolding() throws {
+        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        let portfolio = Portfolio(nombre: "Principal", isDefault: true)
+        let cartera = Cartera(nombre: "Wallet", simbolo: "WAL", portfolio: portfolio)
+        let holding = Holding(portfolio: portfolio, cartera: cartera, crypto: crypto, cantidad: 1)
+        modelContext.insert(crypto)
+        modelContext.insert(portfolio)
+        modelContext.insert(cartera)
+        modelContext.insert(holding)
+        try modelContext.save()
+        sut.loadCryptos()
+
+        sut.requestDeletion(of: [crypto])
+
+        XCTAssertTrue(sut.showingDeleteAlert)
+        XCTAssertFalse(sut.deleteRequiresConfirmation)
+        XCTAssertTrue(sut.deleteAlertMessage.contains("datos asociados") || sut.deleteAlertMessage.contains("holdings"))
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Crypto>()), 1)
+    }
+
+    func testConfirmDeletionRemovesCryptoHistoryAndSyncConfigTogether() throws {
+        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        let history = PrecioHistorico(crypto: crypto, precio: 49000, fecha: Date())
+        let syncConfig = CryptoSyncConfig(crypto: crypto, syncUrl: "https://example.com", defaultPrice: 50000)
+        modelContext.insert(crypto)
+        modelContext.insert(history)
+        modelContext.insert(syncConfig)
+        try modelContext.save()
+        sut.loadCryptos()
+
+        sut.requestDeletion(of: [crypto])
+
+        XCTAssertTrue(sut.showingDeleteAlert)
+        XCTAssertTrue(sut.deleteRequiresConfirmation)
+        XCTAssertTrue(sut.deleteAlertMessage.contains("1 históricos"))
+        XCTAssertTrue(sut.deleteAlertMessage.contains("1 configuraciones"))
+
+        sut.confirmDeletion()
+
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Crypto>()), 0)
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<PrecioHistorico>()), 0)
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<CryptoSyncConfig>()), 0)
+    }
+
+    func testRequestDeletionBlocksCryptoWithMovement() throws {
+        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        let portfolio = Portfolio(nombre: "Principal", isDefault: true)
+        let cartera = Cartera(nombre: "Wallet", simbolo: "WAL", portfolio: portfolio)
+        let movement = Movimiento.entrada(
+            fecha: Date(),
+            cantidadCrypto: 1,
+            precioUSD: 50000,
+            cartera: cartera,
+            crypto: crypto
+        )
+        modelContext.insert(crypto)
+        modelContext.insert(portfolio)
+        modelContext.insert(cartera)
+        modelContext.insert(movement)
+        try modelContext.save()
+        sut.loadCryptos()
+
+        sut.requestDeletion(of: [crypto])
+
+        XCTAssertFalse(sut.deleteRequiresConfirmation)
+        XCTAssertTrue(sut.deleteAlertMessage.contains("movimientos o holdings"))
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Crypto>()), 1)
+    }
+
+    func testConfirmDeletionDeletesEverySelectedUnreferencedCrypto() throws {
+        let bitcoin = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        let ether = Crypto(nombre: "Ethereum", simbolo: "ETH", precio: 3000)
+        modelContext.insert(bitcoin)
+        modelContext.insert(ether)
+        try modelContext.save()
+        sut.loadCryptos()
+
+        sut.requestDeletion(of: [bitcoin, ether])
+        XCTAssertTrue(sut.deleteRequiresConfirmation)
+
+        sut.confirmDeletion()
+
+        XCTAssertTrue(sut.cryptos.isEmpty)
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Crypto>()), 0)
+        XCTAssertFalse(sut.showingDeleteAlert)
+    }
+
+    func testAddFailurePublishesErrorAndKeepsFormOpen() throws {
+        sut = AdminCryptosViewModel(modelContext: modelContext) { _ in throw PersistenceFailure.expected }
+        sut.showAddForm()
+
+        let didSave = sut.addCrypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+
+        XCTAssertFalse(didSave)
+        XCTAssertNotNil(sut.formErrorMessage)
+        XCTAssertNotNil(sut.formState)
+        XCTAssertTrue(sut.cryptos.isEmpty)
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Crypto>()), 0)
+    }
+
+    func testUpdateFailurePublishesErrorAndKeepsFormOpen() throws {
+        let crypto = Crypto(nombre: "Bitcoin", simbolo: "BTC", precio: 50000)
+        modelContext.insert(crypto)
+        try modelContext.save()
+        sut = AdminCryptosViewModel(modelContext: modelContext) { _ in throw PersistenceFailure.expected }
+        sut.showEditForm(for: crypto)
+
+        let didSave = sut.updateCrypto(crypto, nombre: "Changed", simbolo: "CHG", precio: 1)
+
+        XCTAssertFalse(didSave)
+        XCTAssertNotNil(sut.formErrorMessage)
+        XCTAssertNotNil(sut.formState)
+        XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<PrecioHistorico>()), 0)
     }
     
     // MARK: - Form State Tests
@@ -206,4 +332,8 @@ final class AdminCryptosViewModelTests: XCTestCase {
         XCTAssertEqual(sut.cryptos[1].nombre, "Ethereum")
         XCTAssertEqual(sut.cryptos[2].nombre, "Zcash")
     }
+}
+
+private enum PersistenceFailure: Error {
+    case expected
 }

@@ -14,21 +14,24 @@ final class MovimientosEntradaListViewModel: ObservableObject {
     @Published var entradaViewModel: MovimientoEntradaViewModel
     
     // Dependencias
-    private let modelContext: ModelContext
-    private let transactionRunner: TransactionRunner
-    private let holdingService: HoldingServiceProtocol
+    private let deleteUseCase: DeleteMovementUseCaseProtocol
     
     // Cancellables para gestionar subscripciones
     private var cancellables = Set<AnyCancellable>()
     
     // MARK: - Initialization
     
-    init(modelContext: ModelContext) {
-        self.modelContext = modelContext
-        self.transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
-        self.holdingService = HoldingService()
-        // Inicializar el entradaViewModel primero
-        self.entradaViewModel = MovimientoEntradaViewModel(modelContext: modelContext)
+    init(
+        modelContext: ModelContext,
+        entradaViewModel: MovimientoEntradaViewModel? = nil,
+        deleteUseCase: DeleteMovementUseCaseProtocol? = nil
+    ) {
+        let transactionRunner = ModelContextTransactionRunner(modelContext: modelContext)
+        self.deleteUseCase = deleteUseCase ?? DeleteMovementUseCase(
+            transactionRunner: transactionRunner,
+            holdingService: HoldingService()
+        )
+        self.entradaViewModel = entradaViewModel ?? MovimientoEntradaViewModel(modelContext: modelContext)
         
         // Ahora que todas las propiedades están inicializadas, podemos llamar a setupBindings
         setupBindings()
@@ -61,13 +64,8 @@ final class MovimientosEntradaListViewModel: ObservableObject {
         
         do {
             for index in offsets {
-                try await Task.sleep(nanoseconds: 100_000_000) // pequeña pausa para evitar conflictos
                 let movimiento = movimientos[index]
-                // Revertir holding y borrar el movimiento en la misma transacción.
-                try await transactionRunner.run { context in
-                    try holdingService.deleteHoldingForMovement(movimiento, in: context)
-                    context.delete(movimiento)
-                }
+                try await deleteUseCase.delete(movimiento)
             }
             
             uiState = .success

@@ -69,7 +69,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
     /// - Ausencia de datos de FIAT
     func testParseValidMovimientoSinFiat() throws {
         // Given
-        let headers = MovimientoSalidaHeaders.required
+        let headers = MovimientoSalidaHeaders.required + [MovimientoSalidaHeaders.valorTotalUSD]
         let rows = [
             ["01/01/2024", "BTC", "BNB", "1.5", "46000", "69000"]
         ]
@@ -103,6 +103,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
     func testParseValidMovimientoConFiat() throws {
         // Given
         let headers = MovimientoSalidaHeaders.required + [
+            MovimientoSalidaHeaders.valorTotalUSD,
             MovimientoSalidaHeaders.fiatRecibido,
             MovimientoSalidaHeaders.fiatSimbolo
         ]
@@ -136,7 +137,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
     /// - Error apropiado con los montos disponibles
     func testParseFondosInsuficientes() {
         // Given
-        let headers = MovimientoSalidaHeaders.required
+        let headers = MovimientoSalidaHeaders.required + [MovimientoSalidaHeaders.valorTotalUSD]
         let rows = [
             ["01/01/2024", "BTC", "BNB", "2.5", "46000", "115000"]
         ]
@@ -220,7 +221,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
     /// - Error apropiado con información del campo inválido
     func testParseInvalidNumber() {
         // Given
-        let headers = MovimientoSalidaHeaders.required
+        let headers = MovimientoSalidaHeaders.required + [MovimientoSalidaHeaders.valorTotalUSD]
         let rows = [
             ["01/01/2024", "BTC", "BNB", "invalid", "46000", "69000"]
         ]
@@ -251,6 +252,7 @@ final class MovimientoSalidaParserTests: XCTestCase {
     func testParseInvalidFiat() {
         // Given
         let headers = MovimientoSalidaHeaders.required + [
+            MovimientoSalidaHeaders.valorTotalUSD,
             MovimientoSalidaHeaders.fiatRecibido,
             MovimientoSalidaHeaders.fiatSimbolo
         ]

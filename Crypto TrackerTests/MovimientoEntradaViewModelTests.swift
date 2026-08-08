@@ -181,4 +181,53 @@ class MovimientoEntradaViewModelTests: XCTestCase {
         XCTAssertEqual(movimientos.count, 0)
         XCTAssertNil(try holding())
     }
+
+    func testSwipeDeleteSpentEntryIsRejectedAndPublishesError() async throws {
+        let runner = ModelContextTransactionRunner(modelContext: modelContext)
+        let holdingService = HoldingService()
+        let registerUseCase = RegisterMovementUseCase(
+            transactionRunner: runner,
+            holdingService: holdingService
+        )
+        let deleteUseCase = DeleteMovementUseCase(
+            transactionRunner: runner,
+            holdingService: holdingService
+        )
+        let entry = try await registerUseCase.register(RegisterMovementInput(
+            fecha: Date(),
+            cantidadCrypto: 1,
+            precioUSD: 50_000,
+            usaFiatAlterno: false,
+            precioFiatAlterno: nil,
+            valorTotalFiatAlterno: nil,
+            cartera: cartera,
+            crypto: crypto,
+            fiatAlterno: nil
+        ))
+        let exit = Movimiento.salida(
+            fecha: Date(),
+            cantidadCrypto: 1,
+            precioUSD: 50_000,
+            cartera: cartera,
+            crypto: crypto
+        )
+        try await runner.run { context in
+            context.insert(exit)
+            try holdingService.updateHoldingForMovement(exit, in: context)
+        }
+        let listViewModel = MovimientosEntradaListViewModel(
+            modelContext: modelContext,
+            deleteUseCase: deleteUseCase
+        )
+
+        do {
+            try await listViewModel.deleteMovimientos(at: IndexSet(integer: 0), from: [entry])
+            XCTFail("Expected spent entry deletion to fail")
+        } catch {
+            XCTAssertTrue(listViewModel.hasError)
+            XCTAssertFalse(listViewModel.errorMessage.isEmpty)
+            XCTAssertEqual(try modelContext.fetchCount(FetchDescriptor<Movimiento>()), 2)
+            XCTAssertNil(try holding())
+        }
+    }
 }

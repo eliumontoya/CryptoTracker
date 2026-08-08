@@ -33,6 +33,7 @@ enum AdjustHoldingError: Error, LocalizedError, Equatable {
 
 /// Manually adjusts a holding to an absolute quantity and records a `.ajuste`
 /// movement atomically inside a single `TransactionRunner` block.
+@MainActor
 protocol AdjustHoldingUseCaseProtocol {
     @discardableResult
     func execute(_ input: AdjustHoldingInput) async throws -> Movimiento
@@ -40,6 +41,7 @@ protocol AdjustHoldingUseCaseProtocol {
 
 // MARK: - Implementation
 
+@MainActor
 struct AdjustHoldingUseCase: AdjustHoldingUseCaseProtocol {
     private let transactionRunner: TransactionRunner
     private let holdingService: HoldingServiceProtocol

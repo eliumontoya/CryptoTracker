@@ -37,6 +37,7 @@ struct AdminFiatView: View {
                 Button(action: { viewModel.showAddForm() }) {
                     Label("Agregar FIAT", systemImage: "plus")
                 }
+                .accessibilityIdentifier("admin-fiat-add")
             }
         }
         .sheet(item: $viewModel.formState) { formState in
@@ -44,17 +45,14 @@ struct AdminFiatView: View {
                 FiatFormView(viewModel: viewModel, mode: formState)
             }
         }
-        .alert("¿Eliminar FIAT?", isPresented: $viewModel.showingDeleteAlert) {
-            Button("Cancelar", role: .cancel) { }
-            Button("Eliminar", role: .destructive) {
-                if let fiat = viewModel.selectedFiat {
-                    viewModel.deleteFiat(fiat)
-                    viewModel.selectedFiat = nil
-                }
+        .alert("No se puede eliminar la moneda FIAT", isPresented: $viewModel.showingDeleteAlert) {
+            Button("OK", role: .cancel) {
+                viewModel.selectedFiat = nil
             }
         } message: {
-            Text("¿Está seguro de eliminar esta moneda? Esta acción no se puede deshacer.")
+            Text("La moneda está asociada a movimientos. Elimínelos antes de borrar la moneda.")
         }
+        .accessibilityIdentifier("admin-fiat-view")
     }
 }
 
@@ -119,6 +117,7 @@ struct FiatFormView: View {
                     viewModel.closeForm()
                     dismiss()
                 }
+                .accessibilityIdentifier("admin-fiat-form-cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("Guardar") {
@@ -127,6 +126,7 @@ struct FiatFormView: View {
                     dismiss()
                 }
                 .disabled(nombre.isEmpty || simbolo.isEmpty || precioUSD <= 0)
+                .accessibilityIdentifier("admin-fiat-form-save")
             }
         }
         .onAppear {

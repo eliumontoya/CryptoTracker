@@ -52,6 +52,7 @@ struct MovimientosSearchFilterView: View {
                 viewModel.cargarMovimientos()
             }
         }
+        .accessibilityIdentifier("movements-search-view")
     }
 
     private var headerView: some View {
@@ -83,6 +84,7 @@ struct MovimientosSearchFilterView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("movements-search-clear-text")
                 }
             }
 
@@ -126,6 +128,7 @@ struct MovimientosSearchFilterView: View {
                 Label(String(localized: "movements_filter_clear"), systemImage: "xmark")
             }
             .buttonStyle(.bordered)
+            .accessibilityIdentifier("movements-search-clear-filters")
         }
         .padding()
         .background(
